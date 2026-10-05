@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 720" role="img" aria-labelledby="title desc">
+  <title id="title">Minimal tree illustration for Nguyen Cao Thong</title>
+  <desc id="desc">A simple green tree with a warm sun</desc>
+  <rect width="640" height="720" fill="#dff3ff"/>
+  <circle cx="500" cy="128" r="52" fill="#ffd84d"/>
+  <path d="M0 600c158-35 324-35 640 0v120H0z" fill="#8fd18b"/>
+  <rect x="290" y="392" width="62" height="210" rx="24" fill="#8a5a36"/>
+  <circle cx="321" cy="287" r="148" fill="#63b875"/>
+  <circle cx="209" cy="357" r="91" fill="#7fd18a"/>
+  <circle cx="434" cy="357" r="91" fill="#7fd18a"/>
+  <circle cx="321" cy="164" r="82" fill="#90da9a"/>
+  <path d="M321 430v82M321 475l-35-30M321 490l36-32" fill="none" stroke="#6b4530" stroke-width="13" stroke-linecap="round"/>
+</svg>

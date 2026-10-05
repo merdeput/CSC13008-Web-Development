@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 720" role="img" aria-labelledby="title desc">
+  <title id="title">Minimal shield illustration for Nguyen Phan Hung Linh</title>
+  <desc id="desc">A violet security shield with a small lock beneath a bright star</desc>
+  <rect width="640" height="720" fill="#f5efff"/>
+  <path d="M0 610c174-28 391-28 640 0v110H0z" fill="#cbb7f4"/>
+  <path d="m320 142 145 57v122c0 116-69 197-145 233-76-36-145-117-145-233V199z" fill="#a989e4" stroke="#1d2a4a" stroke-linejoin="round" stroke-width="13"/>
+  <path d="m320 177 108 43v101c0 89-50 154-108 186-58-32-108-97-108-186V220z" fill="#d8c7ff"/>
+  <rect x="258" y="332" width="124" height="99" rx="20" fill="#fffaf0" stroke="#1d2a4a" stroke-width="12"/>
+  <path d="M281 332v-28c0-52 78-52 78 0v28" fill="none" stroke="#1d2a4a" stroke-linecap="round" stroke-width="12"/>
+  <circle cx="320" cy="381" r="12" fill="#7653ba"/><path d="M320 393v17" stroke="#7653ba" stroke-linecap="round" stroke-width="10"/>
+  <path d="m510 110 10 25 25 10-25 10-10 25-10-25-25-10 25-10z" fill="#ffd84d" stroke="#1d2a4a" stroke-linejoin="round" stroke-width="8"/>
+  <circle cx="126" cy="164" r="32" fill="#b69ce8"/>
+</svg>

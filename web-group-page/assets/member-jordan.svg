@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 720" role="img" aria-labelledby="title desc">
+  <title id="title">Illustrated profile portrait for Ngo Huynh Tham</title><desc id="desc">Abstract green and gold profile illustration</desc>
+  <rect width="640" height="720" fill="#ddf0e5"/><circle cx="135" cy="125" r="106" fill="#f5c969"/>
+  <path d="M88 720c25-177 100-270 232-270 130 0 209 93 232 270" fill="#245b58"/><circle cx="320" cy="284" r="137" fill="#b97654"/>
+  <path d="M180 302c-24-161 55-240 151-240 117 0 168 100 139 233-28-39-68-74-131-79-64-5-115 26-159 86z" fill="#283c35"/>
+  <circle cx="269" cy="294" r="10" fill="#25362f"/><circle cx="372" cy="294" r="10" fill="#25362f"/><path d="M278 360c26 22 60 22 86 0" fill="none" stroke="#824536" stroke-width="10" stroke-linecap="round"/>
+</svg>

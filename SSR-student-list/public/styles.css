@@ -88,11 +88,11 @@ body.app-shell {
 }
 .landing-hero-minimal { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); align-items: center; }
 .landing-hero-minimal .hero-copy { max-width: 1050px; }
-.landing-hero-minimal .hero-copy h1 { font-size: clamp(5rem, 13vw, 12rem); }
+.landing-hero-minimal .hero-copy h1 { margin-block: 2.6rem 2rem; font-size: clamp(4.5rem, 8vw, 9rem); line-height: 0.94; letter-spacing: -0.035em; }
 .landing-hero-minimal .hero-description { max-width: 28rem; }
 .landing-hero-minimal .hero-cta { min-width: 330px; min-height: 78px; font-size: 1rem; }
-.landing-art { width: 100%; max-width: 760px; justify-self: center; position: relative; }
-.landing-fish { width: 100%; height: auto; display: block; }
+.landing-art { height: min(72vh, 700px); justify-self: center; position: relative; }
+.landing-fish { width: auto; max-width: 100%; height: 100%; display: block; }
 .fish-caption { position: absolute; right: 8%; bottom: 4%; color: #d5e2f1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.13em; }
 .hero-copy { max-width: 860px; }
 .hero-kicker { display: flex; align-items: center; gap: 0.9rem; color: #fff; font-size: 0.78rem; font-weight: 850; letter-spacing: 0.17em; }
@@ -160,7 +160,8 @@ body.app-shell {
   .landing-hero { min-height: auto; grid-template-columns: 1fr; row-gap: 3rem; }
   .hero-copy h1 { font-size: clamp(4rem, 15vw, 7rem); }
   .orbit-visual { width: min(78vw, 520px); }
-  .landing-art { width: min(90vw, 600px); }
+  .landing-art { width: min(82vw, 380px); height: auto; }
+  .landing-fish { width: 100%; height: auto; }
   .hero-footer { margin-top: 2.5rem; }
   .how-grid { grid-template-columns: 1fr; }
 }
@@ -174,7 +175,7 @@ body.app-shell {
   .hero-description { font-size: 1rem; }
   .hero-cta { min-width: 0; width: 100%; font-size: 0.72rem; }
   .landing-hero-minimal { min-height: calc(100vh - 70px); }
-  .landing-hero-minimal .hero-copy h1 { font-size: clamp(4.5rem, 20vw, 7rem); }
+  .landing-hero-minimal .hero-copy h1 { margin-block: 1.8rem 1.3rem; font-size: clamp(3.6rem, 14vw, 5.5rem); }
   .landing-hero-minimal .hero-cta { min-width: 0; min-height: 68px; font-size: 0.86rem; }
   .hero-footer { font-size: 0.58rem; }
   .record-page { padding-top: 1.2rem !important; }
