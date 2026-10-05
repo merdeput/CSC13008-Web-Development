@@ -85,10 +85,10 @@
             </div>
             <div class="modal-body">
               <% if (errors.form) { %><div class="alert alert-danger" role="alert"><%= errors.form %></div><% } %>
-              <form action="/students" method="post" novalidate>
+              <form action="/students" method="post" novalidate data-student-validation data-existing-ids="<%= JSON.stringify(existingIds) %>" data-existing-emails="<%= JSON.stringify(existingEmails) %>">
                 <input type="hidden" name="sortBy" value="<%= sortBy %>">
                 <input type="hidden" name="sortDirection" value="<%= sortDirection %>">
-                <input type="hidden" name="major" value="<%= selectedMajor %>">
+                <input type="hidden" name="listMajor" value="<%= selectedMajor %>">
                 <div class="mb-3"><label for="id" class="form-label">Student ID</label><input id="id" name="id" value="<%= formData.id || '' %>" class="form-control <%= errors.id ? 'is-invalid' : '' %>" required><% if (errors.id) { %><div class="invalid-feedback"><%= errors.id %></div><% } %></div>
                 <div class="mb-3"><label for="name" class="form-label">Full name</label><input id="name" name="name" value="<%= formData.name || '' %>" class="form-control <%= errors.name ? 'is-invalid' : '' %>" required><% if (errors.name) { %><div class="invalid-feedback"><%= errors.name %></div><% } %></div>
                 <div class="mb-3"><label for="email" class="form-label">Email</label><input id="email" name="email" type="email" value="<%= formData.email || '' %>" class="form-control <%= errors.email ? 'is-invalid' : '' %>" required><% if (errors.email) { %><div class="invalid-feedback"><%= errors.email %></div><% } %></div>
@@ -102,6 +102,7 @@
       </div>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/student-validation.js"></script>
     <% if (createModalOpen) { %><script>new bootstrap.Modal(document.getElementById('createStudentModal')).show();</script><% } %>
   </body>
 </html>

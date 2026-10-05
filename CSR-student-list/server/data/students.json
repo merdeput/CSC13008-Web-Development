@@ -1,0 +1,177 @@
+[
+  {
+    "id": "24000001",
+    "name": "Rosario Ronado",
+    "email": "lenajohns@bovis.com",
+    "dob": "2001-08-06",
+    "major": "Computer Science"
+  },
+  {
+    "id": "24000002",
+    "name": "Cassandra Kane",
+    "email": "carrollwhitfield@oceanica.com",
+    "dob": "2006-05-27",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000003",
+    "name": "Kennedy Mills",
+    "email": "kimbradley@avit.com",
+    "dob": "2002-03-27",
+    "major": "Information Systems"
+  },
+  {
+    "id": "24000004",
+    "name": "Hardy Blake",
+    "email": "tammymarks@jimbies.com",
+    "dob": "2006-01-01",
+    "major": "Software Engineering"
+  },
+  {
+    "id": "24000005",
+    "name": "Camille Summers",
+    "email": "sullivanvalencia@updat.com",
+    "dob": "2003-05-03",
+    "major": "Information Technology"
+  },
+  {
+    "id": "24000006",
+    "name": "Benita Lewis",
+    "email": "augustablevins@kongene.com",
+    "dob": "2004-05-29",
+    "major": "Data Science"
+  },
+  {
+    "id": "24000007",
+    "name": "Logan Fuller",
+    "email": "houstonmaddox@qnekt.com",
+    "dob": "2001-01-03",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000008",
+    "name": "Hazel Roach",
+    "email": "denacrawford@amril.com",
+    "dob": "2000-05-10",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000009",
+    "name": "Maryellen Hines",
+    "email": "ashleemcdaniel@fiberox.com",
+    "dob": "2001-02-05",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000010",
+    "name": "Shelton Ellison",
+    "email": "magdalenafitzgerald@ultrimax.com",
+    "dob": "2000-02-25",
+    "major": "Information Technology"
+  },
+  {
+    "id": "24000011",
+    "name": "Kendra Perkins",
+    "email": "isabelrush@mondicil.com",
+    "dob": "2007-04-16",
+    "major": "Software Engineering"
+  },
+  {
+    "id": "24000012",
+    "name": "Letha Combs",
+    "email": "laverneweeks@frolix.com",
+    "dob": "2005-12-16",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000013",
+    "name": "Lavonne Lee",
+    "email": "jeanlang@obliq.com",
+    "dob": "2004-05-04",
+    "major": "Information Systems"
+  },
+  {
+    "id": "24000014",
+    "name": "Greene Poole",
+    "email": "waltonmartinez@zizzle.com",
+    "dob": "2006-03-14",
+    "major": "Information Technology"
+  },
+  {
+    "id": "24000015",
+    "name": "Alba Boone",
+    "email": "sandovalfrederick@xleen.com",
+    "dob": "2006-02-11",
+    "major": "Information Systems"
+  },
+  {
+    "id": "24000016",
+    "name": "Nolan Huber",
+    "email": "carrpeterson@austech.com",
+    "dob": "2002-07-01",
+    "major": "Software Engineering"
+  },
+  {
+    "id": "24000017",
+    "name": "Erna Beck",
+    "email": "sampsonmerrill@zanilla.com",
+    "dob": "2000-11-25",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24000018",
+    "name": "Holly Vaughn",
+    "email": "tabithaboyer@caxt.com",
+    "dob": "2006-07-27",
+    "major": "Computer Science"
+  },
+  {
+    "id": "24000019",
+    "name": "Nora Blackwell",
+    "email": "rosemariecole@apexia.com",
+    "dob": "2003-08-15",
+    "major": "Artificial Intelligence"
+  },
+  {
+    "id": "24127238",
+    "name": "Ngo Huynh Tham",
+    "email": "nhtham2413@clc.fitus.edu.vn",
+    "dob": "2006-11-02",
+    "major": "Công nghệ thông tin"
+  },
+  {
+    "id": "24127128",
+    "name": "Tefo",
+    "email": "ncthong2427@clc.fitus.edu.vn",
+    "dob": "2006-09-18",
+    "major": "Công nghệ thông tin"
+  },
+  {
+    "id": "24127231",
+    "name": "Thông Nguyễn Cao",
+    "email": "ncthong2421@clc.fitus.edu.vn",
+    "dob": "2019-05-05",
+    "major": "aaa"
+  },
+  {
+    "id": "24127120",
+    "name": "Nguyen Cao Thong",
+    "email": "ncthong242s7@clc.fitus.edu.vn",
+    "dob": "2026-09-03",
+    "major": "cn"
+  },
+  {
+    "id": "24127102",
+    "name": "Nguyen Cao Thong",
+    "email": "ncthong242s@clc.fitus.edu.vn",
+    "dob": "2026-09-03",
+    "major": "cn"
+  },
+  {
+    "id": "241271232523",
+    "name": "Nguyen cAo hdsdgd",
+    "email": "ncthongasfsf242s@clc.fitus.edu.vn",
+    "dob": "2026-09-03",
+    "major": "cn"
+  }
+]

@@ -31,11 +31,11 @@ function writeStudents(students) {
 function validateStudent(input, students, currentId = null) {
   const errors = {};
   const student = {
-    id: input.id?.trim(),
-    name: input.name?.trim(),
-    email: input.email?.trim().toLowerCase(),
-    dob: input.dob?.trim(),
-    major: input.major?.trim()
+    id: typeof input.id === 'string' ? input.id.trim() : '',
+    name: typeof input.name === 'string' ? input.name.trim() : '',
+    email: typeof input.email === 'string' ? input.email.trim().toLowerCase() : '',
+    dob: typeof input.dob === 'string' ? input.dob.trim() : '',
+    major: typeof input.major === 'string' ? input.major.trim() : ''
   };
 
   if (!student.id) errors.id = 'Student ID is required.';
@@ -82,6 +82,8 @@ function renderStudentList(res, students, options = {}) {
   const { formData = {}, errors = {}, success = false, createModalOpen = false, query = {} } = options;
   res.render('students', {
     ...getStudentListState(students, query),
+    existingIds: students.map((student) => student.id),
+    existingEmails: students.map((student) => student.email.toLowerCase()),
     formData,
     errors,
     success,
@@ -102,26 +104,30 @@ app.get('/students/:id', (req, res) => {
 });
 
 app.get('/students/:id/edit', (req, res) => {
-  const student = readStudents().find((item) => item.id === req.params.id);
+  const students = readStudents();
+  const student = students.find((item) => item.id === req.params.id);
   if (!student) return res.status(404).send('Student not found.');
-  res.render('student-edit', { student, formData: student, errors: {} });
+  res.render('student-edit', {
+    student, formData: student, errors: {}, existingEmails: students.map((item) => item.email.toLowerCase())
+  });
 });
 
 app.post('/students', (req, res) => {
   const students = readStudents();
+  const listQuery = { ...req.body, major: req.body.listMajor || '' };
   const { student, errors } = validateStudent(req.body, students);
 
   if (Object.keys(errors).length) {
     res.status(422);
     return renderStudentList(res, students, {
-      formData: student, errors, createModalOpen: true, query: req.body
+      formData: student, errors, createModalOpen: true, query: listQuery
     });
   }
 
   students.push(student);
   try {
     writeStudents(students);
-    return renderStudentList(res, students, { success: true, query: req.body });
+    return renderStudentList(res, students, { success: true, query: listQuery });
   } catch (error) {
     console.error('Could not save student:', error.message);
     res.status(500);
@@ -129,7 +135,7 @@ app.post('/students', (req, res) => {
       formData: student,
       errors: { form: 'Unable to save this student. Please try again.' },
       createModalOpen: true,
-      query: req.body
+      query: listQuery
     });
   }
 });
@@ -141,7 +147,10 @@ app.post('/students/:id', (req, res) => {
 
   const { student, errors } = validateStudent({ ...req.body, id: req.params.id }, students, req.params.id);
   if (Object.keys(errors).length) {
-    return res.status(422).render('student-edit', { student: students[index], formData: student, errors });
+    return res.status(422).render('student-edit', {
+      student: students[index], formData: student, errors,
+      existingEmails: students.map((item) => item.email.toLowerCase())
+    });
   }
 
   students[index] = student;
@@ -151,7 +160,9 @@ app.post('/students/:id', (req, res) => {
   } catch (error) {
     console.error('Could not update student:', error.message);
     return res.status(500).render('student-edit', {
-      student: students[index], formData: student, errors: { form: 'Unable to save these changes. Please try again.' }
+      student: students[index], formData: student,
+      errors: { form: 'Unable to save these changes. Please try again.' },
+      existingEmails: students.map((item) => item.email.toLowerCase())
     });
   }
 });
