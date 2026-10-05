@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 720" role="img" aria-labelledby="title desc">
+  <title id="title">Illustrated profile portrait for Nguyen Cao Thong</title><desc id="desc">Abstract blue and coral profile illustration</desc>
+  <rect width="640" height="720" fill="#d9e5ff"/><circle cx="505" cy="145" r="110" fill="#ffb26b"/>
+  <path d="M105 720c12-186 99-277 215-277s203 91 215 277" fill="#192e58"/><circle cx="320" cy="284" r="137" fill="#e9a77b"/>
+  <path d="M187 275c0-137 76-204 159-204 104 0 153 78 141 193-55-44-116-61-191-46-33 7-66 25-109 57z" fill="#263e70"/>
+  <circle cx="270" cy="294" r="10" fill="#192e58"/><circle cx="372" cy="294" r="10" fill="#192e58"/><path d="M278 361c25 20 60 20 85 0" fill="none" stroke="#a55345" stroke-width="10" stroke-linecap="round"/>
+</svg>

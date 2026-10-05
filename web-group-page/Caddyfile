@@ -1,0 +1,7 @@
+:8081 {
+  root * {$SITE_ROOT:.}
+
+  file_server {
+    hide .git
+  }
+}

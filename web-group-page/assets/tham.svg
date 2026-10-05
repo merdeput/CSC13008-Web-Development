@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 720" role="img" aria-labelledby="title desc">
+  <title id="title">Minimal cute cat illustration for Ngo Huynh Tham</title>
+  <desc id="desc">A simple orange cat sitting under a small sun</desc>
+  <rect width="640" height="720" fill="#fff4c7"/>
+  <circle cx="128" cy="132" r="43" fill="#ffd84d"/>
+  <path d="M0 610c176-29 372-29 640 0v110H0z" fill="#bfe6ff"/>
+  <path d="M254 350 225 224l95 55 95-55-29 126" fill="#ffb45d" stroke="#1d2a4a" stroke-width="13" stroke-linejoin="round"/>
+  <circle cx="320" cy="367" r="124" fill="#ffb45d" stroke="#1d2a4a" stroke-width="13"/>
+  <path d="M246 474c-53 42-51 124 31 124h100c79 0 91-97 33-130" fill="#ffb45d" stroke="#1d2a4a" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="278" cy="351" r="11" fill="#1d2a4a"/><circle cx="362" cy="351" r="11" fill="#1d2a4a"/>
+  <path d="m320 376-11 12h22zM290 410c18 16 42 16 60 0" fill="none" stroke="#1d2a4a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M224 383h-61M224 407h-61M416 383h61M416 407h61" stroke="#1d2a4a" stroke-width="10" stroke-linecap="round"/>
+</svg>
