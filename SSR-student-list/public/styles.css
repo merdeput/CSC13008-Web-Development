@@ -25,6 +25,8 @@ body {
 .page-heading { padding: 1rem 0 1.25rem; border-bottom: 1px solid #d5e0e8; }
 .page-heading h1 { margin-bottom: 0.35rem; color: #102a43; letter-spacing: -0.035em; }
 .directory-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+.directory-actions, .directory-filters { display: flex; align-items: center; gap: 0.55rem; }
+.directory-filters .form-select { min-width: 125px; }
 .eyebrow { margin-bottom: 0.5rem; color: #168b83; }
 .app-card { border-radius: 0.65rem; border-top: 3px solid #18b6a4 !important; }
 .app-modal { border: 0; border-top: 4px solid #18b6a4; border-radius: 0.65rem; }
@@ -143,8 +145,15 @@ body.app-shell {
 .app-card .table { --bs-table-bg: transparent; --bs-table-color: #102a43; --bs-table-hover-color: #102a43; --bs-table-hover-bg: #eae3d3; }
 .app-card .table thead th { color: #52687f; background-color: #ebe5d7; }
 .app-card .table a { color: #0c5881; }
+.app-card .table a.sort-link { color: #52687f; text-decoration: none; }
+.app-card .table a.sort-link:hover { color: #0b2b59; text-decoration: underline; }
 .record-page { min-height: calc(100vh - 82px); }
-.record-card { max-width: 980px; }
+.record-card { width: 100%; max-width: none; }
+.student-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+.student-facts > div { min-width: 0; padding: 1rem; border: 1px solid #d6cebd; }
+.student-facts dt { margin-bottom: 0.65rem; color: #52687f; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.7rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+.student-facts dd { margin: 0; overflow-wrap: anywhere; color: #102a43; font-size: 1.05rem; font-weight: 650; }
+.record-page > a.text-decoration-none { display: inline-block; color: #f4efe1; font-size: 0.75rem; font-weight: 750; letter-spacing: 0.1em; text-decoration: none !important; text-transform: uppercase; }
 .record-card .eyebrow { color: #b65e38; }
 .record-card .back-link { color: #f4efe1; }
 .record-card .back-link:hover { color: #a9c9f4; }
@@ -164,6 +173,11 @@ body.app-shell {
   .landing-fish { width: 100%; height: auto; }
   .hero-footer { margin-top: 2.5rem; }
   .how-grid { grid-template-columns: 1fr; }
+  .student-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+  .workspace-shell .directory-toolbar { align-items: flex-start; flex-direction: column; }
+  .directory-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
 }
 @media (max-width: 560px) {
   .site-header { min-height: 70px; padding-inline: 1.1rem; }
@@ -179,4 +193,8 @@ body.app-shell {
   .landing-hero-minimal .hero-cta { min-width: 0; min-height: 68px; font-size: 0.86rem; }
   .hero-footer { font-size: 0.58rem; }
   .record-page { padding-top: 1.2rem !important; }
+  .student-facts { grid-template-columns: 1fr; }
+  .directory-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .directory-filters { align-items: stretch; flex-wrap: wrap; }
+  .directory-filters .form-select { flex: 1 1 135px; }
 }

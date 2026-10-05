@@ -57,10 +57,42 @@ function validateStudent(input, students, currentId = null) {
   return { student, errors };
 }
 
+const sortableStudentFields = ['id', 'name', 'email', 'dob', 'major'];
+
+function getStudentListState(students, query = {}) {
+  const majors = [...new Set(students.map((student) => student.major).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  const sortBy = sortableStudentFields.includes(query.sortBy) ? query.sortBy : 'id';
+  const sortDirection = query.sortDirection === 'desc' ? 'desc' : 'asc';
+  const selectedMajor = majors.includes(query.major) ? query.major : '';
+  const visibleStudents = students
+    .filter((student) => !selectedMajor || student.major === selectedMajor)
+    .sort((a, b) => {
+      const result = String(a[sortBy] ?? '').localeCompare(String(b[sortBy] ?? ''), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
+      return sortDirection === 'asc' ? result : -result;
+    });
+
+  return { students: visibleStudents, totalCount: students.length, majors, sortBy, sortDirection, selectedMajor };
+}
+
+function renderStudentList(res, students, options = {}) {
+  const { formData = {}, errors = {}, success = false, createModalOpen = false, query = {} } = options;
+  res.render('students', {
+    ...getStudentListState(students, query),
+    formData,
+    errors,
+    success,
+    createModalOpen
+  });
+}
+
 app.get('/', (req, res) => res.render('home'));
 
 app.get('/students', (req, res) => {
-  res.render('students', { students: readStudents(), formData: {}, errors: {}, success: false, createModalOpen: false });
+  renderStudentList(res, readStudents(), { query: req.query });
 });
 
 app.get('/students/:id', (req, res) => {
@@ -80,21 +112,24 @@ app.post('/students', (req, res) => {
   const { student, errors } = validateStudent(req.body, students);
 
   if (Object.keys(errors).length) {
-    return res.status(422).render('students', { students, formData: student, errors, success: false, createModalOpen: true });
+    res.status(422);
+    return renderStudentList(res, students, {
+      formData: student, errors, createModalOpen: true, query: req.body
+    });
   }
 
   students.push(student);
   try {
     writeStudents(students);
-    return res.render('students', { students, formData: {}, errors: {}, success: true, createModalOpen: false });
+    return renderStudentList(res, students, { success: true, query: req.body });
   } catch (error) {
     console.error('Could not save student:', error.message);
-    return res.status(500).render('students', {
-      students,
+    res.status(500);
+    return renderStudentList(res, students, {
       formData: student,
       errors: { form: 'Unable to save this student. Please try again.' },
-      success: false,
-      createModalOpen: true
+      createModalOpen: true,
+      query: req.body
     });
   }
 });
