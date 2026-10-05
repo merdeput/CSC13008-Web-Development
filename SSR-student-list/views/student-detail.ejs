@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= student.name %> · Student</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/styles.css" rel="stylesheet">
+  </head>
+  <body class="app-shell workspace-shell">
+    <%- include('partials/header') %>
+    <main class="container-fluid record-page px-3 px-xl-5 py-4">
+      <a href="/students" class="text-decoration-none">← All students</a>
+      <div class="card app-card shadow-sm border-0 mt-3 record-card">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+            <div><p class="eyebrow">STUDENT PROFILE / RECORD</p><h1 class="h2 fw-bold mb-0"><%= student.name %></h1></div>
+            <span class="badge record-badge"><%= student.id %></span>
+          </div>
+          <dl class="row mb-4">
+            <dt class="col-sm-4 text-secondary">Email</dt><dd class="col-sm-8"><a href="mailto:<%= student.email %>"><%= student.email %></a></dd>
+            <dt class="col-sm-4 text-secondary">Date of birth</dt><dd class="col-sm-8"><%= student.dob %></dd>
+            <dt class="col-sm-4 text-secondary">Major</dt><dd class="col-sm-8"><%= student.major %></dd>
+          </dl>
+          <div class="d-flex gap-2">
+            <a class="btn btn-primary" href="/students/<%= encodeURIComponent(student.id) %>/edit">Edit student</a>
+            <form action="/students/<%= encodeURIComponent(student.id) %>/delete" method="post" onsubmit="return confirm('Delete this student?')">
+              <button class="btn btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

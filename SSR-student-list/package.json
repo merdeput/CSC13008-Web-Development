@@ -1,0 +1,15 @@
+{
+  "name": "ssr-student-list",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-rendered student list using Express and EJS",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2"
+  }
+}
