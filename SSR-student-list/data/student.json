@@ -135,22 +135,8 @@
   {
     "id": "24127238",
     "name": "Ngo Huynh Tham",
-    "email": "nhtham2413@clc.fitus.edu.vn",
-    "dob": "2006-11-02",
-    "major": "Công nghệ thông tin"
-  },
-  {
-    "id": "24127128",
-    "name": "Tefo",
-    "email": "ncthong2427@clc.fitus.edu.vn",
-    "dob": "2006-09-18",
-    "major": "Công nghệ thông tin"
-  },
-  {
-    "id": "24127231",
-    "name": "Thông Nguyễn Cao",
-    "email": "ncthong2421@clc.fitus.edu.vn",
-    "dob": "2019-05-05",
-    "major": "aaa"
+    "email": "abc@gmail.com",
+    "dob": "2006-05-08",
+    "major": "Data Science"
   }
 ]

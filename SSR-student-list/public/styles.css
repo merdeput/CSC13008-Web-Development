@@ -137,6 +137,33 @@ body.app-shell {
 .workspace-shell .directory-toolbar h2 { color: #fff; }
 .workspace-shell .directory-toolbar .eyebrow { color: #a9c9f4; }
 .workspace-shell .site-header { width: 100%; }
+.directory-toolbar { flex-wrap: wrap; }
+.directory-actions { flex-wrap: wrap; justify-content: flex-end; }
+.create-student-button {
+  --bs-btn-color: #0b2b59;
+  --bs-btn-bg: #f28b58;
+  --bs-btn-border-color: #f28b58;
+  --bs-btn-hover-color: #0b2b59;
+  --bs-btn-hover-bg: #ffa575;
+  --bs-btn-hover-border-color: #ffa575;
+  --bs-btn-active-color: #0b2b59;
+  --bs-btn-active-bg: #e97b47;
+  --bs-btn-active-border-color: #e97b47;
+  --bs-btn-focus-shadow-rgb: 242, 139, 88;
+  min-height: 48px;
+  padding: 0.65rem 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  border-radius: 0.6rem;
+  box-shadow: 0 4px 0 #ac4d27, 0 8px 18px rgb(0 0 0 / 20%);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.create-student-icon { font-size: 1.4rem; line-height: 1; }
+.create-student-button:hover { box-shadow: 0 4px 0 #ac4d27, 0 10px 22px rgb(0 0 0 / 28%); }
+.create-student-button:active { box-shadow: 0 1px 0 #ac4d27; }
 .app-card, .app-modal { color: #102a43; background-color: #f4efe1; }
 .app-card { border-top-color: #f28b58 !important; }
 .app-modal { border-top-color: #f28b58; }
@@ -197,4 +224,76 @@ body.app-shell {
   .directory-actions { width: 100%; align-items: stretch; flex-direction: column; }
   .directory-filters { align-items: stretch; flex-wrap: wrap; }
   .directory-filters .form-select { flex: 1 1 135px; }
+}
+
+/* Keep the orange create action above workspace primary-button overrides. */
+.workspace-shell .btn.create-student-button {
+  --bs-btn-bg: #f28b58;
+  --bs-btn-border-color: #f28b58;
+  --bs-btn-hover-bg: #ffa575;
+  --bs-btn-hover-border-color: #ffa575;
+  --bs-btn-active-bg: #e97b47;
+  --bs-btn-active-border-color: #e97b47;
+  color: #0b2b59;
+}
+.app-card .table thead th { vertical-align: top; }
+.app-card .table a.sort-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 32px;
+  border-radius: 0.25rem;
+}
+.app-card .table a.sort-link span { color: #b65e38; font-size: 1rem; }
+.app-card .table a.sort-active { color: #0b2b59; }
+.app-card .table a.sort-link:focus-visible {
+  outline: 2px solid #b65e38;
+  outline-offset: 3px;
+}
+/* Native popover stays above the scrollable table without increasing header height. */
+.major-filter-toggle {
+  width: 30px;
+  height: 30px;
+  margin-left: 0.35rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: #52687f;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+}
+.major-filter-toggle:hover { color: #0b2b59; background: #ded5c3; }
+.major-filter-toggle.is-active { color: #0b2b59; background: #f28b58; }
+.major-filter-toggle:focus-visible { outline: 2px solid #b65e38; outline-offset: 2px; }
+.major-filter-popover {
+  width: min(300px, calc(100vw - 2rem));
+  padding: 0.85rem;
+  color: #0b2b59;
+  background: #f8f5ec;
+  border: 1px solid #c9bfac;
+  border-top: 3px solid #f28b58;
+  border-radius: 0.65rem;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 25%);
+}
+.major-filter-popover::backdrop { background: rgb(11 43 89 / 12%); }
+.major-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.6rem; }
+.major-filter-heading h2 { margin: 0; font-size: 0.9rem; font-weight: 750; }
+.major-filter-heading button { width: 30px; height: 30px; color: #52687f; background: transparent; border: 0; border-radius: 0.3rem; font-size: 1.4rem; }
+.major-filter-heading button:hover { background: #ebe5d7; }
+.major-filter-options { max-height: min(320px, 60vh); overflow-y: auto; }
+.major-filter-option { padding: 0.65rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: #0b2b59; border-radius: 0.35rem; text-decoration: none; font-size: 0.85rem; }
+.major-filter-option:hover, .major-filter-option:focus-visible { color: #0b2b59; background: #ebe5d7; }
+.major-filter-option.is-selected { background: #f9ddcc; font-weight: 700; }
+.table tr[data-created-student] { scroll-margin-block: 2rem; }
+.app-card .table tr.student-created > td { animation: student-created-flash 3.5s ease-out; }
+@keyframes student-created-flash {
+  0%, 25% { background-color: #f8c29f; box-shadow: inset 0 2px #f28b58, inset 0 -2px #f28b58; }
+  100% { background-color: transparent; box-shadow: inset 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-card .table tr.student-created > td { animation: none; background-color: #f8c29f; }
 }

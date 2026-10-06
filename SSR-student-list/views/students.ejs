@@ -20,29 +20,7 @@
       <div class="directory-toolbar mb-3">
         <div><p class="eyebrow mb-1">DATABASE / STUDENTS</p><h2 class="h4 mb-0">All Students</h2></div>
         <div class="directory-actions">
-          <form class="directory-filters" action="/students" method="get">
-            <label class="visually-hidden" for="sortBy">Sort by</label>
-            <select class="form-select form-select-sm" id="sortBy" name="sortBy" onchange="this.form.requestSubmit()">
-              <option value="id" <%= sortBy === 'id' ? 'selected' : '' %>>ID</option>
-              <option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>Name</option>
-              <option value="email" <%= sortBy === 'email' ? 'selected' : '' %>>Email</option>
-              <option value="dob" <%= sortBy === 'dob' ? 'selected' : '' %>>Date of birth</option>
-              <option value="major" <%= sortBy === 'major' ? 'selected' : '' %>>Major</option>
-            </select>
-            <label class="visually-hidden" for="sortDirection">Sort direction</label>
-            <select class="form-select form-select-sm" id="sortDirection" name="sortDirection" onchange="this.form.requestSubmit()">
-              <option value="asc" <%= sortDirection === 'asc' ? 'selected' : '' %>>Ascending</option>
-              <option value="desc" <%= sortDirection === 'desc' ? 'selected' : '' %>>Descending</option>
-            </select>
-            <label class="visually-hidden" for="majorFilter">Filter by major</label>
-            <select class="form-select form-select-sm" id="majorFilter" name="major" onchange="this.form.requestSubmit()">
-              <option value="">All majors</option>
-              <% majors.forEach((major) => { %><option value="<%= major %>" <%= selectedMajor === major ? 'selected' : '' %>><%= major %></option><% }) %>
-            </select>
-            <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
-            <% if (selectedMajor) { %><a class="btn btn-sm btn-outline-secondary" href="/students?sortBy=<%= encodeURIComponent(sortBy) %>&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>">Clear</a><% } %>
-          </form>
-          <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createStudentModal">+ Create Student</button>
+          <button class="btn btn-primary create-student-button" type="button" data-bs-toggle="modal" data-bs-target="#createStudentModal"><span class="create-student-icon" aria-hidden="true">+</span> Create Student</button>
         </div>
       </div>
       <div class="row">
@@ -51,20 +29,29 @@
             <div class="card-body p-3 p-lg-4">
               <span class="visually-hidden">Student records</span>
               <div class="d-flex justify-content-end mb-2"><span class="badge text-bg-primary rounded-pill"><%= students.length %> of <%= totalCount %> students</span></div>
-              <% if (students.length) { %>
+              <% if (totalCount || selectedMajor) { %>
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0">
                     <thead><tr>
-                      <th><a class="sort-link" href="/students?sortBy=id&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(selectedMajor) %>">ID<%= sortBy === 'id' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '' %></a></th>
-                      <th><a class="sort-link" href="/students?sortBy=name&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(selectedMajor) %>">Name<%= sortBy === 'name' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '' %></a></th>
-                      <th><a class="sort-link" href="/students?sortBy=email&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(selectedMajor) %>">Email<%= sortBy === 'email' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '' %></a></th>
-                      <th><a class="sort-link" href="/students?sortBy=dob&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(selectedMajor) %>">Date of birth<%= sortBy === 'dob' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '' %></a></th>
-                      <th><a class="sort-link" href="/students?sortBy=major&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(selectedMajor) %>">Major<%= sortBy === 'major' ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '' %></a></th>
-                      <th>Actions</th>
+                      <% [['id', 'ID'], ['name', 'Name'], ['email', 'Email'], ['dob', 'Date of birth'], ['major', 'Major']].forEach(([field, label]) => {
+                        const active = sortBy === field;
+                        const nextDirection = active && sortDirection === 'asc' ? 'desc' : 'asc';
+                      %>
+                        <th scope="col" aria-sort="<%= active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none' %>">
+                          <a class="sort-link <%= active ? 'sort-active' : '' %>" href="/students?sortBy=<%= field %>&amp;sortDirection=<%= nextDirection %>&amp;major=<%= encodeURIComponent(selectedMajor) %>" aria-label="Sort by <%= label %> <%= nextDirection === 'asc' ? 'ascending' : 'descending' %>"><%= label %> <span aria-hidden="true"><%- active ? (sortDirection === 'asc' ? '&#8593;' : '&#8595;') : '&#8597;' %></span></a>
+                          <% if (field === 'major') { %>
+                            <button class="major-filter-toggle <%= selectedMajor ? 'is-active' : '' %>" type="button" popovertarget="majorFilterPopover" aria-label="Filter by major<%= selectedMajor ? ': ' + selectedMajor : '' %>" title="<%= selectedMajor ? 'Filtered by ' + selectedMajor : 'Filter by major' %>">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l-6 7v7l-4 2v-9z"/></svg>
+                            </button>
+                          <% } %>
+                        </th>
+                      <% }) %>
+                      <th scope="col">Actions</th>
                     </tr></thead>
                     <tbody>
+                      <% if (!students.length) { %><tr><td colspan="6" class="text-secondary py-4">No students match this filter. Select All majors to reset.</td></tr><% } %>
                       <% students.forEach((student) => { %>
-                        <tr><td class="font-monospace fw-semibold"><a href="/students/<%= encodeURIComponent(student.id) %>"><%= student.id %></a></td><td><%= student.name %></td><td><a href="mailto:<%= student.email %>"><%= student.email %></a></td><td><%= student.dob %></td><td><%= student.major %></td><td><div class="d-flex gap-1"><a class="btn btn-sm btn-outline-primary" href="/students/<%= encodeURIComponent(student.id) %>">View</a><a class="btn btn-sm btn-outline-secondary" href="/students/<%= encodeURIComponent(student.id) %>/edit">Edit</a><form action="/students/<%= encodeURIComponent(student.id) %>/delete" method="post" onsubmit="return confirm('Delete this student?')"><button class="btn btn-sm btn-outline-danger" type="submit">Delete</button></form></div></td></tr>
+                        <tr id="student-<%= student.id %>" <%- createdId === student.id ? 'data-created-student tabindex="-1"' : '' %>><td class="font-monospace fw-semibold"><a href="/students/<%= encodeURIComponent(student.id) %>"><%= student.id %></a></td><td><%= student.name %></td><td><a href="mailto:<%= student.email %>"><%= student.email %></a></td><td><%= student.dob %></td><td><%= student.major %></td><td><div class="d-flex gap-1"><a class="btn btn-sm btn-outline-primary" href="/students/<%= encodeURIComponent(student.id) %>">View</a><a class="btn btn-sm btn-outline-secondary" href="/students/<%= encodeURIComponent(student.id) %>/edit">Edit</a><form action="/students/<%= encodeURIComponent(student.id) %>/delete" method="post" onsubmit="return confirm('Delete this student?')"><button class="btn btn-sm btn-outline-danger" type="submit">Delete</button></form></div></td></tr>
                       <% }) %>
                     </tbody>
                   </table>
@@ -75,6 +62,17 @@
             </div>
           </div>
         </section>
+      </div>
+      <div class="major-filter-popover" id="majorFilterPopover" popover aria-labelledby="majorFilterTitle">
+        <div class="major-filter-heading">
+          <h2 id="majorFilterTitle">Filter by major</h2>
+          <button type="button" popovertarget="majorFilterPopover" popovertargetaction="hide" aria-label="Close major filter">&times;</button>
+        </div>
+        <div class="major-filter-options">
+          <% ['', ...majors].forEach((major) => { %>
+            <a class="major-filter-option <%= selectedMajor === major ? 'is-selected' : '' %>" href="/students?sortBy=<%= encodeURIComponent(sortBy) %>&amp;sortDirection=<%= encodeURIComponent(sortDirection) %>&amp;major=<%= encodeURIComponent(major) %>" <%- selectedMajor === major ? 'aria-current="true"' : '' %>><%= major || 'All majors' %><% if (selectedMajor === major) { %><span aria-hidden="true">&#10003;</span><% } %></a>
+          <% }) %>
+        </div>
       </div>
       <div class="modal fade" id="createStudentModal" tabindex="-1" aria-labelledby="createStudentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -94,7 +92,7 @@
                 <div class="mb-3"><label for="email" class="form-label">Email</label><input id="email" name="email" type="email" value="<%= formData.email || '' %>" class="form-control <%= errors.email ? 'is-invalid' : '' %>" required><% if (errors.email) { %><div class="invalid-feedback"><%= errors.email %></div><% } %></div>
                 <div class="mb-3"><label for="dob" class="form-label">Date of birth</label><input id="dob" name="dob" type="date" value="<%= formData.dob || '' %>" class="form-control <%= errors.dob ? 'is-invalid' : '' %>" required><% if (errors.dob) { %><div class="invalid-feedback"><%= errors.dob %></div><% } %></div>
                 <div class="mb-4"><label for="major" class="form-label">Major</label><input id="major" name="major" value="<%= formData.major || '' %>" class="form-control <%= errors.major ? 'is-invalid' : '' %>" required><% if (errors.major) { %><div class="invalid-feedback"><%= errors.major %></div><% } %></div>
-                <button class="btn btn-primary w-100" type="submit">Create Student</button>
+                <button class="btn btn-primary create-student-button w-100" type="submit">Create Student</button>
               </form>
             </div>
           </div>
@@ -103,6 +101,7 @@
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/student-validation.js"></script>
+    <script src="/student-list.js"></script>
     <% if (createModalOpen) { %><script>new bootstrap.Modal(document.getElementById('createStudentModal')).show();</script><% } %>
   </body>
 </html>

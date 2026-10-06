@@ -47,10 +47,10 @@ function validateStudent(input, students, currentId = null) {
 
   if (!student.email) errors.email = 'Email is required.';
   else if (!/^\S+@\S+\.\S+$/.test(student.email)) errors.email = 'Enter a valid email address.';
-  else if (students.some((item) => item.email === student.email && item.id !== currentId)) errors.email = 'This email is already registered.';
+  else if (students.some((item) => item.email.trim().toLowerCase() === student.email && item.id !== currentId)) errors.email = 'This email is already registered.';
 
   if (!student.dob) errors.dob = 'Date of birth is required.';
-  else if (Number.isNaN(Date.parse(student.dob)) || new Date(student.dob) > new Date()) errors.dob = 'Enter a valid date in the past.';
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(student.dob) || Number.isNaN(Date.parse(student.dob)) || new Date(student.dob).toISOString().slice(0, 10) !== student.dob || new Date(student.dob) > new Date()) errors.dob = 'Enter a valid date in the past.';
 
   if (!student.major) errors.major = 'Major is required.';
 
@@ -79,7 +79,7 @@ function getStudentListState(students, query = {}) {
 }
 
 function renderStudentList(res, students, options = {}) {
-  const { formData = {}, errors = {}, success = false, createModalOpen = false, query = {} } = options;
+  const { formData = {}, errors = {}, success = false, createdId = '', createModalOpen = false, query = {} } = options;
   res.render('students', {
     ...getStudentListState(students, query),
     existingIds: students.map((student) => student.id),
@@ -87,6 +87,7 @@ function renderStudentList(res, students, options = {}) {
     formData,
     errors,
     success,
+    createdId,
     createModalOpen
   });
 }
@@ -94,7 +95,10 @@ function renderStudentList(res, students, options = {}) {
 app.get('/', (req, res) => res.render('home'));
 
 app.get('/students', (req, res) => {
-  renderStudentList(res, readStudents(), { query: req.query });
+  const students = readStudents();
+  const createdId = typeof req.query.created === 'string' && students.some((student) => student.id === req.query.created)
+    ? req.query.created : '';
+  renderStudentList(res, students, { query: req.query, createdId, success: Boolean(createdId) });
 });
 
 app.get('/students/:id', (req, res) => {
@@ -127,7 +131,15 @@ app.post('/students', (req, res) => {
   students.push(student);
   try {
     writeStudents(students);
-    return renderStudentList(res, students, { success: true, query: listQuery });
+    const state = getStudentListState(students, listQuery);
+    const params = new URLSearchParams({
+      sortBy: state.sortBy,
+      sortDirection: state.sortDirection,
+      created: student.id
+    });
+    // Keep the current filter only when it includes the newly created student.
+    if (state.selectedMajor === student.major) params.set('major', state.selectedMajor);
+    return res.redirect(303, `/students?${params}#student-${encodeURIComponent(student.id)}`);
   } catch (error) {
     console.error('Could not save student:', error.message);
     res.status(500);
