@@ -1,50 +1,20 @@
 import express from 'express';
-import { readStudents, writeStudents } from './store.js';
-import { validateStudent } from './validation/student.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import studentRoutes from './routes.js';
 
 const app = express();
+const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
 app.use(express.json());
-
-const sendError = (res, status, message, fields) => res.status(status).json({ error: { message, ...(fields ? { fields } : {}) } });
-
-app.get('/api/students', async (_req, res, next) => {
-  try { res.json({ data: await readStudents() }); } catch (error) { next(error); }
-});
-
-app.post('/api/students', async (req, res, next) => {
-  try {
-    const students = await readStudents();
-    const { student, fields } = validateStudent(req.body, students);
-    if (Object.keys(fields).length) return sendError(res, 422, 'Validation failed.', fields);
-    students.push(student); await writeStudents(students);
-    res.status(201).json({ data: student });
-  } catch (error) { next(error); }
-});
-
-app.put('/api/students/:id', async (req, res, next) => {
-  try {
-    const students = await readStudents();
-    const index = students.findIndex((student) => student.id === req.params.id);
-    if (index === -1) return sendError(res, 404, 'Student not found.');
-    const { student, fields } = validateStudent({ ...req.body, id: req.params.id }, students, req.params.id);
-    if (Object.keys(fields).length) return sendError(res, 422, 'Validation failed.', fields);
-    students[index] = student; await writeStudents(students);
-    res.json({ data: student });
-  } catch (error) { next(error); }
-});
-
-app.delete('/api/students/:id', async (req, res, next) => {
-  try {
-    const students = await readStudents();
-    const remaining = students.filter((student) => student.id !== req.params.id);
-    if (remaining.length === students.length) return sendError(res, 404, 'Student not found.');
-    await writeStudents(remaining); res.status(204).end();
-  } catch (error) { next(error); }
-});
-
+app.use('/api/students', studentRoutes);
+app.use('/api', (_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'API route not found.' } }));
+app.use(express.static(clientDist));
+app.get(['/students', '/team', '/teams'], (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 app.use((error, _req, res, _next) => {
+  if (error?.type === 'entity.parse.failed') return res.status(400).json({ error: { code: 'MALFORMED_JSON', message: 'Request body must contain valid JSON.' } });
   console.error(error);
-  sendError(res, 500, 'The server could not complete that request. Please try again.');
+  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'The server could not complete the request.' } });
 });
 
 export default app;

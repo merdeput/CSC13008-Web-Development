@@ -1,33 +1,33 @@
-# Student management app
+# Cohort — student management & team builder
 
-React is the browser client and Express owns the JSON REST API. The JSON persistence file is deliberately located only inside `server/data`; the client calls `/api/students` and never reads or writes it.
+React and Vite render the landing page and workspace in the browser. Express serves the built frontend and the same-origin JSON API. Student data persists in `server/data/students.json`; team assignments stay in the current browser session.
 
 ## Run locally
 
-Use two terminals:
-
-```powershell
-cd server
-npm install
-npm run dev
-```
+From `CSR-student-list`:
 
 ```powershell
 cd client
 npm install
+npm run build
+cd ../server
+npm install
 npm run dev
 ```
 
-Open the Vite address printed by the second command (normally `http://localhost:5173`). Its development proxy forwards `/api` requests to Express on port 3001.
+Open `http://localhost:3001`. For frontend development with Vite, run `npm run dev` in `client` in a second terminal; its `/api` proxy points at Express on port 3001. To build the production frontend from the server folder, use `npm run build`.
 
-For a production frontend build, run `npm run build` in `client`. Serve that build behind the Express API (or configure an equivalent reverse proxy) so `/api` remains same-origin.
+## API
 
-## API envelope
+- `GET /api/students` and `GET /api/students/:id`
+- `POST /api/students` creates a normalized record and returns a `Location` header.
+- `PATCH /api/students/:id` accepts one or more editable fields (`name`, `email`, `dob`, `major`); IDs cannot change.
+- `DELETE /api/students/:id` returns 204 with no body.
 
-Successful reads and writes return `{ "data": ... }`; an error returns `{ "error": { "message": "...", "fields": { ... } } }`. Field errors are included for 422 validation responses.
+API errors use `{ "error": { "code": "...", "message": "...", "fields": {} } }`. DOB is a date-only `YYYY-MM-DD` value. “Today” means the UTC calendar date, consistently in the browser and server.
 
-## Assumptions
+## Team builder
 
-- Student IDs identify REST resources and are immutable once created; editing changes name, email, date of birth, and major.
-- The JSON file is appropriate for this single-process learning project. Concurrent writes are outside its scope.
-- Existing SSR records provide the initial seed data and visual direction; this application itself is separate from `SSR-student-list`.
+Assignments are generated locally with Fisher–Yates shuffling or a mix-majors heuristic. The heuristic places an incoming student in a least-populated team that has the fewest members from their major, with randomized ties. It favors variety but does not guarantee a mathematically optimal balance. Locks and swaps last only for the current page session.
+
+JSON-file writes are serialized and committed with an atomic rename. This repository suits a single-process learning project; it is not a multi-process database.

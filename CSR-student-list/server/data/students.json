@@ -133,45 +133,17 @@
     "major": "Artificial Intelligence"
   },
   {
+    "id": "24127128",
+    "name": "Nguyen Cao Thong",
+    "email": "nguyencaothong@gmail.com",
+    "dob": "2006-09-18",
+    "major": "Computer Science"
+  },
+  {
     "id": "24127238",
     "name": "Ngo Huynh Tham",
-    "email": "nhtham2413@clc.fitus.edu.vn",
+    "email": "ngohuynhtham@gmail.com",
     "dob": "2006-11-02",
-    "major": "Công nghệ thông tin"
-  },
-  {
-    "id": "24127128",
-    "name": "Tefo",
-    "email": "ncthong2427@clc.fitus.edu.vn",
-    "dob": "2006-09-18",
-    "major": "Công nghệ thông tin"
-  },
-  {
-    "id": "24127231",
-    "name": "Thông Nguyễn Cao",
-    "email": "ncthong2421@clc.fitus.edu.vn",
-    "dob": "2019-05-05",
-    "major": "aaa"
-  },
-  {
-    "id": "24127120",
-    "name": "Nguyen Cao Thong",
-    "email": "ncthong242s7@clc.fitus.edu.vn",
-    "dob": "2026-09-03",
-    "major": "cn"
-  },
-  {
-    "id": "24127102",
-    "name": "Nguyen Cao Thong",
-    "email": "ncthong242s@clc.fitus.edu.vn",
-    "dob": "2026-09-03",
-    "major": "cn"
-  },
-  {
-    "id": "241271232523",
-    "name": "Nguyen cAo hdsdgd",
-    "email": "ncthongasfsf242s@clc.fitus.edu.vn",
-    "dob": "2026-09-03",
-    "major": "cn"
+    "major": "Computer Science"
   }
 ]

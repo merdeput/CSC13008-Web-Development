@@ -4,6 +4,7 @@ async function request(path, options) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(body.error?.message || 'Request failed.');
+    error.code = body.error?.code;
     error.fields = body.error?.fields || {};
     throw error;
   }
@@ -11,7 +12,8 @@ async function request(path, options) {
 }
 export const studentApi = {
   list: () => request('/api/students'),
+  get: (id) => request(`/api/students/${encodeURIComponent(id)}`),
   create: (student) => request('/api/students', { method: 'POST', body: JSON.stringify(student) }),
-  update: (id, student) => request(`/api/students/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(student) }),
+  update: (id, student) => request(`/api/students/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(student) }),
   remove: (id) => request(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' })
 };
