@@ -3,9 +3,9 @@
     <a class="site-brand" href="/" aria-label="Bếp Hội — về trang chủ"><span class="brand-mark" aria-hidden="true">B</span><span class="brand-words">BẾP <strong>HỘI</strong><small>MÓN VIỆT, VỊ PHỐ HỘI</small></span></a>
     <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation"><span></span><span></span><span class="visually-hidden">Mở điều hướng</span></button>
     <nav id="primary-navigation" class="primary-navigation" aria-label="Điều hướng chính">
-      <a class="<%= currentPath === '/' ? 'is-current' : '' %>" href="/">Trang chủ</a>
-      <a class="<%= currentPath.startsWith('/menu') || currentPath.startsWith('/dishes') ? 'is-current' : '' %>" href="/menu">Thực đơn</a>
-      <a class="<%= currentPath.startsWith('/chefs') ? 'is-current' : '' %>" href="/chefs">Người giữ bếp</a>
+      <a class="<%= currentPath === '/' ? 'is-current' : '' %>" href="/" <%- currentPath === '/' ? 'aria-current="page"' : '' %>>Trang chủ</a>
+      <a class="<%= currentPath.startsWith('/menu') || currentPath.startsWith('/dishes') ? 'is-current' : '' %>" href="/menu" <%- currentPath.startsWith('/menu') || currentPath.startsWith('/dishes') ? 'aria-current="page"' : '' %>>Thực đơn</a>
+      <a class="<%= currentPath.startsWith('/chefs') ? 'is-current' : '' %>" href="/chefs" <%- currentPath.startsWith('/chefs') ? 'aria-current="page"' : '' %>>Người giữ bếp</a>
       <a class="nav-booking" href="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></a>
     </nav>
   </div>

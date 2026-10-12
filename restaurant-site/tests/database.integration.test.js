@@ -29,7 +29,9 @@ test('configured PostgreSQL persists customer and admin workflows', {
   let reservationId;
 
   try {
-    for (const route of ['/', '/menu?q=cao', '/dishes/cao-lau-hoi-an', '/chefs', '/reservations/new', '/admin', '/admin/dishes', '/admin/chefs', '/admin/reservations']) {
+    const visibleDish = await prisma.dish.findFirst({ where: { isPublished: true }, select: { slug: true } });
+    assert.ok(visibleDish, 'database has a published dish for the public detail route');
+    for (const route of ['/', '/menu', `/dishes/${encodeURIComponent(visibleDish.slug)}`, '/chefs', '/reservations/new', '/admin', '/admin/dishes', '/admin/chefs', '/admin/reservations']) {
       assert.equal((await request(app).get(route)).status, 200, `GET ${route}`);
     }
     assert.equal((await request(app).get('/dishes/not-a-published-dish')).status, 404);

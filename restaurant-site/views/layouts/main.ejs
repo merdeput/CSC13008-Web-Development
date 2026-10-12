@@ -1,17 +1,28 @@
 <!doctype html>
-<html lang="vi">
+<html lang="vi" class="no-js">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f6eedc">
+    <meta name="theme-color" content="#354a38">
     <meta name="description" content="Bếp Hội — món Việt theo mùa, bữa cơm chậm rãi bên phố Hội An.">
     <title><%= pageTitle || 'Bếp Hội — Món Việt bên sông Hoài' %></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/hoi-an.css">
   </head>
   <body class="customer-shell">
+    <div class="page-transition" aria-hidden="true">
+      <div class="page-transition-card">
+        <svg class="transition-nonla" viewBox="0 0 160 96" focusable="false">
+          <path class="transition-nonla-canopy" d="M80 8C67 31 41 49 8 70c30 19 114 19 144 0C119 49 93 31 80 8Z" />
+          <path class="transition-nonla-rib" d="M80 10 25 75M80 10 52 80M80 10v82M80 10l28 70M80 10l55 65M11 71c35 17 103 17 138 0" />
+          <path class="transition-nonla-band" d="M8 70c30 19 114 19 144 0" />
+        </svg>
+        <span class="transition-caption">BẾP HỘI</span>
+      </div>
+    </div>
     <a class="skip-link" href="#main-content">Đi đến nội dung</a>
     <%- include('../partials/customer-header') %>
     <main id="main-content"><%- body %></main>
