@@ -1,0 +1,7 @@
+<section class="dish-detail-page section-pad"><div class="wrap">
+  <a class="back-link" href="/menu">← Trở lại thực đơn</a>
+  <article class="dish-detail-grid">
+    <figure class="dish-detail-photo"><img src="<%= dish.imageUrl || '/images/food-fallback.svg' %>" alt="<%= dish.name %>" fetchpriority="high"></figure>
+    <div class="dish-detail-copy"><p class="eyebrow"><%= dish.category.name %> / MÓN NHÀ</p><h1><%= dish.name %></h1><p class="dish-detail-price"><%= formatVnd(dish.price) %></p><p class="dish-detail-description"><%= dish.description %></p><% if (dish.isAvailable) { %><p class="availability available"><span></span> Đang có món</p><% } else { %><p class="availability unavailable"><span></span> Món tạm hết hôm nay</p><% } %><h2>Nguyên liệu</h2><%- include('../partials/ingredient-list', { dish }) %><p class="dish-note">Thành phần có thể thay đổi nhẹ theo mùa. Vui lòng trao đổi với nhân viên nếu bạn có dị ứng thực phẩm.</p><a class="button button-dark" href="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></a></div>
+  </article>
+</div></section>

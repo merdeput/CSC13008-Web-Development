@@ -1,0 +1,7 @@
+.agents
+node_modules/
+.env
+.env.*
+!.env.example
+restaurant-site/generated/
+restaurant-site/.prisma/

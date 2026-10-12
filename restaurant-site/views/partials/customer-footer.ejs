@@ -1,0 +1,12 @@
+<footer class="site-footer">
+  <div class="footer-main">
+    <div class="footer-brand-block">
+      <a class="site-brand site-brand-footer" href="/" aria-label="Bếp Hội — về trang chủ"><span class="brand-mark" aria-hidden="true">B</span><span class="brand-words">BẾP <strong>HỘI</strong><small>MÓN VIỆT, VỊ PHỐ HỘI</small></span></a>
+      <p>Món quen được nấu chậm, mời bạn ngồi lại lâu hơn một chút.</p>
+    </div>
+    <div><h2>Ghé bếp</h2><p>18 Bạch Đằng<br>Hội An, Quảng Nam</p><p><a href="tel:+842353860188">+84 235 386 0188</a></p></div>
+    <div><h2>Giờ đón khách</h2><p>Mỗi ngày<br><%= process.env.RESTAURANT_OPENING_TIME || '11:00' %> – <%= process.env.RESTAURANT_CLOSING_TIME || '22:00' %></p><a href="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></a></div>
+    <div><h2>Khám phá</h2><p><a href="/menu">Thực đơn</a></p><p><a href="/chefs">Người giữ bếp</a></p></div>
+  </div>
+  <div class="footer-bottom"><span>© <%= new Date().getFullYear() %> Bếp Hội</span><span>Nấu bằng sự tử tế, mời bằng sự chân thành.</span><a href="/admin">Quản trị <span aria-hidden="true">↗</span></a></div>
+</footer>

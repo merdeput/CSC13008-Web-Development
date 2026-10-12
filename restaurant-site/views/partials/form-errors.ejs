@@ -1,0 +1,6 @@
+<% if (errors && Object.keys(errors).length) { %>
+  <div class="form-error-summary" role="alert" aria-live="polite">
+    <strong>Biểu mẫu còn một vài điểm cần chỉnh:</strong>
+    <ul><% Object.entries(errors).forEach(([field, message]) => { %><li><a href="#<%= field %>"><%= message %></a></li><% }) %></ul>
+  </div>
+<% } %>

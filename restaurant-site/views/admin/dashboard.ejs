@@ -1,0 +1,10 @@
+<section class="admin-page-heading"><div><p class="eyebrow">BẾP HỘI / TỔNG QUAN</p><h1>Chào mừng đến với căn bếp.</h1><p>Quản lý nội dung và các yêu cầu đặt bàn của nhà hàng.</p></div></section>
+<section class="admin-stats-grid" aria-label="Số liệu nhà hàng">
+  <a class="admin-stat-card" href="/admin/dishes"><span>Món ăn</span><strong><%= counts.dishCount %></strong><small>Xem danh sách món <span aria-hidden="true">↗</span></small></a>
+  <a class="admin-stat-card" href="/admin/chefs"><span>Đầu bếp</span><strong><%= counts.chefCount %></strong><small>Xem hồ sơ bếp <span aria-hidden="true">↗</span></small></a>
+  <a class="admin-stat-card" href="/admin/reservations"><span>Yêu cầu đặt bàn</span><strong><%= counts.reservationCount %></strong><small>Xem tất cả yêu cầu <span aria-hidden="true">↗</span></small></a>
+</section>
+<section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">SẮP TỚI</p><h2>Yêu cầu cần theo dõi</h2></div><a class="admin-text-link" href="/admin/reservations">Mở danh sách <span aria-hidden="true">↗</span></a></div>
+  <% if (upcoming.length) { %><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Mã yêu cầu</th><th>Khách</th><th>Thời gian</th><th>Số khách</th><th>Trạng thái</th><th></th></tr></thead><tbody><% upcoming.forEach((reservation) => { %><tr><td><a class="table-primary-link" href="/admin/reservations/<%= reservation.id %>"><%= reservation.referenceCode %></a></td><td><%= reservation.customerName %></td><td><%= formatDateTimeHcm(reservation.startsAt) %></td><td><%= reservation.guestCount %></td><td><span class="status-badge status-<%= reservation.status.toLowerCase() %>"><%= statusLabels[reservation.status] %></span></td><td><a class="table-action" href="/admin/reservations/<%= reservation.id %>">Chi tiết</a></td></tr><% }) %></tbody></table></div><% } else { %><p class="admin-empty">Chưa có yêu cầu sắp tới.</p><% } %>
+</section>
+<p class="admin-direct-note"><strong>Lưu ý:</strong> Theo cấu hình yêu cầu, khu vực quản trị mở trực tiếp tại <code>/admin</code> và chưa có đăng nhập hay phân quyền.</p>

@@ -1,0 +1,9 @@
+<% if (pageCount > 1) { %>
+  <nav class="pagination" aria-label="Phân trang">
+    <% for (let number = 1; number <= pageCount; number += 1) {
+      const suffix = paginationQuery ? `&${paginationQuery}` : '';
+    %>
+      <a href="<%= basePath %>?page=<%= number %><%= suffix %>" <%- number === page ? 'aria-current="page"' : '' %>><%= number %></a>
+    <% } %>
+  </nav>
+<% } %>

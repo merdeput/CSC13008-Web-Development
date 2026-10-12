@@ -1,0 +1,3 @@
+<ul class="ingredient-list" aria-label="Nguyên liệu">
+  <% (dish.ingredients || []).forEach(({ ingredient }) => { %><li><%= ingredient.name %></li><% }) %>
+</ul>

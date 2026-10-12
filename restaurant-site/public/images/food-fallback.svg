@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 650" role="img" aria-labelledby="title desc">
+  <title id="title">Món ăn Bếp Hội</title>
+  <desc id="desc">Minh họa bát mì ấm nóng với rau thơm.</desc>
+  <rect width="900" height="650" fill="#e8d6b7"/>
+  <path d="M0 478h900v172H0z" fill="#d9bd8c"/>
+  <ellipse cx="450" cy="369" rx="298" ry="176" fill="#9d3f2d"/>
+  <ellipse cx="450" cy="344" rx="281" ry="158" fill="#f7ecd5"/>
+  <ellipse cx="450" cy="339" rx="244" ry="126" fill="#d8a34c"/>
+  <path d="M267 338c77-45 126-35 181-2s92 33 185-3" fill="none" stroke="#f7e8c8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M310 284c60 38 111 45 173 12s92-37 148-7" fill="none" stroke="#f5e8cb" stroke-width="16" stroke-linecap="round"/>
+  <g fill="#587047"><ellipse cx="383" cy="261" rx="29" ry="13" transform="rotate(-26 383 261)"/><ellipse cx="491" cy="287" rx="30" ry="14" transform="rotate(28 491 287)"/><ellipse cx="553" cy="352" rx="29" ry="13" transform="rotate(-19 553 352)"/><ellipse cx="355" cy="372" rx="32" ry="13" transform="rotate(18 355 372)"/></g>
+  <g fill="#b24f34"><circle cx="430" cy="301" r="13"/><circle cx="475" cy="373" r="12"/><circle cx="398" cy="402" r="10"/></g>
+  <path d="M342 183c-13-26-10-49 8-69M451 164c-8-31-2-54 18-73M545 191c0-25 10-44 29-57" fill="none" stroke="#fff4de" stroke-width="8" stroke-linecap="round" opacity=".7"/>
+</svg>

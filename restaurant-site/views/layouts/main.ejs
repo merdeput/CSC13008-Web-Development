@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6eedc">
+    <meta name="description" content="Bếp Hội — món Việt theo mùa, bữa cơm chậm rãi bên phố Hội An.">
+    <title><%= pageTitle || 'Bếp Hội — Món Việt bên sông Hoài' %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="customer-shell">
+    <a class="skip-link" href="#main-content">Đi đến nội dung</a>
+    <%- include('../partials/customer-header') %>
+    <main id="main-content"><%- body %></main>
+    <%- include('../partials/customer-footer') %>
+    <script src="/site.js" defer></script>
+  </body>
+</html>
