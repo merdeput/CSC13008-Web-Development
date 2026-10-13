@@ -149,12 +149,31 @@
         }
 
         if (target.classList.contains('is-visible')) return;
-        const enteringFromTop = scrollDirection === 'up';
-        target.classList.toggle('reveal-enter-from-top', enteringFromTop);
-        target.classList.toggle('reveal-enter-from-bottom', !enteringFromTop);
-        target.style.setProperty('--reveal-offset', enteringFromTop ? '-42px' : '42px');
-        if (target.classList.contains('reveal-card')) {
-          target.style.setProperty('--card-hidden-y', enteringFromTop ? '-48px' : '48px');
+        const isDirectionalReveal = target.matches('.reveal-copy, .reveal-paper');
+        if (isDirectionalReveal) {
+          const entrySide = target.dataset.revealFrom === 'right' ? 'right' : 'left';
+          const side = scrollDirection === 'up'
+            ? (entrySide === 'left' ? 'right' : 'left')
+            : entrySide;
+          target.classList.remove('reveal-enter-from-top', 'reveal-enter-from-bottom');
+          target.classList.toggle('reveal-enter-from-left', side === 'left');
+          target.classList.toggle('reveal-enter-from-right', side === 'right');
+          target.style.setProperty('--reveal-x', side === 'left' ? '-42px' : '42px');
+          target.style.setProperty('--reveal-offset', '0px');
+          if (target.classList.contains('reveal-card')) {
+            target.style.setProperty('--card-hidden-y', '0px');
+          }
+          target.getBoundingClientRect();
+        } else {
+          const enteringFromTop = scrollDirection === 'up';
+          target.classList.remove('reveal-enter-from-left', 'reveal-enter-from-right');
+          target.classList.toggle('reveal-enter-from-top', enteringFromTop);
+          target.classList.toggle('reveal-enter-from-bottom', !enteringFromTop);
+          target.style.setProperty('--reveal-x', '0px');
+          target.style.setProperty('--reveal-offset', enteringFromTop ? '-42px' : '42px');
+          if (target.classList.contains('reveal-card')) {
+            target.style.setProperty('--card-hidden-y', enteringFromTop ? '-48px' : '48px');
+          }
         }
         target.classList.add('is-visible');
       });
@@ -162,10 +181,15 @@
 
     let revealIndex = 0;
     let cardIndex = 0;
+    let directionalIndex = 0;
     revealTargets.forEach((element) => {
       const isCard = element.matches('.dish-card, .chef-mini, .chef-profile');
       const isIllustration = element.matches('.story-art, .hero-photo, .cta-ornament');
       element.style.setProperty('--reveal-delay', `${(revealIndex++ % 5) * 55}ms`);
+      if (element.matches('.reveal-copy, .reveal-paper') && !element.dataset.revealFrom) {
+        element.dataset.revealFrom = directionalIndex % 2 === 0 ? 'left' : 'right';
+      }
+      if (element.matches('.reveal-copy, .reveal-paper')) directionalIndex += 1;
 
       if (isCard) {
         element.classList.add('reveal-card');
@@ -180,19 +204,45 @@
     });
   }
 
-  const homeHero = document.querySelector('.home-hero');
-  if (homeHero && !reducedMotion.matches) {
-    let scrollFrame = 0;
-    const updateHeroParallax = () => {
-      if (scrollFrame) return;
-      scrollFrame = window.requestAnimationFrame(() => {
-        const shift = -Math.min(window.scrollY, 560) * 0.045;
-        homeHero.style.setProperty('--hero-scroll-shift', `${shift.toFixed(1)}px`);
-        scrollFrame = 0;
-      });
-    };
-    updateHeroParallax();
-    window.addEventListener('scroll', updateHeroParallax, { passive: true });
-    window.addEventListener('resize', updateHeroParallax, { passive: true });
+  if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+    const lanternSections = document.querySelectorAll('[data-lantern-section]');
+    if (lanternSections.length) {
+      const lanternObserver = new IntersectionObserver((entries) => {
+        entries.forEach(({ target, isIntersecting }) => {
+          target.classList.toggle('lantern-awake', isIntersecting);
+        });
+      }, { threshold: 0, rootMargin: '-5% 0px -5% 0px' });
+      lanternSections.forEach((section) => lanternObserver.observe(section));
+    }
+
+    const driftTargets = document.querySelectorAll('[data-scroll-drift]');
+    if (driftTargets.length) {
+      const visibleTargets = new Set();
+      let driftFrame = 0;
+      const updateDrift = () => {
+        const viewportHeight = Math.max(window.innerHeight, 1);
+        visibleTargets.forEach((target) => {
+          const bounds = target.getBoundingClientRect();
+          const distanceFromCenter = (bounds.top + bounds.height / 2 - viewportHeight / 2) / viewportHeight;
+          const shift = Math.max(-20, Math.min(20, -distanceFromCenter * 24));
+          target.style.setProperty('--scroll-drift-y', `${shift.toFixed(1)}px`);
+        });
+        driftFrame = 0;
+      };
+      const requestDriftUpdate = () => {
+        if (driftFrame) return;
+        driftFrame = window.requestAnimationFrame(updateDrift);
+      };
+      const driftObserver = new IntersectionObserver((entries) => {
+        entries.forEach(({ target, isIntersecting }) => {
+          if (isIntersecting) visibleTargets.add(target);
+          else visibleTargets.delete(target);
+        });
+        requestDriftUpdate();
+      }, { rootMargin: '120px 0px' });
+      driftTargets.forEach((target) => driftObserver.observe(target));
+      window.addEventListener('scroll', requestDriftUpdate, { passive: true });
+      window.addEventListener('resize', requestDriftUpdate, { passive: true });
+    }
   }
 })();

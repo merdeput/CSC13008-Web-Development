@@ -45,6 +45,8 @@ select:focus-visible, summary:focus-visible {
 .paper-texture { background-color: var(--paper); }
 .paper-texture::before {
   opacity: .22;
+  transform: translate3d(0, var(--scroll-drift-y, 0px), 0);
+  will-change: transform;
   background-image:
     radial-gradient(rgba(88, 60, 37, .2) .55px, transparent .7px),
     repeating-linear-gradient(0deg, transparent 0 7px, rgba(88, 60, 37, .035) 8px 9px),
@@ -228,6 +230,33 @@ select:focus-visible, summary:focus-visible {
   animation: lantern-sway 5.5s ease-in-out infinite;
   transform-origin: 50% 0;
 }
+.section-lantern {
+  position: absolute;
+  z-index: 2;
+  top: 1.8rem;
+  right: clamp(24px, 5vw, 82px);
+  width: 44px;
+  height: 62px;
+  pointer-events: none;
+  border-radius: 40% 40% 17% 17%;
+  background:
+    linear-gradient(var(--timber), var(--timber)) center top / 2px 13px no-repeat,
+    linear-gradient(90deg, #713329, #d05a3d 48%, #8d3029) center 11px / 42px 5px no-repeat,
+    linear-gradient(90deg, #9c3e32, #ce5a3b 45%, #873027) center 16px / 36px 37px no-repeat,
+    linear-gradient(90deg, #713329, #d05a3d 48%, #8d3029) center 52px / 42px 5px no-repeat;
+  filter: drop-shadow(0 5px 11px rgba(124, 52, 34, .24));
+  transform-origin: 50% 0;
+}
+.section-lantern--left { right: auto; left: clamp(24px, 5vw, 82px); }
+.lantern-awake .section-lantern,
+.lantern-awake .hero-lantern { animation: lantern-wake 1.15s cubic-bezier(.2, .72, .22, 1) both; }
+@keyframes lantern-wake {
+  0% { filter: brightness(1) drop-shadow(0 5px 11px rgba(124, 52, 34, .24)); transform: rotate(0); }
+  27% { filter: brightness(1.55) drop-shadow(0 0 19px rgba(255, 196, 84, .9)); transform: rotate(9deg); }
+  55% { filter: brightness(1.32) drop-shadow(0 0 15px rgba(255, 196, 84, .72)); transform: rotate(-7deg); }
+  78% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(255, 196, 84, .58)); transform: rotate(4deg); }
+  100% { filter: brightness(1.08) drop-shadow(0 5px 13px rgba(255, 196, 84, .34)); transform: rotate(0); }
+}
 @keyframes lantern-sway { 0%, 100% { transform: rotate(2deg); } 50% { transform: rotate(-2deg); } }
 @keyframes lantern-sway-strong { 0%, 100% { transform: rotate(8deg); } 50% { transform: rotate(-8deg); } }
 @keyframes nonla-hop {
@@ -267,8 +296,8 @@ select:focus-visible, summary:focus-visible {
   box-shadow: 0 24px 62px rgba(60, 39, 26, .24);
   transform: rotate(1.1deg);
 }
-.hero-photo img { filter: saturate(.91) sepia(.05); transform: translate3d(0, var(--hero-scroll-shift, 0px), 0) scale(1.025); transition: transform .8s var(--ease-gentle), filter .6s ease; }
-.hero-photo:hover img { transform: translate3d(0, calc(var(--hero-scroll-shift, 0px) - 3px), 0) scale(1.045); filter: saturate(1.03) brightness(1.04); }
+.hero-photo img { filter: saturate(.91) sepia(.05); transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.025); transition: transform .8s var(--ease-gentle), filter .6s ease; }
+.hero-photo:hover img { transform: translate3d(0, calc(var(--scroll-drift-y, 0px) - 3px), 0) scale(1.045); filter: saturate(1.03) brightness(1.04); }
 .photo-stamp { border: 2px solid rgba(255, 249, 235, .88); background: rgba(169, 63, 52, .92); box-shadow: 0 4px 16px rgba(49, 27, 20, .22); }
 .hero-photo figcaption { font-size: .67rem; letter-spacing: .13em; }
 .hero-bottom { position: relative; z-index: 2; padding-top: 1.15rem; border-top: 1px solid rgba(65, 48, 34, .2); color: #65533f; }
@@ -291,6 +320,8 @@ select:focus-visible, summary:focus-visible {
   pointer-events: none;
   content: '';
   opacity: .12;
+  transform: translate3d(0, var(--scroll-drift-y, 0px), 0);
+  will-change: transform;
   background-image:
     repeating-linear-gradient(90deg, transparent 0 33px, rgba(255, 249, 235, .32) 34px 35px, transparent 36px 67px),
     repeating-linear-gradient(0deg, transparent 0 23px, rgba(255, 249, 235, .28) 24px 25px);
@@ -302,7 +333,7 @@ select:focus-visible, summary:focus-visible {
 .story-copy .eyebrow, .chef-preview-copy .eyebrow { color: var(--yellow-bright); }
 .story-copy .text-link { color: var(--cream); border-color: rgba(255, 249, 235, .75); }
 .story-copy .text-link:hover { color: var(--yellow-bright); }
-.story-art img { border: 8px solid rgba(255, 249, 235, .92); filter: saturate(.83) contrast(1.04); }
+.story-art img { border: 8px solid rgba(255, 249, 235, .92); filter: saturate(.83) contrast(1.04); transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.025); transition: transform .8s var(--ease-gentle), filter .6s ease; }
 .story-art::before { border-color: var(--yellow); }
 .story-art-label { color: var(--timber); background: var(--yellow); box-shadow: 4px 5px 0 rgba(23, 41, 27, .25); }
 
@@ -321,7 +352,7 @@ select:focus-visible, summary:focus-visible {
   background: #d7c5a4;
   box-shadow: 0 10px 26px rgba(60, 42, 28, .12);
 }
-.dish-card-image img { transition: transform .7s var(--ease-gentle), filter .5s ease; }
+.dish-card-image img { transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.02); transition: transform .7s var(--ease-gentle), filter .5s ease; }
 .dish-card-index { color: var(--cream); background: var(--moss); box-shadow: 2px 2px 0 rgba(35, 44, 29, .2); }
 .dish-card-meta { color: var(--rust); font-size: .67rem; letter-spacing: .08em; }
 .dish-card h2, .dish-card h3 { color: var(--timber); font-family: var(--font-display); font-size: 1.32rem; font-weight: 800; line-height: 1.38; }
@@ -330,7 +361,7 @@ select:focus-visible, summary:focus-visible {
 .ingredient-list li { border-color: rgba(53, 74, 56, .24); color: #465548; background: rgba(255, 249, 235, .54); }
 .chef-preview { color: var(--cream); background: var(--moss-deep); }
 .chef-mini-image { border: 6px solid rgba(255, 249, 235, .85); background: #d8c3a2; }
-.chef-mini-image img { filter: saturate(.78) sepia(.09); }
+.chef-mini-image img { filter: saturate(.78) sepia(.09); transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.025); }
 .chef-mini p { color: var(--yellow-bright); letter-spacing: .06em; }
 .chef-mini h3 { color: var(--cream); font-size: 1.06rem; }
 .reservation-cta { position: relative; overflow: hidden; background: var(--lantern-red); }
@@ -348,6 +379,9 @@ select:focus-visible, summary:focus-visible {
 .reservation-cta .button-light { color: var(--timber); background: var(--cream); }
 .reservation-cta .button-light:hover { color: var(--moss-deep); background: var(--yellow-bright); }
 .cta-ornament { color: rgba(255, 224, 152, .25); }
+
+[data-lantern-section] { position: relative; }
+.reservation-cta .section-lantern { filter: brightness(1.22) drop-shadow(0 5px 13px rgba(255, 196, 84, .26)); }
 
 .page-hero { position: relative; min-height: 390px; padding-block: clamp(3.5rem, 7vw, 6rem); }
 .page-hero-menu { background-color: #e9d3a8; background-image: repeating-linear-gradient(90deg, transparent 0 68px, rgba(139, 94, 50, .08) 69px 70px); }
@@ -372,11 +406,13 @@ select:focus-visible, summary:focus-visible {
 .result-count { color: var(--admin-muted); }
 .availability-ribbon { background: rgba(82, 42, 32, .94); }
 .dish-detail-photo { padding: 8px; border: 1px solid rgba(84, 57, 36, .22); background: var(--cream); }
+.dish-detail-photo img { transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.025); transition: transform .8s var(--ease-gentle); }
 .dish-detail-copy h1 { margin-block: .1em .3em; font-size: clamp(3rem, 5.5vw, 5.4rem); }
 .dish-detail-price { color: var(--rust); font-family: var(--font-display); font-size: 1.8rem; }
 .availability.available { color: var(--moss); }
 .availability.available span { box-shadow: 0 0 0 4px var(--moss-soft); }
 .chef-profile-image { border: 8px solid var(--cream); box-shadow: var(--shadow-soft); }
+.chef-profile-image img { transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.025); }
 .chef-profile-copy h2 { color: var(--timber); font-weight: 800; line-height: 1.24; }
 .chef-profile-copy .eyebrow { color: var(--rust); }
 .chef-profile-copy > p:not(.eyebrow) { color: #5f5043; line-height: 1.85; }
@@ -724,8 +760,8 @@ select:focus-visible, summary:focus-visible {
   .site-header .primary-navigation > a:not(.nav-booking):hover::before { animation: nonla-hop .62s var(--ease-gentle) both; }
   .home-brandline .hover-letter:hover { animation: letter-sway .58s ease-in-out infinite; }
   .dish-card:hover { transform: translateY(-5px); border-color: rgba(53, 74, 56, .55); }
-  .dish-card:hover .dish-card-image img { transform: scale(1.055); filter: saturate(1.08); }
-  .chef-mini:hover img, .chef-profile:hover img { transform: scale(1.045); }
+  .dish-card:hover .dish-card-image img { transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.055); filter: saturate(1.08); }
+  .chef-mini:hover img, .chef-profile:hover img { transform: translate3d(0, var(--scroll-drift-y, 0px), 0) scale(1.045); }
 }
 @keyframes letter-sway {
   0%, 100% { transform: rotate(0) translateY(0); }
@@ -733,15 +769,34 @@ select:focus-visible, summary:focus-visible {
   62% { transform: rotate(7deg) translateY(1px); }
 }
 
+@media (max-width: 540px) {
+  .section-lantern { top: 1rem; right: 18px; width: 34px; height: 49px; }
+  .section-lantern--left { right: auto; left: 18px; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .reveal, .page-hero-inner, .cta-ornament { transition: opacity .58s var(--ease-gentle), transform .62s var(--ease-gentle); }
   .reveal-pending:not(.is-visible) {
     opacity: 0;
-    transform: translate3d(0, var(--reveal-offset, 28px), 0) rotate(var(--reveal-tilt, 0deg));
+    transform: translate3d(var(--reveal-x, 0px), var(--reveal-offset, 28px), 0) rotate(var(--reveal-tilt, 0deg));
     transition-delay: var(--reveal-delay, 0ms);
   }
-  .reveal-enter-from-top:not(.is-visible) { --reveal-offset: -38px; --reveal-tilt: .7deg; }
-  .reveal-enter-from-bottom:not(.is-visible) { --reveal-offset: 38px; --reveal-tilt: -.7deg; }
+  .reveal-enter-from-top:not(.is-visible) { --reveal-x: 0px; --reveal-offset: -38px; --reveal-tilt: .7deg; }
+  .reveal-enter-from-bottom:not(.is-visible) { --reveal-x: 0px; --reveal-offset: 38px; --reveal-tilt: -.7deg; }
+  .reveal-enter-from-left:not(.is-visible) { --reveal-x: -42px; --reveal-offset: 0px; --reveal-tilt: -.5deg; }
+  .reveal-enter-from-right:not(.is-visible) { --reveal-x: 42px; --reveal-offset: 0px; --reveal-tilt: .5deg; }
+  .reveal-paper { transition: opacity .58s var(--ease-gentle), transform .62s var(--ease-gentle); }
+  .reveal-paper > img { clip-path: inset(0); transition: clip-path .58s var(--ease-gentle); }
+  .reveal-paper.reveal-pending:not(.is-visible) > img { clip-path: inset(0 100% 0 0); }
+  .reveal-paper.reveal-enter-from-right.reveal-pending:not(.is-visible) > img { clip-path: inset(0 0 0 100%); }
+  .reveal-card .dish-card-image { clip-path: inset(0); transition: clip-path .54s var(--ease-gentle); }
+  .reveal-card.reveal-pending:not(.is-visible) .dish-card-image { clip-path: inset(0 100% 0 0); }
+  .reveal-card.reveal-enter-from-right.reveal-pending:not(.is-visible) .dish-card-image { clip-path: inset(0 0 0 100%); }
+  .reveal-card .chef-mini-image, .reveal-card .chef-profile-image { clip-path: inset(0); transition: clip-path .54s var(--ease-gentle); }
+  .reveal-card.reveal-pending:not(.is-visible) .chef-mini-image,
+  .reveal-card.reveal-pending:not(.is-visible) .chef-profile-image { clip-path: inset(0 100% 0 0); }
+  .reveal-card.reveal-enter-from-right.reveal-pending:not(.is-visible) .chef-mini-image,
+  .reveal-card.reveal-enter-from-right.reveal-pending:not(.is-visible) .chef-profile-image { clip-path: inset(0 0 0 100%); }
   .reveal-card.reveal-pending:not(.is-visible) {
     transform: translate3d(0, var(--card-hidden-y, 48px), 0) rotate(var(--card-tilt, -2.8deg)) scale(.92);
   }
@@ -823,6 +878,8 @@ select:focus-visible, summary:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto !important; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  [data-scroll-drift] { --scroll-drift-y: 0px !important; }
+  .paper-texture::before, .story-section::before { transform: none !important; }
   .reveal-pending:not(.is-visible) { opacity: 1; transform: none; transition-delay: 0ms; }
   .customer-shell main { animation: none; }
 }

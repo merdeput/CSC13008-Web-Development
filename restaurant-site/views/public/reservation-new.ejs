@@ -1,8 +1,8 @@
-<section class="page-hero page-hero-reservation paper-texture"><div class="wrap page-hero-inner"><p class="eyebrow">MỜI BẠN NGỒI LẠI</p><h1>Gửi lời<br><em>đặt bàn.</em></h1><p>Một lời nhắn nhỏ để bếp chuẩn bị đón bạn chu đáo hơn.</p></div></section>
-<section class="reservation-section section-pad"><div class="wrap reservation-layout">
-  <div class="reservation-intro"><p class="eyebrow">THÔNG TIN ĐẶT BÀN</p><h2>Chúng tôi sẽ<br><em>liên hệ xác nhận.</em></h2><p>Đây là yêu cầu đặt bàn, chưa phải xác nhận chỗ ngồi. Bếp sẽ liên hệ bạn theo số điện thoại đã gửi.</p><div class="reservation-hours"><span>Giờ nhận yêu cầu</span><strong><%= config.openingTime %> – <%= config.closingTime %></strong><span>Nhóm khách tối đa theo cấu hình hiện tại</span><strong><%= config.maxPartySize %> người</strong></div><p class="small-note">Thông tin giờ hoạt động và số khách tối đa là cấu hình mặc định của website, có thể được điều chỉnh cho nhà hàng.</p>
+<section class="page-hero page-hero-reservation paper-texture" data-lantern-section data-scroll-drift><div class="wrap page-hero-inner reveal-copy" data-reveal-from="left"><p class="eyebrow">MỜI BẠN NGỒI LẠI</p><h1>Gửi lời<br><em>đặt bàn.</em></h1><p>Một lời nhắn nhỏ để bếp chuẩn bị đón bạn chu đáo hơn.</p></div><span class="section-lantern" aria-hidden="true"></span></section>
+<section class="reservation-section section-pad" data-lantern-section><div class="wrap reservation-layout">
+  <div class="reservation-intro reveal reveal-copy" data-reveal-from="left"><p class="eyebrow">THÔNG TIN ĐẶT BÀN</p><h2>Chúng tôi sẽ<br><em>liên hệ xác nhận.</em></h2><p>Đây là yêu cầu đặt bàn, chưa phải xác nhận chỗ ngồi. Bếp sẽ liên hệ bạn theo số điện thoại đã gửi.</p><div class="reservation-hours"><span>Giờ nhận yêu cầu</span><strong><%= config.openingTime %> – <%= config.closingTime %></strong><span>Nhóm khách tối đa theo cấu hình hiện tại</span><strong><%= config.maxPartySize %> người</strong></div><p class="small-note">Thông tin giờ hoạt động và số khách tối đa là cấu hình mặc định của website, có thể được điều chỉnh cho nhà hàng.</p>
   </div>
-  <div class="reservation-form-card">
+  <div class="reservation-form-card reveal reveal-copy" data-reveal-from="right">
     <% if (typeof flash !== 'undefined' && flash) { %><div class="reservation-success" role="status" aria-live="polite"><span class="success-mark" aria-hidden="true">✓</span><div><h2>Đã nhận lời nhắn của bạn</h2><p>Mã yêu cầu: <strong><%= flash.referenceCode %></strong></p><p>Yêu cầu đang chờ nhà hàng xác nhận. Chúng tôi sẽ liên hệ bạn sớm.</p></div></div><% } %>
     <%- include('../partials/form-errors', { errors }) %>
     <form action="/reservations" method="post" class="site-form" novalidate>
@@ -16,4 +16,4 @@
       <p class="form-privacy-note">Thông tin liên hệ chỉ được dùng để trao đổi về yêu cầu đặt bàn này.</p>
     </form>
   </div>
-</div></section>
+</div><span class="section-lantern section-lantern--right" aria-hidden="true"></span></section>
