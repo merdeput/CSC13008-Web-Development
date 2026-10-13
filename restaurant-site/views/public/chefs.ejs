@@ -1,5 +1,15 @@
 <section class="page-hero page-hero-chefs paper-texture" data-lantern-section data-scroll-drift><div class="wrap page-hero-inner reveal-copy" data-reveal-from="left"><p class="eyebrow">BÀN TAY SAU MỖI MÓN</p><h1>Người giữ<br><em>lửa bếp.</em></h1><p>Mỗi đầu bếp mang theo một miền ký ức và một cách riêng để chăm chút bữa ăn.</p></div><span class="section-lantern" aria-hidden="true"></span></section>
 <section class="chefs-section section-pad" data-lantern-section><div class="wrap">
   <% if (chefs.length) { %><div class="chef-profile-grid"><% chefs.forEach((chef, index) => { %><article class="chef-profile reveal"><div class="chef-profile-image"><img src="<%= chef.imageUrl || '/images/food-fallback.svg' %>" alt="Chân dung <%= chef.name %>" loading="lazy" data-scroll-drift><span class="chef-profile-number">0<%= index + 1 %></span></div><div class="chef-profile-copy"><p class="eyebrow"><%= chef.title %></p><h2><%= chef.name %></h2><% if (chef.specialty) { %><p class="chef-specialty"><%= chef.specialty %></p><% } %><% if (chef.bio) { %><p><%= chef.bio %></p><% } %></div></article><% }) %></div><% } else { %><p class="empty-state">Những người giữ bếp sẽ sớm được giới thiệu.</p><% } %>
-  <div class="chefs-invite"><p>Muốn thưởng thức những món ăn từ căn bếp này?</p><a class="button button-dark" href="/menu">Xem thực đơn <span aria-hidden="true">↗</span></a></div>
+  <aside class="chefs-invite" aria-labelledby="chefs-invite-title">
+    <div class="chefs-invite-copy">
+      <p class="eyebrow">TỪ BẾP ĐẾN BÀN ĂN</p>
+      <h2 id="chefs-invite-title">Gặp đầu bếp<br><em>qua từng món ngon.</em></h2>
+      <p>Mỗi món ăn mang dấu ấn của người đứng bếp. Khám phá thực đơn theo mùa, rồi gửi lời nhắn để chúng tôi chuẩn bị đón bạn.</p>
+    </div>
+    <div class="chefs-invite-actions">
+      <a class="button button-light" href="/menu">Khám phá thực đơn <span aria-hidden="true">↗</span></a>
+      <a class="text-link" href="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></a>
+    </div>
+  </aside>
 </div><span class="section-lantern section-lantern--left" aria-hidden="true"></span></section>

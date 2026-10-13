@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { HttpError, isPrismaCode, isUniqueFieldError } = require('../lib/errors');
 const { PAGE_SIZE, getPage, pageResult } = require('./pagination');
+const { getAdminSort } = require('./admin-list-sorting');
 
 const TRANSITIONS = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
@@ -9,6 +10,14 @@ const TRANSITIONS = {
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: []
+};
+
+const reservationAdminSorts = {
+  referenceCode: (direction) => [{ referenceCode: direction }, { id: 'asc' }],
+  customerName: (direction) => [{ customerName: direction }, { id: 'asc' }],
+  startsAt: (direction) => [{ startsAt: direction }, { createdAt: 'desc' }, { id: 'asc' }],
+  guestCount: (direction) => [{ guestCount: direction }, { startsAt: 'desc' }, { id: 'asc' }],
+  status: (direction) => [{ status: direction }, { startsAt: 'desc' }, { id: 'asc' }]
 };
 
 function canTransition(from, to) {
@@ -71,8 +80,9 @@ function createReservationService(db) {
   return {
     create,
     update,
-    async listAdmin({ page = 1, status = '', from = '', to = '' } = {}) {
+    async listAdmin({ page = 1, status = '', from = '', to = '', sortBy, sortDirection } = {}) {
       const current = getPage({ page });
+      const sort = getAdminSort({ sortBy, sortDirection }, reservationAdminSorts, 'startsAt', 'desc');
       const where = {};
       if (status) where.status = status;
       if (from || to) {
@@ -81,10 +91,10 @@ function createReservationService(db) {
         if (to) where.startsAt.lt = new Date(`${to}T00:00:00+07:00`);
       }
       const [items, total] = await Promise.all([
-        db.reservation.findMany({ where, orderBy: [{ startsAt: 'desc' }, { createdAt: 'desc' }], skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+        db.reservation.findMany({ where, orderBy: sort.orderBy, skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
         db.reservation.count({ where })
       ]);
-      return { ...pageResult(items, total, current), filters: { status, from, to } };
+      return { ...pageResult(items, total, current), filters: { status, from, to }, sortBy: sort.sortBy, sortDirection: sort.sortDirection };
     },
     findById(id) {
       return db.reservation.findUnique({ where: { id } });

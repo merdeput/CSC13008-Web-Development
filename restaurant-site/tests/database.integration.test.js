@@ -29,9 +29,9 @@ test('configured PostgreSQL persists customer and admin workflows', {
   let reservationId;
 
   try {
-    const visibleDish = await prisma.dish.findFirst({ where: { isPublished: true }, select: { slug: true } });
+    const visibleDish = await prisma.dish.findFirst({ where: { isPublished: true }, select: { id: true } });
     assert.ok(visibleDish, 'database has a published dish for the public detail route');
-    for (const route of ['/', '/menu', `/dishes/${encodeURIComponent(visibleDish.slug)}`, '/chefs', '/reservations/new', '/admin', '/admin/dishes', '/admin/chefs', '/admin/reservations']) {
+    for (const route of ['/', '/menu', `/dishes/${visibleDish.id}`, '/chefs', '/reservations/new', '/admin', '/admin/dishes', '/admin/chefs', '/admin/reservations']) {
       assert.equal((await request(app).get(route)).status, 200, `GET ${route}`);
     }
     assert.equal((await request(app).get('/dishes/not-a-published-dish')).status, 404);
@@ -62,7 +62,7 @@ test('configured PostgreSQL persists customer and admin workflows', {
       ingredientIds: ingredientIds[2], isAvailable: 'on'
     });
     assert.equal(patched.status, 303, 'POST with _method=PATCH updates the dish');
-    assert.equal((await request(app).get(`/dishes/${dish.slug}`)).status, 404, 'unpublished dish is hidden publicly');
+    assert.equal((await request(app).get(`/dishes/${dish.id}`)).status, 404, 'unpublished dish is hidden publicly');
     const deletePage = await agent.get(`/admin/dishes/${dish.id}/delete`);
     assert.equal(deletePage.status, 200);
     assert.ok(await services.dishes.findById(dish.id), 'GET delete confirmation does not mutate');

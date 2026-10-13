@@ -237,7 +237,7 @@ select:focus-visible, summary:focus-visible {
   right: clamp(24px, 5vw, 82px);
   width: 44px;
   height: 62px;
-  pointer-events: none;
+  pointer-events: auto;
   border-radius: 40% 40% 17% 17%;
   background:
     linear-gradient(var(--timber), var(--timber)) center top / 2px 13px no-repeat,
@@ -246,16 +246,17 @@ select:focus-visible, summary:focus-visible {
     linear-gradient(90deg, #713329, #d05a3d 48%, #8d3029) center 52px / 42px 5px no-repeat;
   filter: drop-shadow(0 5px 11px rgba(124, 52, 34, .24));
   transform-origin: 50% 0;
+  animation: lantern-sway 5.5s ease-in-out infinite;
 }
 .section-lantern--left { right: auto; left: clamp(24px, 5vw, 82px); }
 .lantern-awake .section-lantern,
-.lantern-awake .hero-lantern { animation: lantern-wake 1.15s cubic-bezier(.2, .72, .22, 1) both; }
+.lantern-awake .hero-lantern { animation: lantern-wake 1.15s cubic-bezier(.2, .72, .22, 1) both, lantern-sway 5.5s ease-in-out infinite; }
 @keyframes lantern-wake {
-  0% { filter: brightness(1) drop-shadow(0 5px 11px rgba(124, 52, 34, .24)); transform: rotate(0); }
-  27% { filter: brightness(1.55) drop-shadow(0 0 19px rgba(255, 196, 84, .9)); transform: rotate(9deg); }
-  55% { filter: brightness(1.32) drop-shadow(0 0 15px rgba(255, 196, 84, .72)); transform: rotate(-7deg); }
-  78% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(255, 196, 84, .58)); transform: rotate(4deg); }
-  100% { filter: brightness(1.08) drop-shadow(0 5px 13px rgba(255, 196, 84, .34)); transform: rotate(0); }
+  0% { filter: brightness(1) drop-shadow(0 5px 11px rgba(124, 52, 34, .24)); }
+  27% { filter: brightness(1.55) drop-shadow(0 0 19px rgba(255, 196, 84, .9)); }
+  55% { filter: brightness(1.32) drop-shadow(0 0 15px rgba(255, 196, 84, .72)); }
+  78% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(255, 196, 84, .58)); }
+  100% { filter: brightness(1.08) drop-shadow(0 5px 13px rgba(255, 196, 84, .34)); }
 }
 @keyframes lantern-sway { 0%, 100% { transform: rotate(2deg); } 50% { transform: rotate(-2deg); } }
 @keyframes lantern-sway-strong { 0%, 100% { transform: rotate(8deg); } 50% { transform: rotate(-8deg); } }
@@ -417,8 +418,47 @@ select:focus-visible, summary:focus-visible {
 .chef-profile-copy .eyebrow { color: var(--rust); }
 .chef-profile-copy > p:not(.eyebrow) { color: #5f5043; line-height: 1.85; }
 .chef-specialty { color: var(--moss) !important; }
-.chefs-invite { border-color: rgba(53, 74, 56, .28); background: #f2e7d0; }
-.chefs-invite p { color: var(--timber); }
+.chefs-invite {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  margin-top: clamp(3.25rem, 7vw, 6rem);
+  padding: clamp(2rem, 5vw, 4.25rem);
+  overflow: hidden;
+  border: 1px solid rgba(255, 249, 235, .18);
+  border-radius: 4px;
+  background: var(--moss-deep);
+  box-shadow: var(--shadow-soft);
+}
+.chefs-invite::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(circle at 88% 18%, rgba(242, 202, 112, .16), transparent 30%),
+    repeating-linear-gradient(132deg, transparent 0 14px, rgba(255, 249, 235, .025) 15px 16px);
+}
+.chefs-invite-copy, .chefs-invite-actions { position: relative; z-index: 1; }
+.chefs-invite-copy .eyebrow { margin: 0 0 .9rem; color: var(--yellow-bright); }
+.chefs-invite-copy h2 {
+  max-width: 740px;
+  margin: 0;
+  color: var(--cream);
+  font: 800 clamp(2.3rem, 4.5vw, 4.15rem)/1.02 var(--font-display);
+  letter-spacing: -.055em;
+}
+.chefs-invite-copy h2 em { color: var(--yellow-bright); font-style: normal; text-shadow: 3px 3px 0 rgba(24, 39, 28, .65); }
+.chefs-invite-copy > p:last-child { max-width: 510px; margin: 1.15rem 0 0; color: rgba(255, 249, 235, .8); line-height: 1.8; }
+.chefs-invite-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
+.chefs-invite .button-light { color: var(--timber); background: var(--yellow-bright); box-shadow: 0 5px 0 rgba(20, 32, 23, .28); }
+.chefs-invite .button-light:hover { background: var(--cream); box-shadow: 0 7px 0 rgba(20, 32, 23, .28); transform: translateY(-2px); }
+.chefs-invite .text-link { color: var(--cream); border-color: rgba(255, 249, 235, .6); }
+.chefs-invite .text-link:hover { color: var(--yellow-bright); border-color: currentColor; }
 
 /* Reservation interaction and feedback */
 .reservation-section { background: #f4ead6; }
@@ -549,7 +589,7 @@ select:focus-visible, summary:focus-visible {
 .admin-panel-heading .eyebrow { font-size: .6rem; }
 .admin-panel-heading h2 { color: #2b382e; font-family: var(--font-body); font-size: 1rem; font-weight: 750; }
 .admin-count { color: #435447; background: #e8eee5; font-size: .68rem; }
-.admin-stats-grid { gap: .8rem; margin-bottom: 1rem; }
+.admin-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; margin-bottom: 1rem; }
 .admin-stat-card {
   min-height: 125px;
   padding: .95rem 1rem;
@@ -565,6 +605,9 @@ select:focus-visible, summary:focus-visible {
 .admin-table-wrap { border: 1px solid #e5eae2; border-radius: 4px; background: white; }
 .admin-table { min-width: 700px; font-size: .77rem; }
 .admin-table th { padding: .65rem .72rem; border-bottom-color: #dce4da; color: #526156; background: #f6f8f3; font-size: .64rem; letter-spacing: .055em; }
+.admin-sort-link { display: inline-flex; align-items: center; gap: .35rem; color: inherit; text-decoration: none; }
+.admin-sort-link:hover { color: var(--moss); text-decoration: underline; text-underline-offset: 3px; }
+.admin-sort-link span { color: var(--moss); font-size: .82rem; }
 .admin-table td { padding: .68rem .72rem; border-bottom-color: #edf0eb; color: #344138; }
 .admin-table tbody tr { transition: background-color .12s ease; }
 .admin-table tbody tr:hover { background: #f7faf5; }
@@ -631,6 +674,8 @@ select:focus-visible, summary:focus-visible {
 .reservation-detail-status strong { color: #2c3b31; font-size: .84rem; }
 .reservation-detail-status small { color: #5e6b61; font-size: .69rem; }
 .confirm-panel > p { color: #46544a; font-size: .85rem; }
+.ingredient-usage-list { display: grid; gap: .45rem; margin: .65rem 0 0; padding-left: 1.2rem; color: var(--moss); }
+.ingredient-usage-list li { padding: .15rem 0; }
 .pagination { gap: .3rem; padding-top: .85rem; }
 .pagination a { min-width: 34px; height: 34px; border-color: #d4ddd1; border-radius: 4px; color: #415247; }
 .pagination a[aria-current="page"], .pagination a:hover { border-color: var(--moss); color: white; background: var(--moss); }
@@ -668,6 +713,8 @@ select:focus-visible, summary:focus-visible {
   .dish-card-grid { gap: 1.6rem 1rem; }
   .dish-card-image { height: clamp(190px, 54vw, 300px); }
   .chef-mini-image { height: clamp(175px, 48vw, 250px); }
+  .chefs-invite { grid-template-columns: 1fr; gap: 2rem; }
+  .chefs-invite-actions { gap: .85rem; }
   .page-hero { min-height: 330px; padding-block: 3.2rem; }
   .page-hero h1 { font-size: clamp(3.6rem, 14vw, 5.8rem); line-height: 1.08; }
   .menu-search { flex-wrap: wrap; }
@@ -684,8 +731,9 @@ select:focus-visible, summary:focus-visible {
   .form-row { gap: .8rem; }
   .admin-topbar { height: 60px; }
   .admin-frame { min-height: calc(100vh - 60px); }
-  .admin-sidebar { top: 60px; min-height: 0; }
-  .admin-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+  .admin-sidebar { top: 60px; min-height: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .admin-sidebar-label, .admin-sidebar-note { grid-column: 1 / -1; }
+  .admin-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
   .admin-stat-card { min-height: 108px; padding: .7rem; }
   .admin-stat-card strong { font-size: 1.55rem; }
   .admin-main { padding: .9rem .7rem 1.6rem; }
@@ -727,7 +775,8 @@ select:focus-visible, summary:focus-visible {
   .chef-profile, .chef-profile:nth-child(even) { grid-template-columns: 1fr; gap: 1.2rem; }
   .chef-profile:nth-child(even) .chef-profile-image { order: 0; }
   .chef-profile-image { height: min(105vw, 420px); }
-  .chefs-invite { align-items: flex-start; flex-direction: column; margin-top: 2.8rem; padding: 1.3rem; }
+  .chefs-invite { gap: 1.5rem; margin-top: 2.8rem; padding: 1.5rem; }
+  .chefs-invite-copy h2 { font-size: clamp(2.25rem, 10vw, 3.5rem); }
   .form-row { grid-template-columns: 1fr; }
   .footer-main { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.35rem 1rem; }
   .footer-brand-block { grid-column: 1 / -1; }
@@ -735,7 +784,7 @@ select:focus-visible, summary:focus-visible {
   .admin-topbar { padding-inline: .8rem; }
   .admin-brand { font-size: .73rem; }
   .admin-back-link { font-size: .68rem; }
-  .admin-sidebar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .1rem; padding: .35rem .3rem; }
+  .admin-sidebar { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .1rem; padding: .35rem .3rem; }
   .admin-nav-link { min-height: 44px; gap: 0; padding: .2rem .08rem; font-size: .55rem; }
   .admin-nav-link span { height: 19px; font-size: .85rem; }
   .admin-stats-grid { grid-template-columns: 1fr; }
@@ -756,7 +805,7 @@ select:focus-visible, summary:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .hero-lantern:hover { filter: brightness(1.42) drop-shadow(0 0 20px rgba(255, 196, 84, .82)); animation: lantern-sway-strong .82s ease-in-out infinite; }
+  .hero-lantern:hover, .section-lantern:hover { filter: brightness(1.42) drop-shadow(0 0 20px rgba(255, 196, 84, .82)); animation: lantern-sway-strong .82s ease-in-out infinite; }
   .site-header .primary-navigation > a:not(.nav-booking):hover::before { animation: nonla-hop .62s var(--ease-gentle) both; }
   .home-brandline .hover-letter:hover { animation: letter-sway .58s ease-in-out infinite; }
   .dish-card:hover { transform: translateY(-5px); border-color: rgba(53, 74, 56, .55); }

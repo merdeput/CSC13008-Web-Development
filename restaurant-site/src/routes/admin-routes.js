@@ -31,6 +31,15 @@ function createAdminRouter(services) {
   router.get('/chefs/:id/delete', asyncHandler(controller.chefDeleteConfirm));
   router.delete('/chefs/:id', requireCsrf, asyncHandler(controller.chefDelete));
 
+  router.get('/ingredients', asyncHandler(controller.ingredientList));
+  router.get('/ingredients/new', asyncHandler(controller.ingredientNew));
+  router.post('/ingredients', requireCsrf, asyncHandler(controller.ingredientCreate));
+  router.get('/ingredients/:id/edit', asyncHandler(controller.ingredientEdit));
+  router.patch('/ingredients/:id', requireCsrf, asyncHandler(controller.ingredientUpdate));
+  router.get('/ingredients/:id/delete', asyncHandler(controller.ingredientDeleteConfirm));
+  router.delete('/ingredients/:id', requireCsrf, asyncHandler(controller.ingredientDelete));
+  router.get('/ingredients/:id', asyncHandler(controller.ingredientDetail));
+
   router.get('/reservations', asyncHandler(controller.reservationList));
   router.get('/reservations/:id', asyncHandler(controller.reservationDetail));
   router.get('/reservations/:id/edit', asyncHandler(controller.reservationEdit));

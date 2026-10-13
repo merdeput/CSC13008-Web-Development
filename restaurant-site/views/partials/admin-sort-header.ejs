@@ -1,0 +1,6 @@
+<% const active = sortBy === sortKey; %>
+<th scope="col" aria-sort="<%= active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none' %>">
+  <a class="admin-sort-link" href="<%= sortLinks[sortKey] %>">
+    <%= label %><span aria-hidden="true"><%= active ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' %></span>
+  </a>
+</th>

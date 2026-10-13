@@ -1,5 +1,6 @@
 const { HttpError, ValidationError } = require('../lib/errors');
-const { isUuid, STATUSES, validateDishInput, validateChefInput, validateReservationInput, validateReservationFilters } = require('../services/validation');
+const { isUuid, STATUSES, validateDishInput, validateChefInput, validateIngredientInput, validateReservationInput, validateReservationFilters } = require('../services/validation');
+const { createListControls } = require('../services/admin-list-sorting');
 const { getRestaurantConfig } = require('../lib/restaurant-config');
 const { toHcmDateTimeLocal, todayInHcm } = require('../lib/format');
 const { TRANSITIONS } = require('../services/reservation-service');
@@ -51,6 +52,17 @@ function createAdminController(services) {
     });
   }
 
+  async function renderIngredientForm(res, options = {}) {
+    res.render('admin/ingredients/form', {
+      pageTitle: options.pageTitle || 'Nguyên liệu — Quản trị Bếp Hội',
+      heading: options.heading || 'Nguyên liệu',
+      formAction: options.formAction || '/admin/ingredients',
+      methodOverride: options.methodOverride || '',
+      formData: options.formData || {},
+      errors: options.errors || {}
+    });
+  }
+
   async function renderReservationEdit(res, reservation, options = {}) {
     res.render('admin/reservations/form', {
       pageTitle: 'Cập nhật yêu cầu — Quản trị Bếp Hội',
@@ -72,8 +84,9 @@ function createAdminController(services) {
     },
 
     async dishList(req, res) {
-      const result = await services.dishes.listAdmin({ page: req.query.page });
-      res.render('admin/dishes/index', { pageTitle: 'Món ăn — Quản trị Bếp Hội', ...result, basePath: '/admin/dishes' });
+      const result = await services.dishes.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
+      const controls = createListControls('/admin/dishes', result, ['name', 'category', 'price', 'visibility', 'availability', 'updatedAt']);
+      res.render('admin/dishes/index', { pageTitle: 'Món ăn — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/dishes' });
     },
     async dishNew(_req, res) { return renderDishForm(res, { heading: 'Thêm món ăn', pageTitle: 'Thêm món — Quản trị Bếp Hội' }); },
     async dishCreate(req, res) {
@@ -143,8 +156,9 @@ function createAdminController(services) {
     },
 
     async chefList(req, res) {
-      const result = await services.chefs.listAdmin({ page: req.query.page });
-      res.render('admin/chefs/index', { pageTitle: 'Đầu bếp — Quản trị Bếp Hội', ...result, basePath: '/admin/chefs' });
+      const result = await services.chefs.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
+      const controls = createListControls('/admin/chefs', result, ['name', 'title', 'specialty', 'sortOrder', 'visibility']);
+      res.render('admin/chefs/index', { pageTitle: 'Đầu bếp — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/chefs' });
     },
     async chefNew(_req, res) { return renderChefForm(res, { heading: 'Thêm đầu bếp', pageTitle: 'Thêm đầu bếp — Quản trị Bếp Hội' }); },
     async chefCreate(req, res) {
@@ -193,12 +207,96 @@ function createAdminController(services) {
       res.redirect(303, '/admin/chefs');
     },
 
+    async ingredientList(req, res) {
+      const result = await services.ingredients.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
+      const controls = createListControls('/admin/ingredients', result, ['name', 'usage']);
+      res.render('admin/ingredients/index', { pageTitle: 'Nguyên liệu — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/ingredients' });
+    },
+    async ingredientNew(_req, res) {
+      return renderIngredientForm(res, { heading: 'Thêm nguyên liệu', pageTitle: 'Thêm nguyên liệu — Quản trị Bếp Hội' });
+    },
+    async ingredientCreate(req, res) {
+      const { data, errors } = validateIngredientInput(req.body);
+      if (Object.keys(errors).length) {
+        res.status(400);
+        return renderIngredientForm(res, { heading: 'Thêm nguyên liệu', formData: data, errors });
+      }
+      try {
+        const ingredient = await services.ingredients.create(data);
+        return res.redirect(303, `/admin/ingredients/${ingredient.id}`);
+      } catch (error) {
+        if (!(error instanceof ValidationError)) throw error;
+        res.status(400);
+        return renderIngredientForm(res, { heading: 'Thêm nguyên liệu', formData: data, errors: error.errors });
+      }
+    },
+    async ingredientDetail(req, res) {
+      const ingredient = await services.ingredients.findById(requireId(req.params.id));
+      if (!ingredient) throw new HttpError(404, 'Không tìm thấy nguyên liệu.');
+      res.render('admin/ingredients/show', { pageTitle: `${ingredient.name} — Quản trị Bếp Hội`, ingredient });
+    },
+    async ingredientEdit(req, res) {
+      const ingredient = await services.ingredients.findById(requireId(req.params.id));
+      if (!ingredient) throw new HttpError(404, 'Không tìm thấy nguyên liệu.');
+      return renderIngredientForm(res, {
+        heading: 'Chỉnh sửa nguyên liệu',
+        pageTitle: `Sửa ${ingredient.name} — Quản trị Bếp Hội`,
+        formAction: `/admin/ingredients/${ingredient.id}`,
+        methodOverride: 'PATCH',
+        formData: ingredient
+      });
+    },
+    async ingredientUpdate(req, res) {
+      const id = requireId(req.params.id);
+      const { data, errors } = validateIngredientInput(req.body);
+      if (Object.keys(errors).length) {
+        res.status(400);
+        return renderIngredientForm(res, {
+          heading: 'Chỉnh sửa nguyên liệu', formAction: `/admin/ingredients/${id}`, methodOverride: 'PATCH', formData: data, errors
+        });
+      }
+      try {
+        const ingredient = await services.ingredients.update(id, data);
+        if (!ingredient) throw new HttpError(404, 'Không tìm thấy nguyên liệu.');
+        return res.redirect(303, `/admin/ingredients/${ingredient.id}`);
+      } catch (error) {
+        if (error instanceof HttpError) throw error;
+        if (!(error instanceof ValidationError)) throw error;
+        res.status(400);
+        return renderIngredientForm(res, {
+          heading: 'Chỉnh sửa nguyên liệu', formAction: `/admin/ingredients/${id}`, methodOverride: 'PATCH', formData: data, errors: error.errors
+        });
+      }
+    },
+    async ingredientDeleteConfirm(req, res) {
+      const ingredient = await services.ingredients.findById(requireId(req.params.id));
+      if (!ingredient) throw new HttpError(404, 'Không tìm thấy nguyên liệu.');
+      res.render('admin/ingredients/delete', { pageTitle: `Xóa ${ingredient.name} — Quản trị Bếp Hội`, ingredient });
+    },
+    async ingredientDelete(req, res) {
+      const id = requireId(req.params.id);
+      const removed = await services.ingredients.remove(id);
+      if (!removed) throw new HttpError(404, 'Nguyên liệu không còn tồn tại.');
+      if (removed === 'in-use') {
+        const ingredient = await services.ingredients.findById(id);
+        if (!ingredient) throw new HttpError(404, 'Nguyên liệu không còn tồn tại.');
+        res.status(409);
+        return res.render('admin/ingredients/delete', { pageTitle: `Xóa ${ingredient.name} — Quản trị Bếp Hội`, ingredient, inUse: true });
+      }
+      return res.redirect(303, '/admin/ingredients');
+    },
+
     async reservationList(req, res) {
       const filters = validateReservationFilters(req.query);
-      const result = await services.reservations.listAdmin({ page: req.query.page, ...filters });
-      const paginationQuery = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString();
+      const result = await services.reservations.listAdmin({ page: req.query.page, ...filters, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
+      const controls = createListControls('/admin/reservations', result, ['referenceCode', 'customerName', 'startsAt', 'guestCount', 'status'], filters);
+      const clearFiltersQuery = new URLSearchParams({
+        sortBy: result.sortBy || 'startsAt',
+        sortDirection: result.sortDirection || 'desc'
+      });
       res.render('admin/reservations/index', {
-        pageTitle: 'Yêu cầu đặt bàn — Quản trị Bếp Hội', ...result, basePath: '/admin/reservations', statuses: STATUSES, paginationQuery
+        pageTitle: 'Yêu cầu đặt bàn — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/reservations', statuses: STATUSES,
+        clearFiltersUrl: `/admin/reservations?${clearFiltersQuery}`
       });
     },
     async reservationDetail(req, res) {

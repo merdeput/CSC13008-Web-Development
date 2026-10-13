@@ -36,9 +36,9 @@ const reservation = {
 const services = {
   dishes: {
     listFeatured: async (limit) => dishes.filter((dish) => dish.isFeatured).slice(0, limit),
-    listPublic: async ({ category: filterCategory, q } = {}) => dishes.filter((dish) => dish.isPublished && (!filterCategory || category.slug === filterCategory) && (!q || dish.name.toLowerCase().includes(q.toLowerCase()))),
+    listPublic: async ({ categoryId: filterCategoryId, q } = {}) => dishes.filter((dish) => dish.isPublished && (!filterCategoryId || dish.categoryId === filterCategoryId) && (!q || dish.name.toLowerCase().includes(q.toLowerCase()))),
     listCategories: async () => [category],
-    findPublicBySlug: async (slug) => dishes.find((dish) => dish.slug === slug && dish.isPublished) || null,
+    findPublicById: async (id) => dishes.find((dish) => dish.id === id && dish.isPublished) || null,
     listAdmin: async ({ page = 1 } = {}) => ({ items: dishes, total: dishes.length, page: Number(page) || 1, pageCount: 1 }),
     findById: async (id) => dishes.find((dish) => dish.id === id) || null,
     formOptions: async () => ({ categories: [category], ingredients }),

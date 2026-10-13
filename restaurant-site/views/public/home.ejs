@@ -34,9 +34,9 @@
       <div class="dish-card-grid">
         <% featuredDishes.forEach((dish, index) => { %>
           <article class="dish-card reveal">
-            <a class="dish-card-image" href="/dishes/<%= encodeURIComponent(dish.slug) %>"><img src="<%= dish.imageUrl || '/images/food-fallback.svg' %>" alt="<%= dish.name %>" loading="lazy" data-scroll-drift><span class="dish-card-index">0<%= index + 1 %></span></a>
+            <a class="dish-card-image" href="/dishes/<%= dish.id %>"><img src="<%= dish.imageUrl || '/images/food-fallback.svg' %>" alt="<%= dish.name %>" loading="lazy" data-scroll-drift><span class="dish-card-index">0<%= index + 1 %></span></a>
             <div class="dish-card-meta"><span><%= dish.category.name %></span><span><%= formatVnd(dish.price) %></span></div>
-            <h3><a href="/dishes/<%= encodeURIComponent(dish.slug) %>"><%= dish.name %></a></h3>
+            <h3><a href="/dishes/<%= dish.id %>"><%= dish.name %></a></h3>
             <p><%= dish.description %></p>
             <%- include('../partials/ingredient-list', { dish }) %>
           </article>

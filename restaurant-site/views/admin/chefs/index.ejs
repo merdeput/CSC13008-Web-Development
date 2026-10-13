@@ -1,5 +1,25 @@
 <section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / ĐỘI NGŨ</p><h1>Đầu bếp</h1><p><%= total %> hồ sơ trong danh mục quản trị.</p></div><a class="admin-primary-button" href="/admin/chefs/new">+ Thêm đầu bếp</a></section>
 <section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span class="admin-count"><%= total %> mục</span></div>
-  <% if (items.length) { %><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Họ tên</th><th>Chức danh</th><th>Sở trường</th><th>Thứ tự</th><th>Hiển thị</th><th></th></tr></thead><tbody><% items.forEach((chef) => { %><tr><td><a class="table-primary-link" href="/admin/chefs/<%= chef.id %>"><%= chef.name %></a></td><td><%= chef.title %></td><td><%= chef.specialty || '—' %></td><td><%= chef.sortOrder %></td><td><span class="status-badge <%= chef.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= chef.isPublished ? 'Công khai' : 'Bản nháp' %></span></td><td><a class="table-action" href="/admin/chefs/<%= chef.id %>">Mở</a></td></tr><% }) %></tbody></table></div><% } else { %><p class="admin-empty">Chưa có hồ sơ đầu bếp.</p><% } %>
-  <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery: '' }) %>
+  <% if (items.length) { %>
+    <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
+      <%- include('../../partials/admin-sort-header', { label: 'Họ tên', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Chức danh', sortKey: 'title', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Sở trường', sortKey: 'specialty', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Thứ tự', sortKey: 'sortOrder', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Hiển thị', sortKey: 'visibility', sortBy, sortDirection, sortLinks }) %>
+      <th scope="col">Thao tác</th>
+    </tr></thead><tbody>
+      <% items.forEach((chef) => { %>
+        <tr>
+          <td><a class="table-primary-link" href="/admin/chefs/<%= chef.id %>"><%= chef.name %></a></td>
+          <td><%= chef.title %></td>
+          <td><%= chef.specialty || '—' %></td>
+          <td><%= chef.sortOrder %></td>
+          <td><span class="status-badge <%= chef.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= chef.isPublished ? 'Công khai' : 'Bản nháp' %></span></td>
+          <td><a class="table-action" href="/admin/chefs/<%= chef.id %>">Mở</a></td>
+        </tr>
+      <% }) %>
+    </tbody></table></div>
+  <% } else { %><p class="admin-empty">Chưa có hồ sơ đầu bếp.</p><% } %>
+  <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

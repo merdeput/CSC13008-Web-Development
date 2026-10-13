@@ -22,6 +22,7 @@
         <p class="admin-sidebar-label">NỘI DUNG NHÀ HÀNG</p>
         <a class="admin-nav-link <%= currentPath === '/admin' ? 'is-current' : '' %>" href="/admin"><span aria-hidden="true">⌂</span> Tổng quan</a>
         <a class="admin-nav-link <%= currentPath.startsWith('/admin/dishes') ? 'is-current' : '' %>" href="/admin/dishes"><span aria-hidden="true">◉</span> Món ăn</a>
+        <a class="admin-nav-link <%= currentPath.startsWith('/admin/ingredients') ? 'is-current' : '' %>" href="/admin/ingredients"><span aria-hidden="true">✳</span> Nguyên liệu</a>
         <a class="admin-nav-link <%= currentPath.startsWith('/admin/reservations') ? 'is-current' : '' %>" href="/admin/reservations"><span aria-hidden="true">▦</span> Đặt bàn</a>
         <a class="admin-nav-link <%= currentPath.startsWith('/admin/chefs') ? 'is-current' : '' %>" href="/admin/chefs"><span aria-hidden="true">♨</span> Đầu bếp</a>
         <div class="admin-sidebar-note"><span class="status-dot"></span> Khu vực quản trị đang mở trực tiếp</div>

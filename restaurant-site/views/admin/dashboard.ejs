@@ -2,6 +2,7 @@
 <section class="admin-stats-grid" aria-label="Số liệu nhà hàng">
   <a class="admin-stat-card" href="/admin/dishes"><span>Món ăn</span><strong><%= counts.dishCount %></strong><small>Xem danh sách món <span aria-hidden="true">↗</span></small></a>
   <a class="admin-stat-card" href="/admin/chefs"><span>Đầu bếp</span><strong><%= counts.chefCount %></strong><small>Xem hồ sơ bếp <span aria-hidden="true">↗</span></small></a>
+  <a class="admin-stat-card" href="/admin/ingredients"><span>Nguyên liệu</span><strong><%= counts.ingredientCount || 0 %></strong><small>Quản lý nguyên liệu <span aria-hidden="true">↗</span></small></a>
   <a class="admin-stat-card" href="/admin/reservations"><span>Yêu cầu đặt bàn</span><strong><%= counts.reservationCount %></strong><small>Xem tất cả yêu cầu <span aria-hidden="true">↗</span></small></a>
 </section>
 <section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">SẮP TỚI</p><h2>Yêu cầu cần theo dõi</h2></div><a class="admin-text-link" href="/admin/reservations">Mở danh sách <span aria-hidden="true">↗</span></a></div>

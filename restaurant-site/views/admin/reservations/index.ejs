@@ -1,5 +1,34 @@
 <section class="admin-page-heading"><div><p class="eyebrow">DỊCH VỤ / ĐẶT BÀN</p><h1>Yêu cầu đặt bàn</h1><p>Khách gửi yêu cầu trước; nhà hàng cần liên hệ để xác nhận.</p></div><span class="admin-count"><%= total %> yêu cầu</span></section>
-<section class="admin-panel"><form class="admin-filters" action="/admin/reservations" method="get"><div class="form-field"><label for="status">Trạng thái</label><select id="status" name="status"><option value="">Tất cả trạng thái</option><% statuses.forEach((status) => { %><option value="<%= status %>" <%- filters.status === status ? 'selected' : '' %>><%= statusLabels[status] %></option><% }) %></select></div><div class="form-field"><label for="from">Từ ngày</label><input id="from" name="from" type="date" value="<%= filters.from %>"></div><div class="form-field"><label for="to">Đến ngày</label><input id="to" name="to" type="date" value="<%= filters.to %>"></div><button class="admin-secondary-button" type="submit">Lọc yêu cầu</button><a class="admin-text-link" href="/admin/reservations">Xóa lọc</a></form>
-  <% if (items.length) { %><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Mã yêu cầu</th><th>Khách</th><th>Điện thoại</th><th>Thời gian</th><th>Khách</th><th>Trạng thái</th><th></th></tr></thead><tbody><% items.forEach((reservation) => { %><tr><td><a class="table-primary-link" href="/admin/reservations/<%= reservation.id %>"><%= reservation.referenceCode %></a></td><td><%= reservation.customerName %></td><td><a href="tel:<%= reservation.phone %>"><%= reservation.phone %></a></td><td><%= formatDateTimeHcm(reservation.startsAt) %></td><td><%= reservation.guestCount %></td><td><span class="status-badge status-<%= reservation.status.toLowerCase() %>"><%= statusLabels[reservation.status] %></span></td><td><a class="table-action" href="/admin/reservations/<%= reservation.id %>">Mở</a></td></tr><% }) %></tbody></table></div><% } else { %><p class="admin-empty">Không có yêu cầu nào phù hợp với bộ lọc.</p><% } %>
+<section class="admin-panel">
+  <form class="admin-filters" action="/admin/reservations" method="get">
+    <input type="hidden" name="sortBy" value="<%= sortBy %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>">
+    <div class="form-field"><label for="status">Trạng thái</label><select id="status" name="status"><option value="">Tất cả trạng thái</option><% statuses.forEach((status) => { %><option value="<%= status %>" <%- filters.status === status ? 'selected' : '' %>><%= statusLabels[status] %></option><% }) %></select></div>
+    <div class="form-field"><label for="from">Từ ngày</label><input id="from" name="from" type="date" value="<%= filters.from %>"></div>
+    <div class="form-field"><label for="to">Đến ngày</label><input id="to" name="to" type="date" value="<%= filters.to %>"></div>
+    <button class="admin-secondary-button" type="submit">Lọc yêu cầu</button><a class="admin-text-link" href="<%= clearFiltersUrl %>">Xóa lọc</a>
+  </form>
+  <% if (items.length) { %>
+    <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
+      <%- include('../../partials/admin-sort-header', { label: 'Mã yêu cầu', sortKey: 'referenceCode', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Khách', sortKey: 'customerName', sortBy, sortDirection, sortLinks }) %>
+      <th scope="col">Điện thoại</th>
+      <%- include('../../partials/admin-sort-header', { label: 'Thời gian', sortKey: 'startsAt', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Số khách', sortKey: 'guestCount', sortBy, sortDirection, sortLinks }) %>
+      <%- include('../../partials/admin-sort-header', { label: 'Trạng thái', sortKey: 'status', sortBy, sortDirection, sortLinks }) %>
+      <th scope="col">Thao tác</th>
+    </tr></thead><tbody>
+      <% items.forEach((reservation) => { %>
+        <tr>
+          <td><a class="table-primary-link" href="/admin/reservations/<%= reservation.id %>"><%= reservation.referenceCode %></a></td>
+          <td><%= reservation.customerName %></td>
+          <td><a href="tel:<%= reservation.phone %>"><%= reservation.phone %></a></td>
+          <td><%= formatDateTimeHcm(reservation.startsAt) %></td>
+          <td><%= reservation.guestCount %></td>
+          <td><span class="status-badge status-<%= reservation.status.toLowerCase() %>"><%= statusLabels[reservation.status] %></span></td>
+          <td><a class="table-action" href="/admin/reservations/<%= reservation.id %>">Mở</a></td>
+        </tr>
+      <% }) %>
+    </tbody></table></div>
+  <% } else { %><p class="admin-empty">Không có yêu cầu nào phù hợp với bộ lọc.</p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>
