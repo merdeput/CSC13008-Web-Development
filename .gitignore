@@ -1,3 +1,5 @@
+**/submission/
+
 .agents
 node_modules/
 .env
