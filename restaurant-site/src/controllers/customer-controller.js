@@ -1,5 +1,5 @@
 const { HttpError } = require('../lib/errors');
-const { validateReservationInput } = require('../services/validation');
+const { isUuid, validateReservationInput } = require('../services/validation');
 const { getRestaurantConfig } = require('../lib/restaurant-config');
 const { todayInHcm } = require('../lib/format');
 
@@ -15,18 +15,20 @@ function createCustomerController(services) {
 
     async menu(req, res) {
       const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
-      const categorySlug = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 120) : '';
+      const categoryId = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 36) : '';
+      const invalidCategoryId = Boolean(categoryId && !isUuid(categoryId));
       const [dishes, categories] = await Promise.all([
-        services.dishes.listPublic({ category: categorySlug, q }),
+        invalidCategoryId ? [] : services.dishes.listPublic({ categoryId, q }),
         services.dishes.listCategories()
       ]);
       res.render('public/menu', {
-        pageTitle: 'Thực đơn — Bếp Hội', dishes, categories, q, categorySlug
+        pageTitle: 'Thực đơn — Bếp Hội', dishes, categories, q, categoryId
       });
     },
 
     async dishDetail(req, res) {
-      const dish = await services.dishes.findPublicBySlug(req.params.slug);
+      if (!isUuid(req.params.id)) throw new HttpError(404, 'Món ăn này không tồn tại hoặc chưa được giới thiệu công khai.');
+      const dish = await services.dishes.findPublicById(req.params.id);
       if (!dish) throw new HttpError(404, 'Món ăn này không tồn tại hoặc chưa được giới thiệu công khai.');
       res.render('public/dish-detail', { pageTitle: `${dish.name} — Bếp Hội`, dish });
     },

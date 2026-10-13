@@ -22,7 +22,7 @@ function createCustomerRouter(services) {
 
   router.get('/', asyncHandler(controller.home));
   router.get('/menu', asyncHandler(controller.menu));
-  router.get('/dishes/:slug', asyncHandler(controller.dishDetail));
+  router.get('/dishes/:id', asyncHandler(controller.dishDetail));
   router.get('/chefs', asyncHandler(controller.chefs));
   router.get('/reservations/new', controller.reservationForm);
   router.post('/reservations', reservationLimiter, requireCsrf, asyncHandler(controller.createReservation));

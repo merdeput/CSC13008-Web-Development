@@ -67,10 +67,10 @@ function makeServices() {
     services: {
       dishes: {
         listFeatured: async () => dishes.filter((dish) => dish.isFeatured && dish.isPublished),
-        listPublic: async ({ category: filterCategory, q } = {}) => dishes.filter((dish) => dish.isPublished &&
-          (!filterCategory || dish.category.slug === filterCategory) && (!q || `${dish.name} ${dish.description}`.toLowerCase().includes(q.toLowerCase()))),
+        listPublic: async ({ categoryId: filterCategoryId, q } = {}) => dishes.filter((dish) => dish.isPublished &&
+          (!filterCategoryId || dish.categoryId === filterCategoryId) && (!q || `${dish.name} ${dish.description}`.toLowerCase().includes(q.toLowerCase()))),
         listCategories: async () => [category],
-        findPublicBySlug: async (slug) => dishes.find((dish) => dish.slug === slug && dish.isPublished) || null,
+        findPublicById: async (id) => dishes.find((dish) => dish.id === id && dish.isPublished) || null,
         listAdmin: async ({ page = 1 } = {}) => ({ items: dishes, total: dishes.length, page: Number(page) || 1, pageCount: 1 }),
         findById: async (id) => dishes.find((dish) => dish.id === id) || null,
         formOptions: async () => ({ categories: [category], ingredients }),
@@ -151,13 +151,14 @@ test('customer and admin SSR pages render in Vietnamese without authentication',
   assert.match(admin.text, /khu vực quản trị mở trực tiếp/i);
 });
 
-test('public filters show published dishes and unpublished slugs return 404', async () => {
+test('public dish navigation and category filters use IDs', async () => {
   const { services } = makeServices();
   const app = createApp({ services });
-  const menu = await request(app).get('/menu?q=cao%20l%E1%BA%A7u&category=mon-nuoc');
+  const menu = await request(app).get(`/menu?q=cao%20l%E1%BA%A7u&category=${categoryId}`);
   assert.equal(menu.status, 200);
   assert.match(menu.text, /Cao lầu Hội An/);
-  assert.equal((await request(app).get('/dishes/hidden-dish')).status, 404);
+  assert.equal((await request(app).get(`/dishes/${dishId}`)).status, 200);
+  assert.equal((await request(app).get('/dishes/cao-lau-hoi-an')).status, 404);
 });
 
 test('reservation form validates, creates a pending request and shows a one-time reference after 303', async () => {
@@ -223,7 +224,7 @@ test('admin can create a dish and its detail page shows the saved ingredient cho
   assert.match(detail.text, /Gỏi cuốn vườn nhà/);
   assert.match(detail.text, /Bánh cao lầu/);
   assert.match(detail.text, /Rau thơm/);
-  assert.equal((await agent.get(`/dishes/${state.dishes.find((dish) => dish.id === createdId).slug}`)).status, 200);
+  assert.equal((await agent.get(`/dishes/${createdId}`)).status, 200);
 });
 
 test('admin chef create, update, and delete pages persist the edited profile', async () => {

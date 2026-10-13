@@ -1,0 +1,12 @@
+<section class="admin-page-heading"><div><p class="eyebrow">BẾP / NGUYÊN LIỆU</p><h1><%= heading %></h1><p>Nguyên liệu có thể được gắn với nhiều món ăn.</p></div><a class="admin-secondary-button" href="/admin/ingredients">← Danh sách nguyên liệu</a></section>
+<section class="admin-panel admin-form-panel"><%- include('../../partials/form-errors', { errors }) %>
+  <form class="admin-form" action="<%= formAction %>" method="post" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (methodOverride) { %><input type="hidden" name="_method" value="<%= methodOverride %>"><% } %>
+    <div class="admin-form-grid"><div class="form-field form-field-wide">
+      <label for="name">Tên nguyên liệu <span aria-hidden="true">*</span></label>
+      <input id="name" name="name" maxlength="100" required value="<%= formData.name || '' %>" aria-invalid="<%= errors.name ? 'true' : 'false' %>">
+      <%- include('../../partials/field-error', { errors, field: 'name' }) %>
+    </div></div>
+    <div class="admin-form-actions"><button class="admin-primary-button" type="submit">Lưu nguyên liệu</button><a class="admin-secondary-button" href="/admin/ingredients">Hủy</a></div>
+  </form>
+</section>

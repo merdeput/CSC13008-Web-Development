@@ -7,6 +7,17 @@
   const toggle = document.querySelector('.mobile-nav-toggle');
   const navigation = document.getElementById('primary-navigation');
   const pageTransition = document.querySelector('.page-transition');
+  let pageTransitionTimer = 0;
+
+  if (pageTransition) {
+    const clearPageTransition = () => {
+      if (pageTransitionTimer) window.clearTimeout(pageTransitionTimer);
+      pageTransitionTimer = 0;
+      pageTransition.classList.remove('is-active');
+    };
+    window.addEventListener('pageshow', clearPageTransition);
+    window.addEventListener('popstate', clearPageTransition);
+  }
 
   if (pageTransition && !reducedMotion.matches) {
     document.addEventListener('click', (event) => {
@@ -26,7 +37,10 @@
 
       event.preventDefault();
       pageTransition.classList.add('is-active');
-      window.setTimeout(() => window.location.assign(destination.href), 240);
+      pageTransitionTimer = window.setTimeout(() => {
+        pageTransitionTimer = 0;
+        window.location.assign(destination.href);
+      }, 240);
     });
   }
 

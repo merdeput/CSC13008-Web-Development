@@ -73,4 +73,4 @@ npm.cmd test
 
 `npm.cmd test` bao phủ validation, thời gian Việt Nam, trạng thái, CSRF/method override, luồng SSR và cập nhật nguyên liệu nguyên tử. Khi `DATABASE_URL` được cấu hình, bộ test còn chạy kiểm tra PostgreSQL thật cho SSR, CRUD, visibility, method override và reservation; các bản ghi thử sẽ được xóa sau lượt chạy. Nếu không có kết nối database, phần integration sẽ được bỏ qua.
 
-Khi cấu hình database, kiểm tra các trang khách (`/`, `/menu`, `/dishes/:slug`, `/chefs`, `/reservations/new`) và các trang quản trị ở `/admin` trên màn hình desktop và mobile; kiểm tra một yêu cầu đặt bàn, xác nhận trong admin, chuyển trạng thái theo quy trình, cập nhật/xóa món và hồ sơ đầu bếp.
+Khi cấu hình database, kiểm tra các trang khách (`/`, `/menu`, `/dishes/:id`, `/chefs`, `/reservations/new`) và các trang quản trị ở `/admin` trên màn hình desktop và mobile; kiểm tra một yêu cầu đặt bàn, xác nhận trong admin, chuyển trạng thái theo quy trình, cập nhật/xóa món và hồ sơ đầu bếp.
