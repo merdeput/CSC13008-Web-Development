@@ -84,8 +84,8 @@ function createAdminController(services) {
     },
 
     async dishList(req, res) {
-      const result = await services.dishes.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
-      const controls = createListControls('/admin/dishes', result, ['name', 'category', 'price', 'visibility', 'availability', 'updatedAt']);
+      const result = await services.dishes.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection, q: req.query.q });
+      const controls = createListControls('/admin/dishes', result, ['name', 'category', 'price', 'visibility', 'availability', 'updatedAt'], { q: result.q });
       res.render('admin/dishes/index', { pageTitle: 'Món ăn — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/dishes' });
     },
     async dishNew(_req, res) { return renderDishForm(res, { heading: 'Thêm món ăn', pageTitle: 'Thêm món — Quản trị Bếp Hội' }); },
@@ -156,8 +156,8 @@ function createAdminController(services) {
     },
 
     async chefList(req, res) {
-      const result = await services.chefs.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
-      const controls = createListControls('/admin/chefs', result, ['name', 'title', 'specialty', 'sortOrder', 'visibility']);
+      const result = await services.chefs.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection, q: req.query.q });
+      const controls = createListControls('/admin/chefs', result, ['name', 'title', 'specialty', 'sortOrder', 'visibility'], { q: result.q });
       res.render('admin/chefs/index', { pageTitle: 'Đầu bếp — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/chefs' });
     },
     async chefNew(_req, res) { return renderChefForm(res, { heading: 'Thêm đầu bếp', pageTitle: 'Thêm đầu bếp — Quản trị Bếp Hội' }); },
@@ -208,8 +208,8 @@ function createAdminController(services) {
     },
 
     async ingredientList(req, res) {
-      const result = await services.ingredients.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection });
-      const controls = createListControls('/admin/ingredients', result, ['name', 'usage']);
+      const result = await services.ingredients.listAdmin({ page: req.query.page, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection, q: req.query.q });
+      const controls = createListControls('/admin/ingredients', result, ['name', 'usage'], { q: result.q });
       res.render('admin/ingredients/index', { pageTitle: 'Nguyên liệu — Quản trị Bếp Hội', ...result, ...controls, basePath: '/admin/ingredients' });
     },
     async ingredientNew(_req, res) {
@@ -271,7 +271,7 @@ function createAdminController(services) {
     async ingredientDeleteConfirm(req, res) {
       const ingredient = await services.ingredients.findById(requireId(req.params.id));
       if (!ingredient) throw new HttpError(404, 'Không tìm thấy nguyên liệu.');
-      res.render('admin/ingredients/delete', { pageTitle: `Xóa ${ingredient.name} — Quản trị Bếp Hội`, ingredient });
+      res.render('admin/ingredients/delete', { pageTitle: `Xóa ${ingredient.name} — Quản trị Bếp Hội`, ingredient, inUse: false });
     },
     async ingredientDelete(req, res) {
       const id = requireId(req.params.id);

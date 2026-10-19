@@ -124,6 +124,64 @@
     field.setAttribute('aria-describedby', [...describedBy].join(' '));
   });
 
+  document.querySelectorAll('[data-ingredient-picker]').forEach((picker) => {
+    const search = picker.querySelector('[data-ingredient-search]');
+    const options = [...picker.querySelectorAll('[data-ingredient-option]')];
+    const chips = picker.querySelector('[data-selected-ingredients]');
+    const count = picker.querySelector('[data-selected-count]');
+    const empty = picker.querySelector('[data-selected-empty]');
+    const noResults = picker.querySelector('[data-ingredient-no-results]');
+    if (!search || !chips || !count) return;
+
+    const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLocaleLowerCase('vi');
+    const updateSelection = () => {
+      const selected = options.filter((option) => option.querySelector('input').checked);
+      chips.replaceChildren();
+      selected.forEach((option) => {
+        const checkbox = option.querySelector('input');
+        const name = option.querySelector('span').textContent.trim();
+        const chip = document.createElement('span');
+        chip.className = 'ingredient-picker__chip';
+        chip.append(document.createTextNode(name));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'ingredient-picker__remove';
+        remove.setAttribute('aria-label', `Bỏ ${name} khỏi món`);
+        remove.textContent = '×';
+        remove.addEventListener('click', () => {
+          checkbox.checked = false;
+          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          search.focus();
+        });
+        chip.append(remove);
+        chips.append(chip);
+      });
+      if (!selected.length) {
+        const message = document.createElement('span');
+        message.className = 'ingredient-picker__empty';
+        message.textContent = 'Chưa chọn nguyên liệu nào.';
+        chips.append(message);
+      }
+      count.textContent = `${selected.length} nguyên liệu`;
+      if (empty) empty.hidden = true;
+    };
+
+    const filterOptions = () => {
+      const query = normalize(search.value.trim());
+      let visibleCount = 0;
+      options.forEach((option) => {
+        const matches = normalize(option.dataset.name || '').includes(query);
+        option.hidden = !matches;
+        if (matches) visibleCount += 1;
+      });
+      if (noResults) noResults.hidden = visibleCount > 0;
+    };
+
+    options.forEach((option) => option.querySelector('input').addEventListener('change', updateSelection));
+    search.addEventListener('input', filterOptions);
+    updateSelection();
+  });
+
   document.querySelectorAll('.site-form').forEach((form) => {
     form.addEventListener('submit', (event) => {
       if (!form.checkValidity()) {

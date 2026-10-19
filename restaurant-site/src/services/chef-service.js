@@ -1,6 +1,6 @@
 const { HttpError, isPrismaCode } = require('../lib/errors');
 const { PAGE_SIZE, getPage, pageResult } = require('./pagination');
-const { getAdminSort } = require('./admin-list-sorting');
+const { getAdminSort, getAdminSearch } = require('./admin-list-sorting');
 
 const chefAdminSorts = {
   name: (direction) => [{ name: direction }, { id: 'asc' }],
@@ -25,13 +25,22 @@ function createChefService(db) {
     listPublished(limit) {
       return db.chef.findMany({ where: { isPublished: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], ...(limit ? { take: limit } : {}) });
     },
-    listAdmin({ page = 1, sortBy, sortDirection } = {}) {
+    listAdmin({ page = 1, sortBy, sortDirection, q } = {}) {
       const current = getPage({ page });
       const sort = getAdminSort({ sortBy, sortDirection }, chefAdminSorts, 'sortOrder', 'asc');
+      const search = getAdminSearch(q);
+      const where = search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search, mode: 'insensitive' } },
+          { specialty: { contains: search, mode: 'insensitive' } },
+          { bio: { contains: search, mode: 'insensitive' } }
+        ]
+      } : {};
       return Promise.all([
-        db.chef.findMany({ orderBy: sort.orderBy, skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
-        db.chef.count()
-      ]).then(([items, total]) => ({ ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection }));
+        db.chef.findMany({ where, orderBy: sort.orderBy, skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+        db.chef.count({ where })
+      ]).then(([items, total]) => ({ ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection, q: search }));
     },
     findById(id) {
       return db.chef.findUnique({ where: { id } });

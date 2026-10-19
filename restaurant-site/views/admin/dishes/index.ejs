@@ -1,5 +1,6 @@
-<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / THỰC ĐƠN</p><h1>Món ăn</h1><p><%= total %> món trong danh mục quản trị.</p></div><a class="admin-primary-button" href="/admin/dishes/new">+ Thêm món ăn</a></section>
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / THỰC ĐƠN</p><h1>Món ăn</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} món trong danh mục quản trị.` %></p></div><a class="admin-primary-button" href="/admin/dishes/new">+ Thêm món ăn</a></section>
 <section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Tất cả món ăn</h2></div><span class="admin-count"><%= total %> mục</span></div>
+  <%- include('../../partials/admin-search', { basePath, inputId: 'dishSearch', label: 'Tìm món ăn', placeholder: 'Tên món, mô tả, danh mục hoặc nguyên liệu', q }) %>
   <% if (items.length) { %>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
       <%- include('../../partials/admin-sort-header', { label: 'Món ăn', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
@@ -22,6 +23,6 @@
         </tr>
       <% }) %>
     </tbody></table></div>
-  <% } else { %><p class="admin-empty">Chưa có món ăn. Hãy thêm món đầu tiên.</p><% } %>
+  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy món ăn phù hợp với “${q}”.` : 'Chưa có món ăn. Hãy thêm món đầu tiên.' %></p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

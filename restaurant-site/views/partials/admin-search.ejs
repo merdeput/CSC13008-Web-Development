@@ -1,0 +1,8 @@
+<form class="admin-search" action="<%= basePath %>" method="get" role="search" aria-label="Tìm kiếm trong danh sách">
+  <div class="admin-search-field">
+    <label for="<%= inputId %>"><%= label %></label>
+    <input id="<%= inputId %>" type="search" name="q" maxlength="100" value="<%= q || '' %>" placeholder="<%= placeholder %>">
+  </div>
+  <button class="admin-primary-button" type="submit">Tìm kiếm</button>
+  <% if (q) { %><a class="admin-text-link" href="<%= basePath %>">Xóa tìm kiếm</a><% } %>
+</form>

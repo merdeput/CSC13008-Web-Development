@@ -1,5 +1,6 @@
-<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / ĐỘI NGŨ</p><h1>Đầu bếp</h1><p><%= total %> hồ sơ trong danh mục quản trị.</p></div><a class="admin-primary-button" href="/admin/chefs/new">+ Thêm đầu bếp</a></section>
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / ĐỘI NGŨ</p><h1>Đầu bếp</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} hồ sơ trong danh mục quản trị.` %></p></div><a class="admin-primary-button" href="/admin/chefs/new">+ Thêm đầu bếp</a></section>
 <section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span class="admin-count"><%= total %> mục</span></div>
+  <%- include('../../partials/admin-search', { basePath, inputId: 'chefSearch', label: 'Tìm đầu bếp', placeholder: 'Tên, chức danh, sở trường hoặc tiểu sử', q }) %>
   <% if (items.length) { %>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
       <%- include('../../partials/admin-sort-header', { label: 'Họ tên', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
@@ -20,6 +21,6 @@
         </tr>
       <% }) %>
     </tbody></table></div>
-  <% } else { %><p class="admin-empty">Chưa có hồ sơ đầu bếp.</p><% } %>
+  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy hồ sơ đầu bếp phù hợp với “${q}”.` : 'Chưa có hồ sơ đầu bếp.' %></p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

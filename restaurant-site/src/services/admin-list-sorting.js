@@ -14,6 +14,11 @@ function queryString(values) {
   return params.toString();
 }
 
+function getAdminSearch(value) {
+  if (typeof value !== 'string') return '';
+  return Array.from(value.trim()).slice(0, 100).join('');
+}
+
 function createSortLinks({ basePath, sortBy, sortDirection, fields, preserve = {} }) {
   return Object.fromEntries(fields.map((field) => {
     const direction = field === sortBy && sortDirection === 'asc' ? 'desc' : 'asc';
@@ -35,4 +40,4 @@ function createListControls(basePath, sort, fields, preserve = {}) {
   };
 }
 
-module.exports = { getAdminSort, createListControls, createPaginationQuery };
+module.exports = { getAdminSort, getAdminSearch, createListControls, createPaginationQuery };

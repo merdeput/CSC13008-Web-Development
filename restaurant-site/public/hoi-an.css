@@ -640,6 +640,13 @@ select:focus-visible, summary:focus-visible {
 .admin-filters .form-field { min-width: 135px; }
 .admin-filters .form-field label { color: #425147; font-size: .7rem; }
 .admin-filters input, .admin-filters select { min-height: 38px; padding: .42rem .58rem; border-color: #cdd7cb; border-radius: 4px; font-size: .75rem; }
+.admin-search { display: flex; align-items: end; gap: .5rem; margin: 0 0 .85rem; }
+.admin-search-field { display: grid; flex: 1 1 280px; gap: .32rem; max-width: 560px; }
+.admin-search-field label { color: #425147; font-size: .7rem; font-weight: 700; }
+.admin-search-field input { width: 100%; min-height: 39px; padding: .45rem .6rem; border: 1px solid #cdd7cb; border-radius: 4px; font-size: .75rem; }
+.admin-search-field input:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(73, 96, 68, .13); }
+.admin-search .admin-primary-button { min-height: 39px; padding: .5rem .8rem; }
+.admin-search .admin-text-link { padding: .55rem .3rem; font-size: .7rem; }
 .admin-form-panel { max-width: 980px; }
 .admin-form-grid { gap: .85rem 1rem; }
 .admin-form, .admin-form .form-field { gap: .55rem; }
@@ -659,6 +666,24 @@ select:focus-visible, summary:focus-visible {
 .admin-filters input:focus, .admin-filters select:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(73, 96, 68, .13); }
 .admin-form .form-field input[aria-invalid="true"], .admin-form .form-field textarea[aria-invalid="true"], .admin-form .form-field select[aria-invalid="true"] { border-color: #a3332b; }
 .admin-form .form-field select[multiple] { min-height: 132px; }
+.ingredient-picker__selected { padding: .75rem; border: 1px solid #d7e0d4; border-radius: 5px; background: #f4f7f1; }
+.ingredient-picker__selected-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; margin-bottom: .55rem; color: #35443a; font-size: .72rem; }
+.ingredient-picker__selected-heading span { color: #69766a; font-size: .65rem; font-weight: 500; }
+.ingredient-picker__chips { display: flex; flex-wrap: wrap; gap: .38rem; min-height: 1.55rem; }
+.ingredient-picker__chip { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .5rem; border: 1px solid #c5d4c2; border-radius: 999px; color: #344a37; background: #fff; font-size: .68rem; }
+.ingredient-picker__remove { display: inline-grid; width: 1.15rem; height: 1.15rem; place-items: center; padding: 0; border: 0; border-radius: 50%; color: #536453; background: #e7eee4; cursor: pointer; line-height: 1; }
+.ingredient-picker__remove:hover { color: white; background: #a3332b; }
+.ingredient-picker__empty, .ingredient-picker__no-results { margin: 0; color: #68766b; font-size: .7rem; }
+.ingredient-picker > label { margin-top: .15rem; }
+.ingredient-picker__list { min-width: 0; margin: 0; padding: .35rem; border: 1px solid #d5ddd2; border-radius: 5px; background: #fff; }
+.ingredient-picker__list[aria-invalid="true"] { border-color: #a3332b; }
+.ingredient-picker__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem .35rem; max-height: 240px; overflow: auto; overscroll-behavior: contain; }
+.admin-form .ingredient-picker__option { display: flex; align-items: center; gap: .5rem; min-width: 0; padding: .42rem .5rem; border-radius: 4px; color: #3c4a40; font-size: .72rem; font-weight: 500; cursor: pointer; }
+.ingredient-picker__option:hover { background: #f1f5ef; }
+.admin-form .ingredient-picker__option input { flex: 0 0 auto; width: 1rem; height: 1rem; min-height: 0 !important; margin: 0; padding: 0; accent-color: var(--moss); }
+.ingredient-picker__option span { overflow-wrap: anywhere; }
+.ingredient-picker__no-results { padding: .6rem; }
+.ingredient-picker [hidden] { display: none !important; }
 .checkbox-fieldset { gap: .55rem; margin-block: .35rem; padding: .8rem 1rem; border-color: #d5dfd3; border-radius: 4px; }
 .checkbox-fieldset legend { color: #405243; font-size: .72rem; }
 .check-row strong { color: #344338; font-size: .75rem; }
@@ -792,9 +817,14 @@ select:focus-visible, summary:focus-visible {
   .admin-stat-card strong { font-size: 1.4rem; }
   .admin-stat-card small { margin-left: auto; text-align: right; }
   .admin-page-heading { align-items: flex-start; flex-direction: column; }
+  .ingredient-picker__options { grid-template-columns: 1fr; max-height: 220px; }
+  .ingredient-picker__selected-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }
   .admin-page-heading h1 { font-size: 1.55rem; }
   .admin-panel-heading { align-items: flex-start; }
   .admin-filters { align-items: stretch; flex-direction: column; }
+  .admin-search { align-items: stretch; flex-wrap: wrap; }
+  .admin-search-field { flex-basis: 100%; max-width: none; }
+  .admin-search .admin-primary-button { flex: 1 1 auto; }
   .admin-filters .form-field { min-width: 0; }
   .admin-form-actions { align-items: stretch; flex-wrap: wrap; }
   .admin-form-actions > * { flex: 1 1 auto; }

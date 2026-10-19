@@ -1,6 +1,6 @@
 <section class="admin-page-heading"><div><p class="eyebrow">BẾP / XÁC NHẬN</p><h1>Xóa nguyên liệu?</h1><p>Nguyên liệu: <strong><%= ingredient.name %></strong></p></div><a class="admin-secondary-button" href="/admin/ingredients/<%= ingredient.id %>">← Quay lại nguyên liệu</a></section>
 <section class="admin-panel confirm-panel">
-  <% if (inUse) { %><p class="form-error-summary" role="alert">Không thể xóa vì nguyên liệu đang được gắn với một hoặc nhiều món. Hãy bỏ nguyên liệu khỏi các món trước.</p><% } %>
+  <% if (typeof inUse !== 'undefined' && inUse) { %><p class="form-error-summary" role="alert">Không thể xóa vì nguyên liệu đang được gắn với một hoặc nhiều món. Hãy bỏ nguyên liệu khỏi các món trước.</p><% } %>
   <% if (ingredient.dishes.length) { %>
     <p>Hãy bỏ nguyên liệu này khỏi các món sau trước khi xóa:</p>
     <ul class="ingredient-usage-list"><% ingredient.dishes.forEach((link) => { %><li><a class="table-primary-link" href="/admin/dishes/<%= link.dish.id %>/edit"><%= link.dish.name %></a></li><% }) %></ul>

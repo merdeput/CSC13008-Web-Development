@@ -8,7 +8,26 @@
       <div class="form-field form-field-wide"><label for="description">Mô tả <span aria-hidden="true">*</span></label><textarea id="description" name="description" rows="4" maxlength="2400" required aria-invalid="<%= errors.description ? 'true' : 'false' %>"><%= formData.description || '' %></textarea><%- include('../../partials/field-error', { errors, field: 'description' }) %></div>
       <div class="form-field"><label for="price">Giá nguyên VND <span aria-hidden="true">*</span></label><div class="input-suffix"><input id="price" name="price" type="number" min="0" max="999999999999" step="1" inputmode="numeric" required value="<%= formData.price == null ? '' : String(formData.price) %>" aria-invalid="<%= errors.price ? 'true' : 'false' %>"><span>₫</span></div><%- include('../../partials/field-error', { errors, field: 'price' }) %></div>
       <div class="form-field"><label for="imageUrl">Đường dẫn ảnh <span class="label-optional">không bắt buộc</span></label><input id="imageUrl" name="imageUrl" type="url" maxlength="2048" value="<%= formData.imageUrl || '' %>" placeholder="https://…" aria-invalid="<%= errors.imageUrl ? 'true' : 'false' %>"><%- include('../../partials/field-error', { errors, field: 'imageUrl' }) %></div>
-      <div class="form-field form-field-wide"><label for="ingredientIds">Nguyên liệu</label><select id="ingredientIds" name="ingredientIds" multiple size="7" aria-describedby="ingredients-help"><% ingredients.forEach((ingredient) => { %><option value="<%= ingredient.id %>" <%- selectedIngredientIds.includes(ingredient.id) ? 'selected' : '' %>><%= ingredient.name %></option><% }) %></select><small id="ingredients-help" class="field-help">Giữ Ctrl hoặc Command để chọn nhiều nguyên liệu. Quản lý danh sách trong mục Nguyên liệu của admin.</small><%- include('../../partials/field-error', { errors, field: 'ingredientIds' }) %></div>
+      <div class="form-field form-field-wide ingredient-picker" data-ingredient-picker>
+        <div class="ingredient-picker__selected" role="group" aria-label="Nguyên liệu đang có trong món">
+          <div class="ingredient-picker__selected-heading"><strong>Đang có trong món</strong><span data-selected-count><%= selectedIngredientIds.length %> nguyên liệu</span></div>
+          <div class="ingredient-picker__chips" data-selected-ingredients aria-live="polite">
+            <% ingredients.filter((ingredient) => selectedIngredientIds.includes(ingredient.id)).forEach((ingredient) => { %><span class="ingredient-picker__chip" data-selected-chip="<%= ingredient.id %>"><%= ingredient.name %></span><% }) %>
+            <span class="ingredient-picker__empty" data-selected-empty <%- selectedIngredientIds.length ? 'hidden' : '' %>>Chưa chọn nguyên liệu nào.</span>
+          </div>
+        </div>
+        <label for="ingredientSearch">Thêm nguyên liệu</label>
+        <input id="ingredientSearch" type="search" autocomplete="off" placeholder="Tìm nguyên liệu theo tên…" aria-describedby="ingredients-help" aria-controls="ingredient-options" data-ingredient-search>
+        <small id="ingredients-help" class="field-help">Tìm rồi đánh dấu các nguyên liệu muốn gắn với món. Danh sách được sắp xếp theo tên.</small>
+        <fieldset id="ingredientIds" class="ingredient-picker__list" aria-describedby="ingredients-help" aria-invalid="<%= errors.ingredientIds ? 'true' : 'false' %>">
+          <legend class="visually-hidden">Chọn nguyên liệu cho món</legend>
+          <div id="ingredient-options" class="ingredient-picker__options" data-ingredient-options>
+            <% ingredients.forEach((ingredient) => { %><label class="ingredient-picker__option" data-ingredient-option data-name="<%= ingredient.name %>"><input type="checkbox" name="ingredientIds" value="<%= ingredient.id %>" <%- selectedIngredientIds.includes(ingredient.id) ? 'checked' : '' %>><span><%= ingredient.name %></span></label><% }) %>
+          </div>
+          <p class="ingredient-picker__no-results" data-ingredient-no-results hidden>Không tìm thấy nguyên liệu phù hợp.</p>
+        </fieldset>
+        <%- include('../../partials/field-error', { errors, field: 'ingredientIds' }) %>
+      </div>
     </div>
     <fieldset class="checkbox-fieldset"><legend>Trạng thái món ăn</legend><label class="check-row"><input type="checkbox" name="isPublished" <%- formData.isPublished ? 'checked' : '' %>><span><strong>Công khai trên website</strong><small>Món chưa công khai không xuất hiện ở trang khách.</small></span></label><label class="check-row"><input type="checkbox" name="isAvailable" <%- formData.isAvailable === false ? '' : 'checked' %>><span><strong>Đang phục vụ</strong><small>Món tạm hết vẫn có thể hiển thị nhãn trên thực đơn.</small></span></label><label class="check-row"><input type="checkbox" name="isFeatured" <%- formData.isFeatured ? 'checked' : '' %>><span><strong>Món nổi bật</strong><small>Có thể xuất hiện ở trang chủ khi đã công khai.</small></span></label></fieldset>
     <div class="admin-form-actions"><button class="admin-primary-button" type="submit">Lưu món ăn</button><a class="admin-secondary-button" href="/admin/dishes">Hủy</a></div>

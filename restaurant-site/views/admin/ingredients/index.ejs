@@ -1,5 +1,6 @@
-<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / BẾP</p><h1>Nguyên liệu</h1><p><%= total %> nguyên liệu trong kho dữ liệu.</p></div><a class="admin-primary-button" href="/admin/ingredients/new">+ Thêm nguyên liệu</a></section>
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / BẾP</p><h1>Nguyên liệu</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} nguyên liệu trong kho dữ liệu.` %></p></div><a class="admin-primary-button" href="/admin/ingredients/new">+ Thêm nguyên liệu</a></section>
 <section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Tất cả nguyên liệu</h2></div><span class="admin-count"><%= total %> mục</span></div>
+  <%- include('../../partials/admin-search', { basePath, inputId: 'ingredientSearch', label: 'Tìm nguyên liệu', placeholder: 'Nhập tên nguyên liệu', q }) %>
   <% if (items.length) { %>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
       <%- include('../../partials/admin-sort-header', { label: 'Nguyên liệu', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
@@ -7,9 +8,16 @@
       <th scope="col">Thao tác</th>
     </tr></thead><tbody>
       <% items.forEach((ingredient) => { %>
-        <tr><td><a class="table-primary-link" href="/admin/ingredients/<%= ingredient.id %>"><%= ingredient.name %></a></td><td><%= ingredient._count.dishes %></td><td><a class="table-action" href="/admin/ingredients/<%= ingredient.id %>">Mở</a></td></tr>
+        <tr>
+          <td><a class="table-primary-link" href="/admin/ingredients/<%= ingredient.id %>"><%= ingredient.name %></a></td>
+          <td><%= ingredient._count.dishes %></td>
+          <td><div class="admin-heading-actions">
+            <a class="table-action" href="/admin/ingredients/<%= ingredient.id %>">Mở</a>
+            <a class="table-action" href="/admin/ingredients/<%= ingredient.id %>/delete" aria-label="Xóa nguyên liệu <%= ingredient.name %>">Xóa</a>
+          </div></td>
+        </tr>
       <% }) %>
     </tbody></table></div>
-  <% } else { %><p class="admin-empty">Chưa có nguyên liệu. Hãy thêm nguyên liệu đầu tiên.</p><% } %>
+  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy nguyên liệu phù hợp với “${q}”.` : 'Chưa có nguyên liệu. Hãy thêm nguyên liệu đầu tiên.' %></p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

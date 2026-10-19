@@ -1,6 +1,6 @@
 const { ValidationError, isPrismaCode, isUniqueFieldError } = require('../lib/errors');
 const { PAGE_SIZE, getPage, pageResult } = require('./pagination');
-const { getAdminSort } = require('./admin-list-sorting');
+const { getAdminSort, getAdminSearch } = require('./admin-list-sorting');
 
 const ingredientAdminSorts = {
   name: (direction) => [{ name: direction }, { id: 'asc' }],
@@ -9,19 +9,22 @@ const ingredientAdminSorts = {
 
 function createIngredientService(db) {
   return {
-    async listAdmin({ page = 1, sortBy, sortDirection } = {}) {
+    async listAdmin({ page = 1, sortBy, sortDirection, q } = {}) {
       const current = getPage({ page });
       const sort = getAdminSort({ sortBy, sortDirection }, ingredientAdminSorts, 'name', 'asc');
+      const search = getAdminSearch(q);
+      const where = search ? { name: { contains: search, mode: 'insensitive' } } : {};
       const [items, total] = await Promise.all([
         db.ingredient.findMany({
+          where,
           include: { _count: { select: { dishes: true } } },
           orderBy: sort.orderBy,
           skip: (current - 1) * PAGE_SIZE,
           take: PAGE_SIZE
         }),
-        db.ingredient.count()
+        db.ingredient.count({ where })
       ]);
-      return { ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection };
+      return { ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection, q: search };
     },
     findById(id) {
       return db.ingredient.findUnique({

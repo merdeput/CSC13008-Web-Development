@@ -3,7 +3,7 @@ const { HttpError, ValidationError, isPrismaCode, isUniqueFieldError } = require
 const { uniqueSlug } = require('../lib/slug');
 const { PAGE_SIZE, getPage, pageResult } = require('./pagination');
 const { isUuid } = require('./validation');
-const { getAdminSort } = require('./admin-list-sorting');
+const { getAdminSort, getAdminSearch } = require('./admin-list-sorting');
 
 const dishInclude = {
   category: true,
@@ -128,13 +128,22 @@ function createDishService(db) {
         take: limit
       });
     },
-    listAdmin({ page = 1, sortBy, sortDirection } = {}) {
+    listAdmin({ page = 1, sortBy, sortDirection, q } = {}) {
       const current = getPage({ page });
       const sort = getAdminSort({ sortBy, sortDirection }, dishAdminSorts, 'updatedAt', 'desc');
+      const search = getAdminSearch(q);
+      const where = search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { category: { is: { name: { contains: search, mode: 'insensitive' } } } },
+          { ingredients: { some: { ingredient: { is: { name: { contains: search, mode: 'insensitive' } } } } } }
+        ]
+      } : {};
       return Promise.all([
-        db.dish.findMany({ include: dishInclude, orderBy: sort.orderBy, skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
-        db.dish.count()
-      ]).then(([items, total]) => ({ ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection }));
+        db.dish.findMany({ where, include: dishInclude, orderBy: sort.orderBy, skip: (current - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+        db.dish.count({ where })
+      ]).then(([items, total]) => ({ ...pageResult(items, total, current), sortBy: sort.sortBy, sortDirection: sort.sortDirection, q: search }));
     },
     findPublicById(id) {
       return db.dish.findFirst({ where: { id, isPublished: true }, include: dishInclude });
