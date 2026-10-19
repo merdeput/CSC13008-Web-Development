@@ -1,0 +1,47 @@
+﻿.api-state {
+  display: flex;
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  gap: .8rem;
+  padding: 1.5rem;
+  color: var(--ink-soft);
+  font-size: .8rem;
+  text-align: center;
+}
+.api-spinner {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid var(--cream-deep);
+  border-top-color: var(--moss);
+  border-radius: 50%;
+  animation: api-spin .7s linear infinite;
+}
+@keyframes api-spin { to { transform: rotate(360deg); } }
+.api-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .8rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-left: 3px solid #a13327;
+  color: #722b24;
+  background: #f9e9df;
+  font-size: .78rem;
+}
+.api-error p { margin: 0; }
+.admin-search { flex-wrap: wrap; }
+.admin-search .admin-filters { flex: 1 1 100%; margin: .1rem 0 .45rem; }
+.admin-search .admin-filters .form-field { flex: 1 1 135px; }
+.admin-sort-button { display: inline-flex; align-items: center; gap: .35rem; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.admin-sort-button:hover { color: var(--moss); text-decoration: underline; text-underline-offset: 3px; }
+.admin-sort-button span { color: var(--moss); font-size: .82rem; }
+.action-button { padding: 0; border: 0; background: transparent; cursor: pointer; }
+.action-button:disabled, .admin-primary-button:disabled { opacity: .55; cursor: wait; }
+.pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .8rem; }
+.pagination > span { color: var(--ink-soft); font-size: .7rem; }
+.form-error-summary p { margin: .5rem 0 0; }
+.admin-form fieldset.checkbox-fieldset .field-help { margin: 0; }
