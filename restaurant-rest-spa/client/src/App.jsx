@@ -1,4 +1,5 @@
 ﻿import React from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, dateTime, dateTimeInputs, money, useLoad } from './api.js';
 
@@ -350,7 +351,7 @@ function AdminList({ resource }) {
   const currentSortDirection = params.get('sortDirection') || result?.sortDirection || defaults.direction;
   const sortHeader = (label, field) => <SortHeader key={field} label={label} field={field} sortBy={currentSortBy} sortDirection={currentSortDirection} onSort={sortByField} />;
   return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / {resource === 'reservations' ? 'DỊCH VỤ' : 'QUẢN TRỊ'}</p><h1>{config.label === 'Đặt bàn' ? 'Yêu cầu đặt bàn' : config.label}</h1><p>{resource === 'reservations' ? 'Khách gửi yêu cầu trước; nhà hàng cần liên hệ để xác nhận.' : `${result?.total ?? 0} mục trong danh mục quản trị.`}</p></div>{resource !== 'reservations' && <Link className="admin-primary-button" to={`/admin/${resource}/new`}>+ Thêm {config.label.toLowerCase()}</Link>}</section>
-    <section className="admin-panel"><div className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>{resource === 'chefs' ? 'Người giữ bếp' : `Tất cả ${config.label.toLowerCase()}`}</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></div>
+    <section className={`admin-panel${resource === 'ingredients' ? ' admin-panel--ingredients' : ''}`}><div className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>{resource === 'chefs' ? 'Người giữ bếp' : `Tất cả ${config.label.toLowerCase()}`}</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></div>
     <form className="admin-search" onSubmit={filter} role="search" aria-label={`Tìm ${config.label.toLowerCase()}`}><div className="admin-search-field"><label htmlFor="adminSearch">{resource === 'reservations' ? 'Tìm yêu cầu đặt bàn' : `Tìm ${config.label.toLowerCase()}`}</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder={`Tên, thông tin ${config.label.toLowerCase()}…`} /></div>{resource === 'reservations' && <><div className="admin-filters"><div className="form-field"><label htmlFor="statusFilter">Trạng thái</label><select id="statusFilter" name="status" defaultValue={params.get('status') || ''}><option value="">Tất cả trạng thái</option>{Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="form-field"><label htmlFor="fromFilter">Từ ngày</label><input id="fromFilter" type="date" name="from" defaultValue={params.get('from') || ''} /></div><div className="form-field"><label htmlFor="toFilter">Đến ngày</label><input id="toFilter" type="date" name="to" defaultValue={params.get('to') || ''} /></div></div></>}<button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
     {notice && <div className="admin-notice" role="status"><span>{notice}</span><button className="admin-notice-dismiss" type="button" aria-label="Đóng thông báo" onClick={() => setNotice('')}>×</button></div>}{state.loading ? <Loading /> : state.error ? <ErrorState message={state.error} onRetry={state.reload} /> : rows.length ? <><div className="admin-table-wrap" role="region" aria-label={`Bảng ${config.label.toLowerCase()}`} tabIndex="0"><table className={`admin-table admin-table--${resource}`}><thead><tr>
       {resource === 'dishes' && <>{sortHeader('Món ăn', 'name')}{sortHeader('Danh mục', 'category')}{sortHeader('Giá', 'price')}<th scope="col">Đầu bếp</th>{sortHeader('Hiển thị', 'visibility')}{sortHeader('Phục vụ', 'availability')}{sortHeader('Cập nhật', 'updatedAt')}<th className="admin-actions-heading" scope="col">Thao tác</th></>}
@@ -358,17 +359,17 @@ function AdminList({ resource }) {
       {resource === 'ingredients' && <>{sortHeader('Nguyên liệu', 'name')}<th className="admin-actions-heading" scope="col">Thao tác</th></>}
       {resource === 'reservations' && <>{sortHeader('Mã yêu cầu', 'referenceCode')}{sortHeader('Khách', 'customerName')}<th scope="col">Điện thoại</th>{sortHeader('Thời gian', 'startsAt')}{sortHeader('Số khách', 'guestCount')}{sortHeader('Trạng thái', 'status')}<th className="admin-actions-heading" scope="col">Thao tác</th></>}
     </tr></thead><tbody>
-      {resource === 'dishes' && rows.map((dish) => <tr key={dish.id}><td><Link className="table-primary-link" to={`/admin/dishes/${dish.id}/edit`}>{dish.name}</Link><small className="table-subline">ID: {dish.id}</small></td><td>{dish.category?.name || '—'}</td><td>{money(dish.price)}</td><td>{dish.chef?.name || 'Chưa gán đầu bếp'}</td><td><span className={`status-badge ${dish.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{dish.isPublished ? 'Đã công khai' : 'Bản nháp'}</span></td><td>{dish.isAvailable ? 'Đang có' : 'Tạm hết'}{dish.isFeatured ? ' · Nổi bật' : ''}</td><td>{dateTime(dish.updatedAt)}</td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={dish} returnTo={`${location.pathname}${location.search}`} /></td></tr>)}
-      {resource === 'chefs' && rows.map((chef) => <tr key={chef.id}><td><Link className="table-primary-link" to={`/admin/chefs/${chef.id}/edit`}>{chef.name}</Link></td><td>{chef.title}</td><td>{chef.specialty || '—'}</td><td>{chef.dishes?.length ? chef.dishes.map((dish) => dish.name).join(', ') : 'Chưa gán món'}</td><td>{chef.sortOrder}</td><td><span className={`status-badge ${chef.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{chef.isPublished ? 'Công khai' : 'Bản nháp'}</span></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={chef} returnTo={`${location.pathname}${location.search}`} /></td></tr>)}
-      {resource === 'ingredients' && rows.map((ingredient) => <tr key={ingredient.id}><td><Link className="table-primary-link" to={`/admin/ingredients/${ingredient.id}/edit`}>{ingredient.name}</Link></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={ingredient} returnTo={`${location.pathname}${location.search}`} /></td></tr>)}
-      {resource === 'reservations' && rows.map((reservation) => <tr key={reservation.id}><td><Link className="table-primary-link" to={`/admin/reservations/${reservation.id}/edit`}>{reservation.referenceCode}</Link></td><td>{reservation.customerName}</td><td><a href={`tel:${reservation.phone}`}>{reservation.phone}</a></td><td>{dateTime(reservation.startsAt)}</td><td>{reservation.guestCount}</td><td><ReservationStatusBadge status={reservation.status} /></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={reservation} returnTo={`${location.pathname}${location.search}`} /></td></tr>)}
+      {resource === 'dishes' && rows.map((dish) => <tr key={dish.id}><td><Link className="table-primary-link" to={`/admin/dishes/${dish.id}/edit`}>{dish.name}</Link><small className="table-subline">ID: {dish.id}</small></td><td>{dish.category?.name || '—'}</td><td>{money(dish.price)}</td><td>{dish.chef?.name || 'Chưa gán đầu bếp'}</td><td><span className={`status-badge ${dish.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{dish.isPublished ? 'Đã công khai' : 'Bản nháp'}</span></td><td>{dish.isAvailable ? 'Đang có' : 'Tạm hết'}{dish.isFeatured ? ' · Nổi bật' : ''}</td><td>{dateTime(dish.updatedAt)}</td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={dish} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></td></tr>)}
+      {resource === 'chefs' && rows.map((chef) => <tr key={chef.id}><td><Link className="table-primary-link" to={`/admin/chefs/${chef.id}/edit`}>{chef.name}</Link></td><td>{chef.title}</td><td>{chef.specialty || '—'}</td><td>{chef.dishes?.length ? chef.dishes.map((dish) => dish.name).join(', ') : 'Chưa gán món'}</td><td>{chef.sortOrder}</td><td><span className={`status-badge ${chef.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{chef.isPublished ? 'Công khai' : 'Bản nháp'}</span></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={chef} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></td></tr>)}
+      {resource === 'ingredients' && rows.map((ingredient) => <tr key={ingredient.id}><td><Link className="table-primary-link" to={`/admin/ingredients/${ingredient.id}/edit`}>{ingredient.name}</Link></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={ingredient} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></td></tr>)}
+      {resource === 'reservations' && rows.map((reservation) => <tr key={reservation.id}><td><Link className="table-primary-link" to={`/admin/reservations/${reservation.id}/edit`}>{reservation.referenceCode}</Link></td><td>{reservation.customerName}</td><td><a href={`tel:${reservation.phone}`}>{reservation.phone}</a></td><td>{dateTime(reservation.startsAt)}</td><td>{reservation.guestCount}</td><td><ReservationStatusBadge status={reservation.status} /></td><td className="admin-actions-cell"><AdminRowActions resource={resource} row={reservation} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></td></tr>)}
     </tbody></table></div><Pagination result={result} params={params} setParams={setParams} /></> : <p className="admin-empty">{params.get('q') ? `Không tìm thấy ${config.label.toLowerCase()} phù hợp.` : `Chưa có ${config.label.toLowerCase()} nào.`}</p>}
     </section>
   </>;
 }
 
-function AdminRowActions({ resource, row, returnTo }) {
-  return <div className="admin-row-actions"><Link className="table-action" to={`/admin/${resource}/${row.id}/edit`}>Sửa</Link><Link className="table-action admin-row-delete" to={`/admin/${resource}/${row.id}/delete`} state={{ from: returnTo }}>Xóa</Link></div>;
+function AdminRowActions({ resource, row, returnTo, backgroundLocation }) {
+  return <div className="admin-row-actions"><Link className="table-action" to={`/admin/${resource}/${row.id}/edit`}>Sửa</Link><Link className="table-action admin-row-delete" to={`/admin/${resource}/${row.id}/delete`} state={{ from: returnTo, backgroundLocation }}>Xóa</Link></div>;
 }
 
 function pathFor(resource) { return `/api/admin/${RESOURCES[resource].endpoint}`; }
@@ -460,6 +461,42 @@ function AdminDeletePage({ resource }) {
   const [error, setError] = React.useState('');
   const [success, setSuccess] = React.useState(false);
   const requestLocked = React.useRef(false);
+  const dialogRef = React.useRef(null);
+  const closeRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus?.();
+    };
+  }, []);
+
+  function close() {
+    if (!busy && !success) navigate(returnTo, { replace: true });
+  }
+
+  function handleDialogKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    }
+    if (event.key !== 'Tab') return;
+    const buttons = [...dialogRef.current.querySelectorAll('button:not(:disabled)')];
+    if (!buttons.length) return;
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   React.useEffect(() => {
     if (!success) return undefined;
@@ -484,21 +521,20 @@ function AdminDeletePage({ resource }) {
     }
   }
 
-  if (state.loading) return <Loading label={`Đang tải thông tin ${config.label.toLowerCase()}…`} />;
-  if (state.error) return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / XÓA</p><h1>Xóa {config.label.toLowerCase()}</h1><p>Không thể xác minh mục cần xóa.</p></div></section><ErrorState message={state.error} onRetry={state.reload} /><Link className="admin-secondary-button" to={returnTo}>Hủy</Link></>;
-
   const item = state.data;
-  const details = adminDeleteDetails(resource, item);
-  return <>
-    <section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / XÁC NHẬN</p><h1>Xóa {config.label.toLowerCase()}</h1><p>Vui lòng kiểm tra thông tin trước khi xác nhận.</p></div></section>
-    <section className="admin-panel admin-delete-panel" aria-labelledby="admin-delete-title">
-      <div className="admin-delete-warning"><span className="admin-delete-icon" aria-hidden="true">!</span><div><p className="eyebrow">THAO TÁC KHÔNG THỂ HOÀN TÁC</p><h2 id="admin-delete-title">Bạn có chắc muốn xóa mục này?</h2><p>{adminDeleteConsequence(resource)}</p></div></div>
-      <div className="admin-delete-record"><h3>{item.name || item.referenceCode}</h3>{resource === 'dishes' && item.description && <p className="admin-delete-description">{item.description}</p>}<dl className="admin-delete-details">{details.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl></div>
-      {error && <div className="form-error-summary admin-delete-error" role="alert"><strong>Không thể xóa mục này.</strong><p>{error}</p></div>}
-      {success && <p className="admin-delete-success" role="status">Đã xóa thành công. Đang chuyển về danh sách…</p>}
-      <div className="admin-delete-actions"><button className="admin-secondary-button" type="button" disabled={busy || success} onClick={() => navigate(returnTo)}>Hủy</button><button className="admin-danger-button" type="button" disabled={busy || success} onClick={confirmDelete}>{busy ? 'Đang xóa…' : success ? 'Đã xóa' : 'Xác nhận xóa'}</button></div>
+  const details = item ? adminDeleteDetails(resource, item) : [];
+  return createPortal(<div className="admin-delete-overlay" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <section className="admin-panel admin-delete-panel" role="dialog" aria-modal="true" aria-labelledby="admin-delete-title" ref={dialogRef} onKeyDown={handleDialogKeyDown}>
+      <button className="admin-delete-close" type="button" aria-label="Đóng cửa sổ xác nhận" disabled={busy || success} onClick={close} ref={closeRef}>×</button>
+      {state.loading ? <><h2 id="admin-delete-title">Xóa {config.label.toLowerCase()}</h2><Loading label={`Đang tải thông tin ${config.label.toLowerCase()}…`} /></> : state.error ? <><h2 id="admin-delete-title">Không thể xác minh mục cần xóa</h2><ErrorState message={state.error} onRetry={state.reload} /></> : item ? <>
+        <div className="admin-delete-warning"><span className="admin-delete-icon" aria-hidden="true">!</span><div><p className="eyebrow">THAO TÁC KHÔNG THỂ HOÀN TÁC</p><h2 id="admin-delete-title">Bạn có chắc muốn xóa mục này?</h2><p>{adminDeleteConsequence(resource)}</p></div></div>
+        <div className="admin-delete-record"><h3>{item.name || item.referenceCode}</h3>{resource === 'dishes' && item.description && <p className="admin-delete-description">{item.description}</p>}<dl className="admin-delete-details">{details.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl></div>
+        {error && <div className="form-error-summary admin-delete-error" role="alert"><strong>Không thể xóa mục này.</strong><p>{error}</p></div>}
+        {success && <p className="admin-delete-success" role="status">Đã xóa thành công. Đang chuyển về danh sách…</p>}
+      </> : <h2 id="admin-delete-title">Không tìm thấy mục cần xóa.</h2>}
+      <div className="admin-delete-actions"><button className="admin-secondary-button" type="button" disabled={busy || success} onClick={close}>Hủy</button>{item && !state.error && <button className="admin-danger-button" type="button" disabled={busy || success} onClick={confirmDelete}>{busy ? 'Đang xóa…' : success ? 'Đã xóa' : 'Xác nhận xóa'}</button>}</div>
     </section>
-  </>;
+  </div>, document.body);
 }
 
 function adminDeleteDetails(resource, item) {
@@ -567,7 +603,9 @@ function DishAssignmentPicker({ dishes, selected, onToggle }) {
 function MissingPage() { return <section className="error-page section-pad"><div className="wrap error-card"><p className="eyebrow">BẾP HỘI</p><h1>Trang không<br /><em>khả dụng.</em></h1><p>Địa chỉ này có thể đã thay đổi. Bạn có thể quay lại trang chủ để tiếp tục khám phá.</p><Link className="button button-dark" to="/">Về trang chủ <span aria-hidden="true">↗</span></Link></div></section>; }
 
 export default function App() {
-  return <Routes>
+  const location = useLocation();
+  const backgroundLocation = location.state?.backgroundLocation;
+  return <><Routes location={backgroundLocation || location}>
     <Route element={<PublicShell />}>
       <Route index element={<HomePage />} /><Route path="menu" element={<MenuPage />} /><Route path="dishes/:id" element={<DishPage />} /><Route path="chefs" element={<ChefsPage />} /><Route path="reservations/new" element={<ReservationPage />} />
     </Route>
@@ -581,6 +619,13 @@ export default function App() {
       </React.Fragment>)}
     </Route>
     <Route path="*" element={<MissingPage />} />
-  </Routes>;
+  </Routes>
+    {backgroundLocation && <Routes><Route path="/admin/:resource/:id/delete" element={<AdminDeleteRoute />} /></Routes>}
+  </>;
+}
+
+function AdminDeleteRoute() {
+  const { resource } = useParams();
+  return RESOURCES[resource] ? <AdminDeletePage resource={resource} /> : null;
 }
 
