@@ -1,25 +1,25 @@
 const { HttpError } = require('../lib/errors');
 const { isUuid } = require('../services/validation');
 
-const UNAVAILABLE = 'Dữ liệu không khả dụng.';
+const NOT_FOUND_MESSAGE = 'Dữ liệu không khả dụng.';
 
-function idOr404(value) {
-  if (!isUuid(value)) throw new HttpError(404, UNAVAILABLE);
+function idOrNotFound(value) {
+  if (!isUuid(value)) throw new HttpError(404, NOT_FOUND_MESSAGE);
   return value;
 }
 
 function notFoundIfEmpty(value) {
-  if (!value) throw new HttpError(404, UNAVAILABLE);
+  if (!value) throw new HttpError(404, NOT_FOUND_MESSAGE);
   return value;
 }
 
 function createAdminHandlers(services) {
   const sendList = (getData) => async (req, res) => res.json({ ok: true, data: await getData(req) });
-  const sendOne = (getData) => async (req, res) => res.json({ ok: true, data: notFoundIfEmpty(await getData(idOr404(req.params.id))) });
+  const sendOne = (getData) => async (req, res) => res.json({ ok: true, data: notFoundIfEmpty(await getData(idOrNotFound(req.params.id))) });
   const createOne = (create) => async (req, res) => res.status(201).json({ ok: true, data: await create(req.body || {}) });
-  const updateOne = (update) => async (req, res) => res.json({ ok: true, data: notFoundIfEmpty(await update(idOr404(req.params.id), req.body || {})) });
+  const updateOne = (update) => async (req, res) => res.json({ ok: true, data: notFoundIfEmpty(await update(idOrNotFound(req.params.id), req.body || {})) });
   const deleteOne = (remove) => async (req, res) => {
-    if (!await remove(idOr404(req.params.id))) throw new HttpError(404, UNAVAILABLE);
+    if (!await remove(idOrNotFound(req.params.id))) throw new HttpError(404, NOT_FOUND_MESSAGE);
     return res.json({ ok: true, data: { deleted: true } });
   };
 

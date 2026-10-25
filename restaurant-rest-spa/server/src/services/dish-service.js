@@ -2,27 +2,27 @@ const { HttpError, ValidationError, isPrismaCode, isUniqueFieldError } = require
 const { uniqueSlug } = require('../lib/slug');
 const { isUuid, validateDishInput } = require('./validation');
 
-const UNAVAILABLE = 'Dữ liệu không khả dụng.';
+const NOT_FOUND_MESSAGE = 'Dữ liệu không khả dụng.';
 
 function createDishService(model) {
   async function validateReferences(data) {
     if (!isUuid(data.categoryId) || (data.chefId && !isUuid(data.chefId)) || data.ingredientIds.some((id) => !isUuid(id))) {
-      throw new HttpError(404, UNAVAILABLE);
+      throw new HttpError(404, NOT_FOUND_MESSAGE);
     }
     const [category, chef, ingredients] = await Promise.all([
       model.findCategory(data.categoryId),
       data.chefId ? model.findChef(data.chefId) : Promise.resolve(true),
       data.ingredientIds.length ? model.findIngredients(data.ingredientIds) : Promise.resolve([])
     ]);
-    if (!category || !chef || ingredients.length !== data.ingredientIds.length) throw new HttpError(404, UNAVAILABLE);
+    if (!category || !chef || ingredients.length !== data.ingredientIds.length) throw new HttpError(404, NOT_FOUND_MESSAGE);
   }
 
   async function checked(input) {
-    if (input.categoryId && !isUuid(String(input.categoryId))) throw new HttpError(404, UNAVAILABLE);
-    if (input.chefId && !isUuid(String(input.chefId))) throw new HttpError(404, UNAVAILABLE);
+    if (input.categoryId && !isUuid(String(input.categoryId))) throw new HttpError(404, NOT_FOUND_MESSAGE);
+    if (input.chefId && !isUuid(String(input.chefId))) throw new HttpError(404, NOT_FOUND_MESSAGE);
     if (input.ingredientIds != null) {
       const values = Array.isArray(input.ingredientIds) ? input.ingredientIds : [input.ingredientIds];
-      if (values.some((id) => typeof id !== 'string' || !isUuid(id))) throw new HttpError(404, UNAVAILABLE);
+      if (values.some((id) => typeof id !== 'string' || !isUuid(id))) throw new HttpError(404, NOT_FOUND_MESSAGE);
     }
     const { data, errors } = validateDishInput(input);
     if (Object.keys(errors).length) throw new ValidationError(errors);
@@ -32,8 +32,8 @@ function createDishService(model) {
 
   return {
     async listPublic({ categoryId = '', q = '' } = {}) {
-      if (categoryId && !isUuid(categoryId)) throw new HttpError(404, UNAVAILABLE);
-      if (categoryId && !await model.findCategory(categoryId)) throw new HttpError(404, UNAVAILABLE);
+      if (categoryId && !isUuid(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
+      if (categoryId && !await model.findCategory(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       return model.listPublic({ categoryId, q: String(q || '').trim().slice(0, 100) });
     },
     async publicMenu(query = {}) {
@@ -53,7 +53,7 @@ function createDishService(model) {
         try { return await model.create({ ...data, slug }); }
         catch (error) {
           if (isUniqueFieldError(error, 'slug') && attempt < 5) continue;
-          if (isPrismaCode(error, 'P2003')) throw new HttpError(404, UNAVAILABLE);
+          if (isPrismaCode(error, 'P2003')) throw new HttpError(404, NOT_FOUND_MESSAGE);
           throw error;
         }
       }
@@ -67,7 +67,7 @@ function createDishService(model) {
       try { return await model.update(id, { ...data, slug }); }
       catch (error) {
         if (isPrismaCode(error, 'P2025')) return null;
-        if (isPrismaCode(error, 'P2003')) throw new HttpError(404, UNAVAILABLE);
+        if (isPrismaCode(error, 'P2003')) throw new HttpError(404, NOT_FOUND_MESSAGE);
         throw error;
       }
     },

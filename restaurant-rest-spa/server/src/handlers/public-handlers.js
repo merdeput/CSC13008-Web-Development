@@ -2,7 +2,7 @@ const { HttpError } = require('../lib/errors');
 const { getRestaurantConfig } = require('../lib/restaurant-config');
 const { isUuid } = require('../services/validation');
 
-const UNAVAILABLE = 'Dữ liệu không khả dụng.';
+const NOT_FOUND_MESSAGE = 'Dữ liệu không khả dụng.';
 
 function createPublicHandlers(services) {
   return {
@@ -17,9 +17,9 @@ function createPublicHandlers(services) {
       return res.json({ ok: true, data: { items, categories, total: items.length } });
     },
     async dish(req, res) {
-      if (!isUuid(req.params.id)) throw new HttpError(404, UNAVAILABLE);
+      if (!isUuid(req.params.id)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       const dish = await services.dishes.findPublicById(req.params.id);
-      if (!dish) throw new HttpError(404, UNAVAILABLE);
+      if (!dish) throw new HttpError(404, NOT_FOUND_MESSAGE);
       return res.json({ ok: true, data: dish });
     },
     async chefs(_req, res) {

@@ -8,7 +8,7 @@ function createPublicRouter(services) {
   const handlers = createPublicHandlers(services);
   const reservationLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false,
-    handler(_req, res) { return res.status(429).json({ ok: false, error: 'Bạn đã gửi nhiều yêu cầu trong thời gian ngắn. Vui lòng thử lại sau.' }); }
+    handler(_req, res) { return res.status(429).json({ error: 'Bạn đã gửi nhiều yêu cầu trong thời gian ngắn. Vui lòng thử lại sau.' }); }
   });
   router.get('/home', asyncHandler(handlers.home));
   router.get('/menu', asyncHandler(handlers.menu));
