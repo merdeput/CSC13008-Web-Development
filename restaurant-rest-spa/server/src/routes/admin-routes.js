@@ -16,6 +16,11 @@ function createAdminRouter(services) {
   router.patch('/dishes/:id', wrap(h.dishUpdate));
   router.delete('/dishes/:id', wrap(h.dishDelete));
 
+  router.get('/categories', wrap(h.categoryList));
+  router.post('/categories', wrap(h.categoryCreate));
+  router.patch('/categories/:id', wrap(h.categoryUpdate));
+  router.delete('/categories/:id', wrap(h.categoryDelete));
+
   router.get('/chefs/options', wrap(h.chefOptions));
   router.get('/chefs', wrap(h.chefList));
   router.post('/chefs', wrap(h.chefCreate));

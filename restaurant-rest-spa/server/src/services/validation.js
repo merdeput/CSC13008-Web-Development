@@ -118,6 +118,14 @@ function validateIngredientInput(input = {}) {
   return { data: { name }, errors };
 }
 
+function validateCategoryInput(input = {}) {
+  const name = asText(input.name);
+  const errors = {};
+  if (!name) errors.name = 'Vui lòng nhập tên danh mục.';
+  else if (name.length > 80) errors.name = 'Tên danh mục tối đa 80 ký tự.';
+  return { data: { name }, errors };
+}
+
 function parseReservationDateTime(date, time) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
   const parsed = new Date(`${date}T${time}:00+07:00`);
@@ -186,6 +194,7 @@ module.exports = {
   validateDishInput,
   validateChefInput,
   validateIngredientInput,
+  validateCategoryInput,
   parseReservationDateTime,
   validateReservationInput,
   validateReservationFilters

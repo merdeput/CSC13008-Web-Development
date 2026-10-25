@@ -3,12 +3,13 @@ const { createChefService } = require('./chef-service');
 const { createIngredientService } = require('./ingredient-service');
 const { createReservationService } = require('./reservation-service');
 const { createAdminService } = require('./admin-service');
+const { createCategoryService } = require('./category-service');
 
 function createServices(models) {
   return {
     dishes: createDishService(models.dishes), chefs: createChefService(models.chefs),
     ingredients: createIngredientService(models.ingredients), reservations: createReservationService(models.reservations),
-    admin: createAdminService(models.admin)
+    admin: createAdminService(models.admin), categories: createCategoryService(models.categories)
   };
 }
 

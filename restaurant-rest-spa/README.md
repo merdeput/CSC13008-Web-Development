@@ -52,7 +52,7 @@ Public endpoints include:
 - `GET /api/health`, `/api/home`, `/api/menu`, `/api/dishes/:id`, `/api/chefs`, and `/api/config`
 - `POST /api/reservations`
 
-Admin endpoints are under `/api/admin` and cover the dashboard, dishes, chefs, ingredients, and reservations. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
+Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
 
 ## API smoke checks
 

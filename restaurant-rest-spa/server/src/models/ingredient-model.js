@@ -13,7 +13,7 @@ function createIngredientModel(db) {
       const q = getAdminSearch(query.q);
       const where = q ? { name: { contains: q, mode: 'insensitive' } } : {};
       const [items, total] = await Promise.all([
-        db.ingredient.findMany({ where, orderBy: sort.orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+        db.ingredient.findMany({ where, orderBy: sort.orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: { _count: { select: { dishes: true } } } }),
         db.ingredient.count({ where })
       ]);
       return { ...pageResult(items, total, page), sortBy: sort.sortBy, sortDirection: sort.sortDirection, q };
