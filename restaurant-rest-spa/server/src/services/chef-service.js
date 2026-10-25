@@ -1,7 +1,6 @@
 const { HttpError, ValidationError, isPrismaCode } = require('../lib/errors');
 const { isUuid, validateChefInput } = require('./validation');
 
-const UNAVAILABLE = 'Dữ liệu không khả dụng.';
 
 function createChefService(model) {
   return {

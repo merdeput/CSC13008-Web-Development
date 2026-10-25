@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, details = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = details.code;
+    this.fields = details.fields || {};
   }
 }
 
@@ -25,22 +27,26 @@ export async function api(path, options = {}) {
   try { payload = await response.json(); }
   catch { throw new ApiError('Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.', response.status); }
   if (!response.ok || payload?.ok !== true) {
-    throw new ApiError(payload?.error || 'Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.', response.status);
+    const error = payload?.error;
+    if (error && typeof error === 'object') {
+      throw new ApiError(error.message || 'Yêu cầu chưa thể hoàn tất.', response.status, error);
+    }
+    throw new ApiError(typeof error === 'string' ? error : 'Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.', response.status);
   }
   return payload.data;
 }
 
 export function useLoad(path) {
-  const [state, setState] = useState({ data: null, loading: Boolean(path), error: '', version: 0 });
-  const reload = useCallback(() => setState((old) => ({ ...old, loading: true, error: '', version: old.version + 1 })), []);
+  const [state, setState] = useState({ data: null, loading: Boolean(path), error: '', errorCode: '', fields: {}, version: 0 });
+  const reload = useCallback(() => setState((old) => ({ ...old, loading: true, error: '', errorCode: '', fields: {}, version: old.version + 1 })), []);
   useEffect(() => {
-    if (!path) { setState({ data: null, loading: false, error: '', version: 0 }); return undefined; }
+    if (!path) { setState({ data: null, loading: false, error: '', errorCode: '', fields: {}, version: 0 }); return undefined; }
     const controller = new AbortController();
-    setState((old) => ({ ...old, loading: true, error: '' }));
+    setState((old) => ({ ...old, loading: true, error: '', errorCode: '', fields: {} }));
     api(path, { signal: controller.signal })
-      .then((data) => setState((old) => ({ ...old, data, loading: false, error: '' })))
+      .then((data) => setState((old) => ({ ...old, data, loading: false, error: '', errorCode: '', fields: {} })))
       .catch((error) => {
-        if (error.name !== 'AbortError') setState((old) => ({ ...old, loading: false, error: error.message }));
+        if (error.name !== 'AbortError') setState((old) => ({ ...old, loading: false, error: error.message, errorCode: error.code || '', fields: error.fields || {} }));
       });
     return () => controller.abort();
   }, [path, state.version]);

@@ -3,7 +3,7 @@ class HttpError extends Error {
     super(message);
     this.name = 'HttpError';
     this.status = status;
-    this.code = options.code;
+    this.code = options.code || (status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : undefined);
   }
 }
 

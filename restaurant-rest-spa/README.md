@@ -66,4 +66,4 @@ curl.exe -i "$apiBase/api/dishes/not-a-uuid"
 curl.exe -i -X POST "$apiBase/api/reservations" -H "Content-Type: application/json" --data-raw '{"customerName":"","phone":"x","guestCount":0,"date":"bad","time":"99:99"}'
 ```
 
-Expect HTTP 200 for health and an empty menu result, HTTP 404 for the malformed dish ID, and HTTP 400 for the invalid reservation.
+Expect HTTP 200 for health and an empty menu result. The malformed dish ID and invalid reservation also use HTTP 200, with `ok: false` and respectively `NOT_FOUND` or `VALIDATION_FAILED` in the error envelope. Validation responses include a `fields` map. Unknown API paths return HTTP 404 without `ok`; unexpected server failures return HTTP 500 without `ok`.

@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#27392e">
+  <meta name="description" content="A source-verified architecture and API walkthrough for Bếp Phố Hội An.">
+  <title>Bếp Phố Hội An — Software Engineering Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #34281f; --ink-soft: #665647; --paper: #f5ead3; --cream: #fff9eb;
+      --yellow: #dda83e; --yellow-bright: #f2ca70; --terracotta: #a94b36;
+      --rust: #8e3c2d; --olive: #496044; --moss: #354a38; --moss-deep: #27392e;
+      --admin-bg: #f1f3ed; --admin-line: #dce3d9;
+      --body-font: "Be Vietnam Pro", "Segoe UI", sans-serif;
+      --ease: cubic-bezier(.2, .72, .22, 1);
+    }
+    * { box-sizing: border-box; }
+    html { width: 100%; height: 100%; background: var(--moss-deep); }
+    body {
+      width: 100%; min-width: 320px; height: 100%; min-height: 100vh; margin: 0; padding: 0; overflow: hidden; color: var(--ink);
+      background: radial-gradient(ellipse at 18% 8%, rgba(221,168,62,.12), transparent 30rem), linear-gradient(140deg,#27392e,#1e2c24 72%);
+      font-family: var(--body-font);
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--yellow-bright); outline-offset: 3px; }
+    .presentation { display: grid; width: 100vw; height: 100vh; height: 100dvh; min-height: 0; grid-template-rows: 44px minmax(0,1fr) 48px; gap: 0; margin: 0; }
+    .deck-masthead, .deck-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-inline: 24px; color: rgba(255,249,235,.84); }
+    .deck-masthead { min-height: 36px; }
+    .brand-lockup { display: inline-flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+    .brand-mark { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid rgba(242,202,112,.72); border-radius: 50%; color: var(--cream); background: var(--moss); font-size: 14px; font-weight: 800; letter-spacing: 0; }
+    .deck-kicker { color: rgba(255,249,235,.61); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+    .deck {
+      position: relative; width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; justify-self: stretch; overflow: hidden;
+      border: 0; border-radius: 0;
+      background: radial-gradient(rgba(88,60,37,.11) .55px,transparent .72px), repeating-linear-gradient(0deg,transparent 0 8px,rgba(88,60,37,.025) 9px 10px),var(--paper);
+      background-size: 8px 8px,100% 11px,auto;
+    }
+    .slide {
+      position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto;
+      padding: clamp(22px,3vw,48px) clamp(24px,4vw,62px) clamp(16px,2vw,28px);
+      opacity: 0; visibility: hidden; transform: translateX(18px);
+      transition: opacity .3s ease,transform .36s var(--ease),visibility .36s; pointer-events: none;
+    }
+    .slide.is-active { z-index: 1; opacity: 1; visibility: visible; transform: translateX(0); pointer-events: auto; }
+    .slide-topline, .slide-footer { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; }
+    .slide-topline { padding-bottom: 12px; border-bottom: 1px solid rgba(52,40,31,.13); }
+    .section-label, .slide-number { color: var(--olive); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .slide-number { color: #95877c; letter-spacing: .08em; }
+    .slide-content { min-height: 0; overflow: auto; padding: clamp(17px,2.4vw,34px) 2px 16px; scrollbar-color: #a8b19f transparent; scrollbar-width: thin; }
+    .slide-footer { padding-top: 10px; border-top: 1px solid rgba(52,40,31,.13); color: #796d61; font-size: 10px; }
+    .slide-footer a { color: var(--rust); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+    .eyebrow { margin: 0 0 9px; color: var(--rust); font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1,h2,h3,p { overflow-wrap: anywhere; }
+    h1,h2,h3 { margin-top: 0; }
+    h1 { max-width: 18ch; margin-bottom: 12px; color: #26372c; font-size: clamp(28px,4.4vw,60px); font-weight: 800; letter-spacing: -.055em; line-height: 1.08; }
+    h2 { margin-bottom: 12px; color: #2b3b30; font-size: clamp(22px,2.6vw,34px); font-weight: 800; letter-spacing: -.04em; line-height: 1.16; }
+    h3 { margin-bottom: 7px; color: #334537; font-size: 14px; font-weight: 800; }
+    p { margin: 0 0 10px; }
+    .lede { max-width: 66ch; color: var(--ink-soft); font-size: clamp(13px,1.35vw,17px); line-height: 1.65; }
+    .small { color: var(--ink-soft); font-size: 12px; line-height: 1.55; }
+    .tiny { color: #73695f; font-size: 10px; line-height: 1.5; }
+    .source-note { margin-top: 12px; color: #766b62; font-size: 10px; line-height: 1.5; }
+    code { color: #764132; font-family: Consolas,"SFMono-Regular",monospace; overflow-wrap: anywhere; }
+    .code { overflow: auto; margin: 0; padding: 12px 14px; border: 1px solid rgba(39,57,46,.2); border-radius: 4px; color: #f6eedc; background: #24342a; font: 10px/1.65 Consolas,"SFMono-Regular",monospace; }
+    .grid-2,.grid-3,.grid-4 { display: grid; gap: 12px; }
+    .grid-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .grid-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+    .card { min-width: 0; padding: 14px; border: 1px solid rgba(52,40,31,.12); border-radius: 4px; background: rgba(255,249,235,.76); box-shadow: 0 4px 14px rgba(56,43,31,.035); }
+    .card p:last-child { margin-bottom: 0; }
+    .card-label { display: block; margin-bottom: 6px; color: var(--olive); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .bullets { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+    .bullets li { position: relative; padding-left: 17px; color: #55493f; font-size: 11px; line-height: 1.5; }
+    .bullets li::before { position: absolute; top: .42em; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); content: ""; }
+    .callout { padding: 10px 12px; border-left: 3px solid var(--terracotta); color: #594b40; background: rgba(255,249,235,.76); font-size: 10px; line-height: 1.5; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+    .tag { display: inline-flex; padding: 6px 9px; border: 1px solid rgba(73,96,68,.22); border-radius: 3px; color: var(--moss-deep); background: rgba(255,249,235,.68); font-size: 10px; font-weight: 700; }
+    .table-wrap { max-width: 100%; overflow: auto; border: 1px solid rgba(52,40,31,.13); border-radius: 4px; background: rgba(255,249,235,.8); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th,td { padding: 9px 10px; border-bottom: 1px solid rgba(52,40,31,.1); vertical-align: top; }
+    th { color: #526156; background: #edf1e9; font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    td { color: #42382f; font-size: 10px; line-height: 1.5; }
+    tr:last-child td { border-bottom: 0; }
+    .scenario-table { min-width: 1080px; table-layout: fixed; }
+    .scenario-table th:nth-child(1) { width: 8%; } .scenario-table th:nth-child(2) { width: 23%; } .scenario-table th:nth-child(3) { width: 22%; } .scenario-table th:nth-child(4) { width: 9%; } .scenario-table th:nth-child(5) { width: 38%; }
+    .scenario-table th { font-size: 10px; line-height: 1.25; }
+    .scenario-table td { font-size: 13px; line-height: 1.4; }
+    .scenario-table .method { font-size: 10px; }
+    .scenario-table .status-pill { padding: 4px 8px; font-size: 10px; }
+    .scenario-table td:first-child,.scenario-table td:nth-child(4) { white-space: nowrap; }
+    .scenario-table td:nth-child(4) { text-align: center; }
+    .scenario-table td:last-child code { display: block; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.4; }
+    .method { display: inline-block; min-width: 48px; padding: 4px 6px; border-radius: 3px; color: #fff; background: var(--moss); font: 800 9px Consolas,monospace; text-align: center; }
+    .method.post { background: var(--terracotta); } .method.patch { color: #392d1c; background: var(--yellow-bright); } .method.delete { background: #8e352e; }
+    .status-pill { display: inline-flex; padding: 4px 7px; border-radius: 999px; color: #315b3c; background: #e1efdf; font: 800 9px Consolas,monospace; white-space: nowrap; }
+    .status-pill.failure { color: #873b32; background: #f5e1dc; }
+    .tree { margin: 0; padding: 14px 16px; overflow: auto; border: 1px solid rgba(52,40,31,.12); border-radius: 4px; color: #334436; background: rgba(255,249,235,.8); font: 9px/1.66 Consolas,monospace; white-space: pre; }
+    .tree b { color: #7a412f; } .tree i { color: #7c7d68; font-style: normal; }
+    .columns { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); gap: 22px; align-items: start; }
+    .stack-list { display: grid; gap: 7px; }
+    .stack-row { display: grid; grid-template-columns: 130px minmax(0,1fr); gap: 10px; padding: 8px 10px; border-left: 3px solid var(--yellow); background: rgba(255,249,235,.7); }
+    .stack-row strong { color: #354a38; font-size: 10px; } .stack-row span { color: #594e43; font-size: 10px; line-height: 1.45; }
+    .arch-grid { display: grid; grid-template-columns: minmax(0,.9fr) 24px minmax(0,1fr) 24px minmax(0,1.2fr) 24px minmax(0,.9fr); gap: 5px; align-items: stretch; }
+    .arch-node { min-width: 0; padding: 12px; border: 1px solid rgba(52,40,31,.14); border-top: 4px solid var(--moss); border-radius: 4px; background: rgba(255,249,235,.85); }
+    .arch-node.client { border-top-color: var(--yellow); } .arch-node.express { border-top-color: var(--terracotta); } .arch-node.data { border-top-color: var(--olive); }
+    .arch-node h3 { margin-bottom: 7px; font-size: 11px; } .arch-node p,.arch-node li { color: #5a4e43; font-size: 9px; line-height: 1.5; }
+    .arch-node ul { display: grid; gap: 5px; margin: 0; padding-left: 15px; }
+    .arch-arrow { display: grid; place-items: center; color: var(--rust); font-size: 22px; font-weight: 800; }
+    .return-rail { margin: 8px; color: var(--olive); font-size: 9px; font-weight: 700; text-align: center; }
+    .route-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+    .route-chain span { padding: 5px 7px; border: 1px solid #cbd6c9; border-radius: 3px; color: #314337; background: #f7faf5; font: 9px Consolas,monospace; }
+    .route-chain b { color: var(--rust); }
+    .route-map { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .route-map>div { min-width: 0; padding: 10px; border: 1px solid rgba(52,40,31,.12); background: rgba(255,249,235,.72); }
+    .route-map h3 { margin-bottom: 6px; font-size: 10px; } .route-map p { margin: 3px 0; color: #574b41; font: 9px/1.5 Consolas,monospace; }
+    .route-map .fallback { grid-column: 1 / -1; border-left: 3px solid var(--terracotta); }
+    .sequence-scroll { max-width: 100%; overflow-x: auto; }
+    .sequence-svg { display: block; width: 100%; min-width: 680px; height: auto; border: 1px solid rgba(52,40,31,.13); border-radius: 4px; background: rgba(255,249,235,.8); }
+    .sequence-svg text { font-family: var(--body-font); fill: #3b463c; }
+    .sequence-svg .actor-label { font-size: 13px; font-weight: 800; } .sequence-svg .actor-sub { font-size: 10px; fill: #6d7165; }
+    .sequence-svg .message { font-size: 10px; fill: #55493f; } .sequence-svg .line { stroke: #74806f; stroke-dasharray: 4 5; stroke-width: 1.2; }
+    .sequence-svg .call { stroke: var(--rust); stroke-width: 1.7; } .sequence-svg .reply { stroke: var(--olive); stroke-width: 1.7; stroke-dasharray: 5 4; }
+    .sequence-svg .step-dot { fill: var(--yellow); stroke: #9a6c1d; stroke-width: 1; } .sequence-svg .step-no { font-size: 9px; font-weight: 800; }
+    .diagram-step { opacity: .25; } .slide.is-active .diagram-step { animation: reveal-line .38s ease forwards; animation-delay: var(--delay,0ms); }
+    @keyframes reveal-line { to { opacity: 1; } }
+    .error-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .error-case { padding: 10px; border: 1px solid rgba(52,40,31,.12); border-left: 3px solid var(--terracotta); background: rgba(255,249,235,.8); }
+    .error-case.tech { border-left-color: var(--olive); } .error-case h3 { margin-bottom: 5px; font-size: 10px; }
+    .error-case p { margin: 0; color: #5a4e43; font-size: 9px; line-height: 1.5; }
+    .deletion-flow { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
+    .delete-step { position: relative; min-width: 0; padding: 11px 10px; border: 1px solid rgba(52,40,31,.13); border-radius: 4px; background: rgba(255,249,235,.85); }
+    .delete-step:not(:last-child)::after { position: absolute; top: 50%; right: -10px; z-index: 1; color: var(--rust); content: "›"; font-size: 18px; font-weight: 800; }
+    .delete-step strong { display: block; margin-bottom: 5px; color: #344638; font-size: 10px; }
+    .delete-step span { display: block; color: #62574c; font-size: 9px; line-height: 1.5; }
+    .delete-outcomes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .outcome { padding: 11px; border: 1px solid rgba(52,40,31,.12); background: rgba(255,249,235,.75); }
+    .outcome.cancel { border-top: 3px solid var(--olive); } .outcome.confirm { border-top: 3px solid var(--terracotta); }
+    .outcome h3 { font-size: 10px; } .outcome p { margin: 0; color: #5c5045; font-size: 9px; line-height: 1.5; }
+    .reveal { opacity: .55; transform: translateY(7px); }
+    .slide.is-active .reveal { animation: enter .48s var(--ease) forwards; animation-delay: var(--delay,0ms); }
+    .slide.is-active .stagger>* { opacity: .45; transform: translateY(5px); animation: enter .38s var(--ease) forwards; animation-delay: calc(var(--order,0) * 65ms); }
+    @keyframes enter { to { opacity: 1; transform: translateY(0); } }
+    .deck-controls { min-height: 44px; }
+    .slide-counter { min-width: 64px; color: rgba(255,249,235,.8); font: 700 10px Consolas,monospace; letter-spacing: .08em; }
+    .counter { color: var(--cream); }
+    .control-group { display: flex; align-items: center; gap: 7px; }
+    .control { min-height: 36px; padding: 7px 11px; border: 1px solid rgba(255,249,235,.3); border-radius: 4px; color: var(--cream); background: rgba(255,249,235,.07); font-size: 10px; font-weight: 700; cursor: pointer; transition: background .16s ease,border-color .16s ease,transform .16s ease; }
+    .control:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--yellow); background: rgba(255,249,235,.15); }
+    .control:disabled { opacity: .4; cursor: not-allowed; } .control.primary { border-color: var(--yellow); color: #28372c; background: var(--yellow); }
+    .control.primary:hover:not(:disabled) { background: var(--yellow-bright); }
+    .cover-layout { display: grid; min-height: 100%; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); gap: clamp(18px,3vw,42px); align-items: center; }
+    .cover-copy h1 { max-width: 11ch; font-size: clamp(40px,6vw,80px); } .cover-copy h1 em { color: var(--terracotta); font-style: normal; }
+    .cover-image-frame { width: 100%; max-width: 900px; aspect-ratio: 1416 / 778; justify-self: end; margin: 0; overflow: hidden; background: rgba(255,249,235,.58); box-shadow: 0 18px 48px rgba(39,57,46,.2); }
+    .cover-image-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .cover-bottom { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .cover-bottom span { padding: 7px 9px; border: 1px solid rgba(73,96,68,.22); color: #3e4e40; background: rgba(255,249,235,.65); font-size: 9px; font-weight: 700; }
+    .presentation:fullscreen { width: 100vw; height: 100vh; height: 100dvh; min-height: 0; padding: 0; background: #1e2c24; }
+    @media (max-width: 900px) {
+      .deck-masthead,.deck-controls { padding-inline: 16px; }
+      .slide { padding-inline: clamp(18px,3vw,32px); } .grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .arch-grid { grid-template-columns: minmax(0,1fr) 18px minmax(0,1fr); }
+    }
+    @media (max-width: 640px) {
+      .presentation { width: 100vw; height: 100dvh; min-height: 0; grid-template-rows: 42px minmax(0,1fr) 48px; gap: 0; }
+      .deck-masthead { padding-inline: 3px; } .deck-kicker { display: none; }
+      .deck { width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; }
+      .slide { padding: 16px 16px 12px; } .slide-content { padding-top: 15px; }
+      .cover-layout,.columns,.grid-2,.grid-3 { grid-template-columns: 1fr; } .cover-layout { gap: 10px; }
+      .cover-copy h1 { max-width: 12ch; font-size: clamp(38px,12vw,60px); }
+      .cover-image-frame { width: 100%; max-width: 560px; aspect-ratio: 1416 / 778; justify-self: start; }
+      .cover-bottom { margin-top: 12px; } .cover-bottom span { font-size: 8px; }
+      .grid-4 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .route-map,.error-grid,.delete-outcomes { grid-template-columns: 1fr; }
+      .route-map .fallback { grid-column: auto; } .stack-row { grid-template-columns: 95px minmax(0,1fr); }
+      .arch-grid { grid-template-columns: minmax(0,1fr); } .arch-arrow { min-height: 16px; transform: rotate(90deg); }
+      .deletion-flow { grid-template-columns: 1fr; }
+      .delete-step:not(:last-child)::after { top: auto; right: 50%; bottom: -16px; transform: rotate(90deg); }
+      .deck-controls { gap: 6px; padding-inline: 10px; }
+      .control-group { flex: 1; justify-content: flex-end; gap: 5px; } .control { min-height: 36px; padding-inline: 8px; font-size: 9px; }
+    }
+    @media (max-width: 380px) { .slide { padding-inline: 12px; } .brand-lockup { font-size: 9px; } .slide-counter { min-width: 52px; font-size: 9px; } .control { padding-inline: 6px; font-size: 8px; } }
+    @media (prefers-reduced-motion: reduce) {
+      *,*::before,*::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      .reveal,.slide.is-active .stagger>* { opacity: 1 !important; transform: none !important; } .diagram-step { opacity: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="presentation" id="presentation">
+  <header class="deck-masthead"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true">B</span><span>BẾP PHỐ HỘI AN</span></div><span class="deck-kicker">Software Engineering · System Walkthrough</span></header>
+  <main class="deck" id="deck" aria-label="Project architecture presentation" tabindex="0">
+    <section class="slide is-active" aria-label="Slide 1: Title">
+      <div class="slide-topline"><span class="section-label">Architecture · REST API · SPA</span><span class="slide-number">01 / 17</span></div>
+      <div class="slide-content"><div class="cover-layout"><div class="cover-copy">
+        <p class="eyebrow reveal" style="--delay:0ms">Software Engineering Project</p><h1 class="reveal" style="--delay:70ms">Bếp Phố<br><em>Hội An</em></h1>
+        <p class="lede reveal" style="--delay:140ms">System architecture, REST API, and SPA behavior.</p>
+        <div class="cover-bottom reveal" style="--delay:210ms"><span>React SPA</span><span>Express REST API</span><span>Prisma + PostgreSQL</span></div>
+      </div><figure class="cover-image-frame reveal" style="--delay:160ms"><img src="./home-page.png" alt="Bếp Phố Hội An homepage featuring Cao Lầu Hội An"></figure></div></div>
+        <div class="slide-footer"><span>Architecture · REST API · SPA</span><span>29 registered API method/path pairs</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 2: Product overview" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">01 / Product</span><span class="slide-number">02 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Application scope</p><h2 class="reveal">Public and administrative functions.</h2>
+        <p class="lede reveal">Visitors browse dishes and chefs, then submit reservations. Administrators maintain restaurant data and manage requests.</p>
+        <div class="grid-2 stagger" style="margin-top:17px">
+          <article class="card" style="--order:0"><span class="card-label">Public site</span><h3>Browse and reserve</h3><ul class="bullets"><li>Featured dishes and chef profiles.</li><li>Category and text filtering; dish details.</li><li>Reservation requests with date, time, and party-size checks.</li></ul></article>
+          <article class="card" style="--order:1"><span class="card-label">Admin workspace</span><h3>Maintain records</h3><ul class="bullets"><li>Dashboard metrics and upcoming reservations.</li><li>Create and edit dishes, chefs, and ingredients.</li><li>Review reservations and update their status.</li></ul></article>
+        </div>
+        <div class="callout reveal" style="margin-top:12px">No category editor or admin authentication is implemented. Reservation search submits <code>q</code>; the model applies status and date filters only.</div>
+        <p class="source-note reveal">Evidence: <code>client/src/App.jsx</code> — <code>HomePage</code>, <code>MenuPage</code>, <code>ReservationPage</code>, <code>AdminDashboard</code>, <code>AdminList</code>, <code>RESOURCES</code>.</p>
+      </div><div class="slide-footer"><span>Purpose follows implemented views and API calls.</span><span>Public + admin routes</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 3: Technology stack" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">02 / Technology</span><span class="slide-number">03 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Technology</p><h2 class="reveal">Technology stack.</h2>
+        <div class="stack-list stagger">
+          <div class="stack-row" style="--order:0"><strong>Frontend + routing</strong><span>React 19 and React Router 7 render views through <code>BrowserRouter</code>, <code>Routes</code>, <code>Link</code>, and <code>NavLink</code>.</span></div>
+          <div class="stack-row" style="--order:1"><strong>API server</strong><span>Express 4 on Node.js. Routes register endpoints; handlers shape responses; services validate inputs and apply business rules.</span></div>
+          <div class="stack-row" style="--order:2"><strong>Database + ORM</strong><span>PostgreSQL via Prisma 7, <code>@prisma/adapter-pg</code>, and <code>pg</code>. The schema and migrations define relations.</span></div>
+          <div class="stack-row" style="--order:3"><strong>Styling</strong><span>Custom CSS in <code>styles.css</code>, <code>hoi-an.css</code>, and <code>app.css</code>. No UI library is declared.</span></div>
+          <div class="stack-row" style="--order:4"><strong>Build + middleware</strong><span>Vite 6 builds the client. Helmet, CORS, express-rate-limit, and dotenv support the server.</span></div>
+        </div>
+        <p class="source-note reveal">Runtime requirement: Node <code>&gt;=20.19</code>.</p>
+      </div><div class="slide-footer"><span>Responsibility follows manifests and imports.</span><span>JavaScript · no UI framework</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 4: Source tree" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">03 / Source map</span><span class="slide-number">04 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Source map</p><h2 class="reveal">Source structure.</h2>
+        <div class="columns">
+          <pre class="tree reveal"><b>restaurant-rest-spa/</b>
+├─ <b>client/</b>
+│  ├─ index.html             <i># document + CSS/font links</i>
+│  ├─ vite.config.js         <i># dev server and /api proxy</i>
+│  ├─ src/
+│  │  ├─ main.jsx            <i># createRoot + BrowserRouter</i>
+│  │  ├─ App.jsx             <i># shells, routes, pages, UI pieces</i>
+│  │  ├─ api.js              <i># fetch, ApiError, useLoad</i>
+│  │  └─ app.css             <i># API states + admin overrides</i>
+│  └─ public/
+│     ├─ styles.css          <i># base site styling</i>
+│     ├─ hoi-an.css          <i># brand + admin theme</i>
+│     └─ images/food-fallback.svg
+├─ <b>server/src/</b>
+│  ├─ server.js / app.js     <i># startup, middleware, mounts</i>
+│  ├─ routes/                <i># HTTP registrations</i>
+│  ├─ handlers/              <i># request/response adapters</i>
+│  ├─ services/              <i># validation + business rules</i>
+│  ├─ models/                <i># Prisma queries</i>
+│  ├─ middleware/            <i># not-found + error responses</i>
+│  └─ lib/                   <i># Prisma, errors, config, helpers</i>
+└─ <b>prisma/</b>schema.prisma + migrations</pre>
+          <div>
+            <article class="card reveal"><span class="card-label">Client interface</span><p class="small"><code>App.jsx</code> contains route pages and shared UI such as <code>Loading</code>, <code>ErrorState</code>, and <code>AdminField</code>.</p></article>
+            <article class="card reveal" style="margin-top:10px"><span class="card-label">Data path</span><p class="small"><code>routes → handlers → services → models → Prisma adapter → PostgreSQL</code></p></article>
+            <article class="card reveal" style="margin-top:10px"><span class="card-label">Repository note</span><p class="small">Dependencies and generated output are omitted.</p></article>
+          </div>
+        </div>
+      </div><div class="slide-footer"><span>Tree annotated from repository files.</span><span>Client and server folders</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 5: Architecture diagram" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">04 / Architecture</span><span class="slide-number">05 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">System architecture</p><h2 class="reveal">Client request, API processing, database access.</h2>
+        <div class="arch-grid stagger">
+          <article class="arch-node client" style="--order:0"><span class="card-label">Browser</span><h3>React SPA</h3><ul><li><code>BrowserRouter</code> selects a view.</li><li>Pages call <code>useLoad</code> or <code>api</code>.</li><li>Forms validate before submission.</li></ul></article><div class="arch-arrow" aria-hidden="true">→</div>
+          <article class="arch-node" style="--order:1"><span class="card-label">HTTP / JSON</span><h3>Client request utility</h3><ul><li>Calls <code>fetch('/api/...')</code>.</li><li>Serializes JSON request bodies.</li><li>Returns <code>data</code> or throws <code>ApiError</code>.</li></ul></article><div class="arch-arrow" aria-hidden="true">→</div>
+          <article class="arch-node express" style="--order:2"><span class="card-label">Express app</span><h3>Middleware → route → service</h3><ul><li>Helmet, CORS, 16 KB JSON parser.</li><li>Public or admin endpoint.</li><li>Handler → service → model.</li></ul></article><div class="arch-arrow" aria-hidden="true">→</div>
+          <article class="arch-node data" style="--order:3"><span class="card-label">Data layer</span><h3>Prisma → PostgreSQL</h3><ul><li>Prisma client uses PrismaPg + pg.</li><li><code>DATABASE_URL</code> supplies runtime connection.</li><li>Schema is in <code>prisma/schema.prisma</code>.</li></ul></article>
+        </div>
+        <div class="return-rail reveal">← JSON response: handler calls <code>res.json({ok:true,data})</code>; client extracts <code>data</code> and updates React state ←</div>
+        <div class="grid-3" style="margin-top:9px"><div class="callout reveal"><strong>Validation:</strong> client checks, service rules, UUID guards, and database constraints.</div><div class="callout reveal"><strong>Errors:</strong> <code>asyncHandler</code> forwards to <code>errorHandler</code>; rate-limit and not-found paths respond directly.</div><div class="callout reveal"><strong>CORS:</strong> runs before JSON parsing and routing. It does not authorize requests.</div></div>
+        <p class="source-note reveal">Evidence: <code>main.jsx</code>, <code>api.js</code>, <code>server/src/app.js</code>, <code>async-handler.js</code>, <code>services/index.js</code>, <code>models/index.js</code>, <code>lib/prisma.js</code>.</p>
+      </div><div class="slide-footer"><span>Request flows left to right; JSON returns to the browser.</span><span>No direct database calls from React</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 6: SPA routing" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">05 / Routing</span><span class="slide-number">06 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Client-side routing</p><h2 class="reveal">React Router maps URLs to views.</h2>
+        <div class="route-chain reveal"><span>URL</span><b>→</b><span>BrowserRouter</span><b>→</b><span>Routes in App.jsx</span><b>→</b><span>Shell + page</span></div>
+        <div class="route-map reveal">
+          <div><h3>PublicShell</h3><p>/ → HomePage</p><p>/menu → MenuPage</p><p>/dishes/:id → DishPage</p><p>/chefs → ChefsPage</p><p>/reservations/new → ReservationPage</p></div>
+          <div><h3>AdminShell</h3><p>/admin → AdminDashboard</p><p>/admin/:resource → AdminList</p><p>/admin/dishes/new · /admin/chefs/new · /admin/ingredients/new</p><p>/admin/:resource/:id/edit</p><p>/admin/:resource/:id/delete</p></div>
+          <div class="fallback"><h3>Fallback</h3><p>* → MissingPage</p></div>
+        </div>
+        <div class="grid-2" style="margin-top:10px"><article class="card reveal"><span class="card-label">In-app navigation</span><p class="small"><code>Link</code> and <code>NavLink</code> change history without reloading the document.</p></article><article class="card reveal"><span class="card-label">Direct URL or reload</span><p class="small">Vite serves the SPA in development. Express serves the build and HTML fallback when <code>client/dist/index.html</code> exists.</p></article></div>
+        <div class="callout reveal" style="margin-top:9px">Example: <code>/admin/dishes/:id/edit</code> loads data from <code>/api/admin/dishes/:id</code>. API routes precede the SPA fallback.</div>
+      </div><div class="slide-footer"><span><code>BrowserRouter</code> and <code>Routes</code> in <code>main.jsx</code>/<code>App.jsx</code>.</span><span>Client routes · API calls</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 7: Reservation sequence diagram" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">06 / End-to-end trace</span><span class="slide-number">07 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Representative request · POST /api/reservations</p><h2 class="reveal">Reservation request lifecycle.</h2>
+        <p class="small reveal">The trace covers validation, persistence, and the 201 response.</p>
+        <div class="sequence-scroll reveal">
+          <svg class="sequence-svg" viewBox="0 0 1180 410" role="img" aria-label="Reservation sequence: form to API client, Express route and handler, service, model and PostgreSQL, then 201 response">
+            <defs><marker id="arrowCall" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#8e3c2d"/></marker><marker id="arrowReply" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#496044"/></marker></defs>
+            <text class="actor-label" x="100" y="28" text-anchor="middle">ReservationPage</text><text class="actor-sub" x="100" y="45" text-anchor="middle">submit()</text>
+            <text class="actor-label" x="295" y="28" text-anchor="middle">api.js</text><text class="actor-sub" x="295" y="45" text-anchor="middle">fetch + parse</text>
+            <text class="actor-label" x="490" y="28" text-anchor="middle">Express</text><text class="actor-sub" x="490" y="45" text-anchor="middle">app + router</text>
+            <text class="actor-label" x="685" y="28" text-anchor="middle">Handler</text><text class="actor-sub" x="685" y="45" text-anchor="middle">createReservation</text>
+            <text class="actor-label" x="880" y="28" text-anchor="middle">Service</text><text class="actor-sub" x="880" y="45" text-anchor="middle">validate + rules</text>
+            <text class="actor-label" x="1075" y="28" text-anchor="middle">Model / DB</text><text class="actor-sub" x="1075" y="45" text-anchor="middle">PrismaPg → Postgres</text>
+            <line class="line" x1="100" y1="60" x2="100" y2="390"/><line class="line" x1="295" y1="60" x2="295" y2="390"/><line class="line" x1="490" y1="60" x2="490" y2="390"/><line class="line" x1="685" y1="60" x2="685" y2="390"/><line class="line" x1="880" y1="60" x2="880" y2="390"/><line class="line" x1="1075" y1="60" x2="1075" y2="390"/>
+            <g class="diagram-step" style="--delay:80ms"><circle class="step-dot" cx="25" cy="89" r="10"/><text class="step-no" x="25" y="92" text-anchor="middle">1</text><line class="call" x1="105" y1="89" x2="287" y2="89" marker-end="url(#arrowCall)"/><text class="message" x="196" y="81" text-anchor="middle">FormData → JSON body</text></g>
+            <g class="diagram-step" style="--delay:150ms"><circle class="step-dot" cx="25" cy="128" r="10"/><text class="step-no" x="25" y="131" text-anchor="middle">2</text><line class="call" x1="300" y1="128" x2="482" y2="128" marker-end="url(#arrowCall)"/><text class="message" x="391" y="120" text-anchor="middle">POST /api/reservations</text></g>
+            <g class="diagram-step" style="--delay:220ms"><circle class="step-dot" cx="25" cy="167" r="10"/><text class="step-no" x="25" y="170" text-anchor="middle">3</text><line class="call" x1="495" y1="167" x2="677" y2="167" marker-end="url(#arrowCall)"/><text class="message" x="586" y="159" text-anchor="middle">CORS/parser → router + limiter</text></g>
+            <g class="diagram-step" style="--delay:290ms"><circle class="step-dot" cx="25" cy="206" r="10"/><text class="step-no" x="25" y="209" text-anchor="middle">4</text><line class="call" x1="690" y1="206" x2="872" y2="206" marker-end="url(#arrowCall)"/><text class="message" x="781" y="198" text-anchor="middle">service.create(body)</text></g>
+            <g class="diagram-step" style="--delay:360ms"><circle class="step-dot" cx="25" cy="245" r="10"/><text class="step-no" x="25" y="248" text-anchor="middle">5</text><line class="call" x1="885" y1="245" x2="1067" y2="245" marker-end="url(#arrowCall)"/><text class="message" x="976" y="237" text-anchor="middle">validate → model.create</text></g>
+            <g class="diagram-step" style="--delay:430ms"><circle class="step-dot" cx="25" cy="284" r="10"/><text class="step-no" x="25" y="287" text-anchor="middle">6</text><line class="reply" x1="1068" y1="284" x2="886" y2="284" marker-end="url(#arrowReply)"/><text class="message" x="976" y="276" text-anchor="middle">Reservation row</text></g>
+            <g class="diagram-step" style="--delay:480ms"><circle class="step-dot" cx="25" cy="323" r="10"/><text class="step-no" x="25" y="326" text-anchor="middle">7</text><line class="reply" x1="875" y1="323" x2="692" y2="323" marker-end="url(#arrowReply)"/><text class="message" x="783" y="315" text-anchor="middle">created reservation</text></g>
+            <g class="diagram-step" style="--delay:530ms"><circle class="step-dot" cx="25" cy="350" r="10"/><text class="step-no" x="25" y="353" text-anchor="middle">8</text><line class="reply" x1="680" y1="350" x2="300" y2="350" marker-end="url(#arrowReply)"/><text class="message" x="490" y="342" text-anchor="middle">201 JSON {ok:true,data:{id,referenceCode,status}}</text></g>
+            <g class="diagram-step" style="--delay:580ms"><circle class="step-dot" cx="25" cy="377" r="10"/><text class="step-no" x="25" y="380" text-anchor="middle">9</text><line class="reply" x1="287" y1="377" x2="108" y2="377" marker-end="url(#arrowReply)"/><text class="message" x="197" y="369" text-anchor="middle">setSuccess(code), reset form</text></g>
+          </svg>
+        </div>
+        <p class="source-note reveal">Source: <code>client/src/App.jsx</code> (<code>ReservationPage.submit</code>) → <code>client/src/api.js</code> (<code>api</code>) → <code>server/src/app.js</code> → <code>public-routes.js</code> → <code>public-handlers.js</code> (<code>createReservation</code>) → <code>reservation-service.js</code> → <code>reservation-model.js</code>.</p>
+      </div><div class="slide-footer"><span>Development proxy: Vite :5173 → Express :3000.</span><span>201 Created</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 8: Response contract" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">07 / Response contract</span><span class="slide-number">08 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">HTTP contract</p><h2 class="reveal">API response contract.</h2>
+        <div class="grid-2">
+          <div class="reveal"><span class="card-label">Success</span><pre class="code">HTTP 200
+{"ok":true,"data":{"status":"available"}}</pre><p class="small" style="margin-top:8px">Creates explicitly use HTTP 201. Handler builders call <code>res.json</code>; lists and records sit inside <code>data</code>.</p></div>
+          <div class="reveal"><span class="card-label">Business error</span><pre class="code">HTTP 200
+{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"name":"&lt;field message&gt;"}}}</pre><p class="small" style="margin-top:8px">Missing records use <code>NOT_FOUND</code>; invalid fields use <code>VALIDATION_FAILED</code>.</p></div>
+        </div>
+        <div class="grid-3" style="margin-top:12px"><article class="card reveal"><span class="card-label">Technical errors</span><p class="small">Unknown API paths return <code>404</code>; system failures return <code>500</code>. Bodies omit <code>ok</code>.</p></article><article class="card reveal"><span class="card-label">Client handling</span><p class="small"><code>api()</code> returns <code>data</code> or throws <code>ApiError</code> with code and fields.</p></article><article class="card reveal"><span class="card-label">Transport failure</span><p class="small">A rejected fetch has no HTTP response; status is <code>0</code>.</p></article></div>
+        <div class="callout reveal" style="margin-top:10px">The public list is <code>GET /api/menu</code>; dish detail uses UUID <code>:id</code>. Admin CRUD uses <code>/api/admin/dishes/:id</code>. Business errors use HTTP 200; technical errors use HTTP status codes.</div>
+        <p class="source-note reveal">Evidence: <code>admin-handlers.js</code>, <code>public-handlers.js</code>, <code>error-handler.js</code>, <code>lib/errors.js</code>, <code>client/src/api.js</code>. Table ellipses and angle-bracket labels denote variable data or messages.</p>
+      </div><div class="slide-footer"><span>Full audited table: <a href="api-response-reference.md">api-response-reference.md</a></span><span>Business errors use HTTP 200</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 9: Public API endpoints" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">08 / Endpoint inventory · Public</span><span class="slide-number">09 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Public API</p><h2 class="reveal">Public endpoints · 7 routes.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/health</code></td><td>Health check</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"status":"available"}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/home</code></td><td>Home data loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"dishes":[...],"chefs":[...]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/menu</code></td><td>Menu loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"categories":[...],"total":n}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/menu?categoryId=bad</code></td><td>Category ID invalid or unknown</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/dishes/:id</code></td><td>Published dish found</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...dish}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/dishes/:id</code></td><td>ID malformed, missing, or unpublished</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/chefs</code></td><td>Published chefs listed</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"total":n}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/config</code></td><td>Restaurant configuration loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"timeZone":"...","openingTime":"...","closingTime":"...","maxPartySize":n}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>Reservation created</td><td><span class="status-pill">201</span></td><td><code>{"ok":true,"data":{"id":"...","referenceCode":"...","status":"PENDING"}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>Input validation failed</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"customerName":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>Reference-code uniqueness conflict after retries</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>More than 5 requests per 15 min</td><td><span class="status-pill failure">429</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/unknown</code></td><td>Unknown API route</td><td><span class="status-pill failure">404</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+        </tbody></table></div>
+        <div class="callout reveal" style="margin-top:9px">The public menu route is <code>GET /api/menu</code>; dish detail uses UUID <code>:id</code>. There is no public <code>/api/dishes</code> list or slug route. Business failures use HTTP 200 with an error code; technical failures omit <code>ok</code>.</div>
+      </div><div class="slide-footer"><span>13 scenarios · 7 registered public routes</span><span>Public API</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 10: Admin dashboard and dishes" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">09 / Endpoint inventory · Admin</span><span class="slide-number">10 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Dashboard and dishes</p><h2 class="reveal">Admin endpoints · 7 of 22.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dashboard</code></td><td>Dashboard loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"counts":{...},"upcoming":[...]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes/options</code></td><td>Form options loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"categories":[...],"ingredients":[...],"chefs":[...]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes</code></td><td>Dish list loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"total":n,"page":n,"pageSize":10,"pageCount":n,"sortBy":"...","sortDirection":"...","q":"..."}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>Dish created</td><td><span class="status-pill">201</span></td><td><code>{"ok":true,"data":{...dish}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>Invalid dish fields</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"name":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>Invalid or unavailable relation ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>Slug conflict after retries</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes/:id</code></td><td>Dish found</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...dish}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/dishes/:id</code></td><td>Dish updated</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...dish}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/dishes/:id</code></td><td>Invalid fields</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"name":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/dishes/:id</code></td><td>Malformed/missing ID or unavailable relation</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/dishes/:id</code></td><td>Unique slug conflict</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/dishes/:id</code></td><td>Dish deleted</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"deleted":true}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/dishes/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+        </tbody></table></div>
+      </div><div class="slide-footer"><span>7 registered route pairs · 15 scenarios shown</span><span>Dashboard + dishes</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 11: Chef endpoints" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">10 / Endpoint inventory · Admin</span><span class="slide-number">11 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Chefs</p><h2 class="reveal">Chef management · 6 routes.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/chefs/options</code></td><td>Assignment options loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"dishes":[...]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/chefs</code></td><td>Chef list loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"total":n,"page":n,"pageSize":10,"pageCount":n,...}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/chefs</code></td><td>Chef created</td><td><span class="status-pill">201</span></td><td><code>{"ok":true,"data":{...chef}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/chefs</code></td><td>Invalid fields or dish IDs</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"dishIds":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/chefs/:id</code></td><td>Chef found</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...chef,"dishes":[...]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/chefs/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/chefs/:id</code></td><td>Chef updated</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...chef}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/chefs/:id</code></td><td>Invalid fields or dish IDs</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"dishIds":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/chefs/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/chefs/:id</code></td><td>Chef deleted; dishes are unassigned</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"deleted":true}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/chefs/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/chefs/:id</code></td><td>Database relation conflict (if reported)</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+        </tbody></table></div>
+      </div><div class="slide-footer"><span>6 registered route pairs · 12 scenarios shown</span><span>Chef API</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 12: Ingredient endpoints" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">11 / Endpoint inventory · Admin</span><span class="slide-number">12 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Ingredients</p><h2 class="reveal">Ingredient management · 5 routes.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/ingredients</code></td><td>Ingredient list loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"total":n,"page":n,"pageSize":10,...}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/ingredients</code></td><td>Ingredient created</td><td><span class="status-pill">201</span></td><td><code>{"ok":true,"data":{...ingredient}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/ingredients</code></td><td>Name missing, too long, or duplicated</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"name":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Ingredient found</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"id":"...","name":"...","dishes":[{"ingredientId":"...","dishId":"...","dish":{"id":"...","name":"..."}}]}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Ingredient updated</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...ingredient}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Name invalid or duplicated</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"name":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Ingredient deleted</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"deleted":true}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Ingredient is referenced by a dish</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+        </tbody></table></div>
+      </div><div class="slide-footer"><span>5 registered route pairs · 11 scenarios shown</span><span>Ingredient API</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 13: Reservation admin endpoints" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">12 / Endpoint inventory · Admin</span><span class="slide-number">13 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Reservations</p><h2 class="reveal">Reservation management · 4 routes.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/reservations</code></td><td>Filtered list loaded</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"items":[...],"total":n,"page":n,"pageSize":10,"pageCount":n,"filters":{"status":"...","from":"...","to":"..."},...}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/reservations</code></td><td>Invalid filter or reversed date range</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"to":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/reservations/:id</code></td><td>Reservation found</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...reservation}}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/reservations/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/reservations/:id</code></td><td>Status updated</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{...reservation}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/reservations/:id</code></td><td>Invalid fields</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"status":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/reservations/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/reservations/:id</code></td><td>Invalid status transition</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td><code>/api/admin/reservations/:id</code></td><td>Concurrent status change</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/reservations/:id</code></td><td>Reservation deleted</td><td><span class="status-pill">200</span></td><td><code>{"ok":true,"data":{"deleted":true}}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/reservations/:id</code></td><td>Malformed or missing ID</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"NOT_FOUND","message":"&lt;message&gt;"}}</code></td></tr>
+        </tbody></table></div>
+        <p class="source-note reveal">Transitions: <code>PENDING</code> → <code>CONFIRMED</code>/<code>CANCELLED</code>; <code>CONFIRMED</code> → <code>SEATED</code>/<code>CANCELLED</code>/<code>NO_SHOW</code>; <code>SEATED</code> → <code>COMPLETED</code>.</p>
+      </div><div class="slide-footer"><span>4 registered route pairs · 11 scenarios shown</span><span>Reservation API</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 14: Error classification" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">13 / Error handling</span><span class="slide-number">14 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Error handling</p><h2 class="reveal">HTTP status and application error.</h2>
+        <div class="table-wrap reveal"><table class="scenario-table"><thead><tr><th>Method</th><th>Endpoint</th><th>Scenario</th><th>HTTP Status</th><th>Response JSON</th></tr></thead><tbody>
+          <tr><td><span class="method">GET</span></td><td><code>/api/not-a-route</code></td><td>Unknown API path; custom not-found middleware</td><td><span class="status-pill failure">404</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>Invalid reservation fields</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"VALIDATION_FAILED","message":"&lt;message&gt;","fields":{"customerName":"&lt;field message&gt;"}}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>Malformed JSON body</td><td><span class="status-pill failure">400</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/admin/dishes</code></td><td>JSON body exceeds 16 KB</td><td><span class="status-pill failure">413</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td><code>/api/admin/ingredients/:id</code></td><td>Ingredient is in use</td><td><span class="status-pill failure">200</span></td><td><code>{"ok":false,"error":{"code":"CONFLICT","message":"&lt;message&gt;"}}</code></td></tr>
+          <tr><td><span class="method post">POST</span></td><td><code>/api/reservations</code></td><td>Rate limit exceeded</td><td><span class="status-pill failure">429</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes</code></td><td>Unexpected server or database error</td><td><span class="status-pill failure">500</span></td><td><code>{"error":"&lt;message&gt;"}</code></td></tr>
+          <tr><td><span class="method">GET</span></td><td><code>/api/admin/dishes</code></td><td>API process unavailable</td><td><span class="status-pill failure">No response</span></td><td><code>No HTTP response; fetch rejects</code></td></tr>
+        </tbody></table></div>
+        <div class="callout reveal" style="margin-top:9px">Business errors use HTTP 200 with <code>ok:false</code>, a code, and field messages when relevant. Unknown API paths return 404 and system failures return 500 without <code>ok</code>. A network failure has no response; <code>api.js</code> sets <code>ApiError.status = 0</code>.</div>
+      </div><div class="slide-footer"><span>Business and technical errors have distinct response shapes.</span><span>Error response scenarios</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 15: Admin create and update sequence" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">14 / CRUD flow</span><span class="slide-number">15 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Admin workflow · dish</p><h2 class="reveal">Create and update operations.</h2>
+        <div class="sequence-scroll reveal">
+          <svg class="sequence-svg" viewBox="0 0 1000 370" role="img" aria-label="Admin form to api.js, Express admin route and handler, dish service, model and database, then record or error">
+            <defs><marker id="adminCall" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#8e3c2d"/></marker><marker id="adminReply" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#496044"/></marker></defs>
+            <text class="actor-label" x="110" y="27" text-anchor="middle">AdminForm</text><text class="actor-sub" x="110" y="43" text-anchor="middle">controlled state</text><text class="actor-label" x="305" y="27" text-anchor="middle">api.js</text><text class="actor-sub" x="305" y="43" text-anchor="middle">JSON fetch</text><text class="actor-label" x="500" y="27" text-anchor="middle">Admin route</text><text class="actor-sub" x="500" y="43" text-anchor="middle">handler</text><text class="actor-label" x="695" y="27" text-anchor="middle">Dish service</text><text class="actor-sub" x="695" y="43" text-anchor="middle">validate + references</text><text class="actor-label" x="890" y="27" text-anchor="middle">Model / DB</text><text class="actor-sub" x="890" y="43" text-anchor="middle">Prisma</text>
+            <line class="line" x1="110" y1="55" x2="110" y2="350"/><line class="line" x1="305" y1="55" x2="305" y2="350"/><line class="line" x1="500" y1="55" x2="500" y2="350"/><line class="line" x1="695" y1="55" x2="695" y2="350"/><line class="line" x1="890" y1="55" x2="890" y2="350"/>
+            <g class="diagram-step" style="--delay:80ms"><circle class="step-dot" cx="25" cy="84" r="10"/><text class="step-no" x="25" y="87" text-anchor="middle">1</text><line class="call" x1="116" y1="84" x2="297" y2="84" marker-end="url(#adminCall)"/><text class="message" x="207" y="76" text-anchor="middle">POST create / PATCH edit</text></g>
+            <g class="diagram-step" style="--delay:160ms"><circle class="step-dot" cx="25" cy="124" r="10"/><text class="step-no" x="25" y="127" text-anchor="middle">2</text><line class="call" x1="310" y1="124" x2="492" y2="124" marker-end="url(#adminCall)"/><text class="message" x="401" y="116" text-anchor="middle">JSON → createOne / updateOne</text></g>
+            <g class="diagram-step" style="--delay:240ms"><circle class="step-dot" cx="25" cy="164" r="10"/><text class="step-no" x="25" y="167" text-anchor="middle">3</text><line class="call" x1="505" y1="164" x2="687" y2="164" marker-end="url(#adminCall)"/><text class="message" x="596" y="156" text-anchor="middle">checked(form) + references</text></g>
+            <g class="diagram-step" style="--delay:320ms"><circle class="step-dot" cx="25" cy="204" r="10"/><text class="step-no" x="25" y="207" text-anchor="middle">4</text><line class="call" x1="700" y1="204" x2="882" y2="204" marker-end="url(#adminCall)"/><text class="message" x="791" y="196" text-anchor="middle">create / nested update</text></g>
+            <g class="diagram-step" style="--delay:400ms"><circle class="step-dot" cx="25" cy="244" r="10"/><text class="step-no" x="25" y="247" text-anchor="middle">5</text><line class="reply" x1="882" y1="244" x2="506" y2="244" marker-end="url(#adminReply)"/><text class="message" x="694" y="236" text-anchor="middle">Dish with relations</text></g>
+            <g class="diagram-step" style="--delay:480ms"><circle class="step-dot" cx="25" cy="284" r="10"/><text class="step-no" x="25" y="287" text-anchor="middle">6</text><line class="reply" x1="494" y1="284" x2="311" y2="284" marker-end="url(#adminReply)"/><text class="message" x="402" y="276" text-anchor="middle">201 create / 200 update</text></g>
+            <g class="diagram-step" style="--delay:560ms"><circle class="step-dot" cx="25" cy="324" r="10"/><text class="step-no" x="25" y="327" text-anchor="middle">7</text><line class="reply" x1="298" y1="324" x2="118" y2="324" marker-end="url(#adminReply)"/><text class="message" x="208" y="316" text-anchor="middle">success → list; failure → error, keep form</text></g>
+          </svg>
+        </div>
+        <div class="grid-3" style="margin-top:10px"><div class="callout reveal">Native constraints check required values, types, and lengths.</div><div class="callout reveal"><code>dish-service.checked</code> validates fields and references.</div><div class="callout reveal">Failure retains form state; success opens the dish list.</div></div>
+        <p class="source-note reveal">Sources: <code>App.jsx</code>, <code>admin-handlers.js</code>, <code>dish-service.js</code>, <code>dish-model.js</code>.</p>
+      </div><div class="slide-footer"><span>Reservations support update only.</span><span>201 create · 200 update</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 16: Deletion confirmation" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">15 / Destructive actions</span><span class="slide-number">16 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">Deletion workflow</p><h2 class="reveal">Deletion requires confirmation.</h2>
+        <div class="deletion-flow stagger">
+          <div class="delete-step" style="--order:0"><strong>1 · Listing</strong><span>Delete opens <code>/admin/:resource/:id/delete</code>.</span></div>
+          <div class="delete-step" style="--order:1"><strong>2 · Review</strong><span>The page loads the record and shows its details.</span></div>
+          <div class="delete-step" style="--order:2"><strong>3 · Cancel</strong><span>Return to the previous or resource list. No request is sent.</span></div>
+          <div class="delete-step" style="--order:3"><strong>4 · Confirm</strong><span>The button sends the DELETE request.</span></div>
+          <div class="delete-step" style="--order:4"><strong>5 · Result</strong><span>Success redirects; failure remains visible.</span></div>
+        </div>
+        <div class="delete-outcomes"><article class="outcome cancel reveal"><h3>Cancel</h3><p>Returns to router state or <code>/admin/:resource</code>.</p></article><article class="outcome confirm reveal"><h3>Safeguards</h3><p>Actions disable while pending. A ref lock blocks duplicate requests. Page load never deletes.</p></article></div>
+        <div class="tag-row reveal"><span class="tag">Dishes</span><span class="tag">Chefs</span><span class="tag">Ingredients</span><span class="tag">Reservations</span><span class="tag">UUID :id</span></div>
+        <p class="source-note reveal">Client: <code>AdminRowActions</code>, <code>AdminDeletePage</code>, <code>adminDeleteDetails</code>. Server: delete routes, <code>deleteOne</code>, resource services.</p>
+      </div><div class="slide-footer"><span>Ingredient constraint errors remain visible.</span><span>Cancel · Confirm</span></div>
+    </section>
+
+    <section class="slide" aria-label="Slide 17: CORS and deployment" aria-hidden="true" inert>
+      <div class="slide-topline"><span class="section-label">16 / Browser boundary</span><span class="slide-number">17 / 17</span></div>
+      <div class="slide-content"><p class="eyebrow reveal">CORS and deployment</p><h2 class="reveal">CORS origin policy and deployment.</h2>
+        <div class="columns">
+          <div><span class="card-label">Configured policy</span><pre class="code reveal">CLIENT_ORIGIN
+default: http://localhost:5173
+comma-separated exact matches
+
+methods: GET, POST, PATCH, DELETE, OPTIONS
+allowed headers: Content-Type
+credentials: not enabled</pre>
+            <div class="callout reveal" style="margin-top:9px">Allowed origin receives <code>Access-Control-Allow-Origin: http://localhost:5173</code> and <code>Vary: Origin</code>. Preflight returns 204 with allowed methods and headers.</div>
+          </div>
+          <div><article class="card reveal"><span class="card-label">Disallowed origin</span><p class="small">Express continues without CORS headers. Simple requests may execute, but browser code cannot read the response. Failed preflight blocks the follow-up request.</p></article><article class="card reveal" style="margin-top:9px"><span class="card-label">Purpose</span><p class="small">CORS controls browser access to cross-origin responses. It is not authentication; no admin auth middleware is registered.</p></article></div>
+        </div>
+        <div class="grid-2" style="margin-top:10px"><div class="card reveal"><span class="card-label">Development</span><p class="small">Vite :5173 proxies <code>/api</code> to Express :3000.</p></div><div class="card reveal"><span class="card-label">Production</span><p class="small">Express serves the client build and SPA fallback when present. Separate origins must match <code>CLIENT_ORIGIN</code>.</p></div></div>
+        <p class="source-note reveal">Evidence: <code>server/src/app.js</code> origin callback; installed CORS defaults; <code>client/vite.config.js</code>; optional static fallback in <code>app.js</code>.</p>
+      </div><div class="slide-footer"><span>Full API reference: <a href="api-response-reference.md">api-response-reference.md</a></span><span>Discussion</span></div>
+    </section>
+  </main>
+  <footer class="deck-controls" aria-label="Presentation controls">
+    <output class="slide-counter" id="slideCounter" aria-label="Current slide" aria-live="polite">01 / 17</output>
+    <div class="control-group"><button class="control" id="previousSlide" type="button" aria-label="Previous slide">← Previous</button><button class="control primary" id="nextSlide" type="button" aria-label="Next slide">Next →</button><button class="control" id="fullscreen" type="button" aria-label="Enter fullscreen presentation">⛶ Fullscreen</button></div>
+  </footer>
+</div>
+<script>
+(function () {
+  "use strict";
+  var presentation = document.getElementById("presentation");
+  var deck = document.getElementById("deck");
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(".slide"));
+  var previous = document.getElementById("previousSlide");
+  var next = document.getElementById("nextSlide");
+  var fullscreen = document.getElementById("fullscreen");
+  var counter = document.getElementById("slideCounter");
+  var index = 0;
+  var total = slides.length;
+  var initialized = false;
+  function showSlide(target, direction) {
+    var nextIndex = Math.max(0, Math.min(total - 1, target));
+    if (nextIndex === index && initialized) return;
+    slides.forEach(function (slide, slideIndex) {
+      slide.classList.remove("is-active");
+      slide.setAttribute("aria-hidden", slideIndex === nextIndex ? "false" : "true");
+      slide.inert = slideIndex !== nextIndex;
+    });
+    index = nextIndex;
+    initialized = true;
+    slides[index].classList.add("is-active");
+    counter.textContent = String(index + 1).padStart(2,"0") + " / " + String(total).padStart(2,"0");
+    previous.disabled = index === 0;
+    next.disabled = index === total - 1;
+    slides[index].querySelector(".slide-content").scrollTop = 0;
+    if (direction) slides[index].setAttribute("data-enter-direction", direction);
+  }
+  previous.addEventListener("click", function () { showSlide(index - 1,"back"); });
+  next.addEventListener("click", function () { showSlide(index + 1,"next"); });
+  document.addEventListener("keydown", function (event) {
+    var target = event.target;
+    if (target && (target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(target.tagName))) return;
+    if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") { event.preventDefault(); showSlide(index + 1,"next"); }
+    else if (event.key === "ArrowLeft" || event.key === "PageUp") { event.preventDefault(); showSlide(index - 1,"back"); }
+    else if (event.key === "Home") { event.preventDefault(); showSlide(0,"back"); }
+    else if (event.key === "End") { event.preventDefault(); showSlide(total - 1,"next"); }
+  });
+  fullscreen.addEventListener("click", function () {
+    if (!document.fullscreenElement && presentation.requestFullscreen) presentation.requestFullscreen();
+    else if (document.exitFullscreen) document.exitFullscreen();
+  });
+  document.addEventListener("fullscreenchange", function () {
+    var active = Boolean(document.fullscreenElement);
+    fullscreen.textContent = active ? "⛶ Exit fullscreen" : "⛶ Fullscreen";
+    fullscreen.setAttribute("aria-label", active ? "Exit fullscreen presentation" : "Enter fullscreen presentation");
+  });
+  showSlide(0,"next");
+}());
+</script>
+</body>
+</html>
