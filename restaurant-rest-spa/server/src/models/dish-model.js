@@ -17,84 +17,122 @@ const adminSorts = {
   updatedAt: (direction) => [{ updatedAt: direction }, { id: 'asc' }]
 };
 
+function fuzzySearchOptions(searchText) {
+  const characters = Array.from(searchText).length;
+  const tokens = searchText.match(/[\p{L}\p{N}]+/gu) || [];
+  const quotedPhrase = /"[^"]+"/u.test(searchText);
+  const canFuzzyMatch = characters >= 4 && !quotedPhrase;
+  const canFuzzyMatchDescription = canFuzzyMatch && characters >= 8 && tokens.length >= 2 &&
+    tokens.every((token) => Array.from(token).length >= 3);
+
+  return { canFuzzyMatch, canFuzzyMatchDescription };
+}
+
 function createDishModel(db) {
   return {
     async listPublic({ categoryId = '', q = '', page = 1, pageSize = 6 } = {}) {
       const searchText = String(q || '').trim();
       if (searchText) {
+        const { canFuzzyMatch, canFuzzyMatchDescription } = fuzzySearchOptions(searchText);
         const categoryFilter = categoryId
           ? Prisma.sql`AND d."categoryId" = CAST(${categoryId} AS uuid)`
           : Prisma.empty;
-        const fuzzyMatches = searchText.length >= 3 ? Prisma.sql`
+        const fuzzyMatches = canFuzzyMatch ? Prisma.sql`
             UNION ALL
 
-            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
-              extensions.similarity(d."name", q.search_text) AS similarity_score
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", 20 AS match_tier,
+              extensions.similarity(extensions.unaccent(d."name"), extensions.unaccent(q.search_text)) AS similarity_score
             FROM "Dish" AS d
             CROSS JOIN parsed_query AS q
             WHERE d."isPublished" = true
               ${categoryFilter}
-              AND d."name" OPERATOR(extensions.%) q.search_text
+              AND extensions.similarity(extensions.unaccent(d."name"), extensions.unaccent(q.search_text)) >= 0.4
+
+            ${canFuzzyMatchDescription ? Prisma.sql`
+              UNION ALL
+
+              SELECT d."id", d."isFeatured" AS is_featured, d."name", 25 AS match_tier,
+                extensions.word_similarity(extensions.unaccent(q.search_text), extensions.unaccent(d."description")) AS similarity_score
+              FROM "Dish" AS d
+              CROSS JOIN parsed_query AS q
+              WHERE d."isPublished" = true
+                ${categoryFilter}
+                AND extensions.word_similarity(extensions.unaccent(q.search_text), extensions.unaccent(d."description")) >= 0.68
+            ` : Prisma.empty}
 
             UNION ALL
 
-            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
-              extensions.word_similarity(q.search_text, d."description") AS similarity_score
-            FROM "Dish" AS d
-            CROSS JOIN parsed_query AS q
-            WHERE d."isPublished" = true
-              ${categoryFilter}
-              AND q.search_text OPERATOR(extensions.<%) d."description"
-
-            UNION ALL
-
-            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
-              extensions.similarity(i."name", q.search_text) AS similarity_score
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", 30 AS match_tier,
+              extensions.similarity(extensions.unaccent(i."name"), extensions.unaccent(q.search_text)) AS similarity_score
             FROM "Ingredient" AS i
             JOIN "DishIngredient" AS di ON di."ingredientId" = i."id"
             JOIN "Dish" AS d ON d."id" = di."dishId"
             CROSS JOIN parsed_query AS q
             WHERE d."isPublished" = true
               ${categoryFilter}
-              AND i."name" OPERATOR(extensions.%) q.search_text
+              AND extensions.similarity(extensions.unaccent(i."name"), extensions.unaccent(q.search_text)) >= 0.4
           ` : Prisma.empty;
         const matches = await db.$queryRaw`
           WITH parsed_query AS (
-            SELECT websearch_to_tsquery('simple', ${searchText}) AS terms, ${searchText}::text AS search_text
+            SELECT websearch_to_tsquery('public.menu_search_unaccent', ${searchText}) AS terms,
+              ${searchText}::text AS search_text
           ), candidates AS (
-            SELECT d."id", d."isFeatured" AS is_featured, d."name", true AS exact_match,
-              0::real AS similarity_score
+            SELECT d."id", d."isFeatured" AS is_featured, d."name",
+              CASE
+                WHEN to_tsvector('public.menu_search_unaccent', COALESCE(d."name", '')) =
+                  to_tsvector('public.menu_search_unaccent', q.search_text) THEN 50
+                ELSE 40
+              END AS match_tier,
+              ts_rank_cd(to_tsvector('public.menu_search_unaccent', COALESCE(d."name", '')), q.terms) AS similarity_score
             FROM "Dish" AS d
             CROSS JOIN parsed_query AS q
             WHERE d."isPublished" = true
               ${categoryFilter}
-              AND to_tsvector('simple', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')) @@ q.terms
+              AND to_tsvector('public.menu_search_unaccent', COALESCE(d."name", '')) @@ q.terms
 
-            UNION
+            UNION ALL
 
-            SELECT d."id", d."isFeatured" AS is_featured, d."name", true AS exact_match,
-              0::real AS similarity_score
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", 35 AS match_tier,
+              ts_rank_cd(to_tsvector('public.menu_search_unaccent', COALESCE(i."name", '')), q.terms) AS similarity_score
             FROM "Ingredient" AS i
             JOIN "DishIngredient" AS di ON di."ingredientId" = i."id"
             JOIN "Dish" AS d ON d."id" = di."dishId"
             CROSS JOIN parsed_query AS q
             WHERE d."isPublished" = true
               ${categoryFilter}
-              AND to_tsvector('simple', COALESCE(i."name", '')) @@ q.terms
+              AND to_tsvector('public.menu_search_unaccent', COALESCE(i."name", '')) @@ q.terms
+
+            UNION ALL
+
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", 30 AS match_tier,
+              ts_rank_cd(
+                to_tsvector('public.menu_search_unaccent', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')),
+                q.terms
+              ) AS similarity_score
+            FROM "Dish" AS d
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND to_tsvector('public.menu_search_unaccent', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')) @@ q.terms
 
             ${fuzzyMatches}
-          ), matches AS MATERIALIZED (
-            SELECT "id", is_featured, "name", bool_or(exact_match) AS exact_match,
-              max(similarity_score) AS similarity_score
+          ), ranked_candidates AS (
+            SELECT "id", is_featured, "name", match_tier, similarity_score,
+              row_number() OVER (
+                PARTITION BY "id"
+                ORDER BY match_tier DESC, similarity_score DESC
+              ) AS candidate_rank
             FROM candidates
-            GROUP BY "id", is_featured, "name"
+          ), matches AS MATERIALIZED (
+            SELECT "id", is_featured, "name", match_tier, similarity_score
+            FROM ranked_candidates
+            WHERE candidate_rank = 1
           ), total AS (
             SELECT COUNT(*) AS total FROM matches
           ), page AS (
             SELECT "id"
             FROM matches
-            ORDER BY exact_match DESC,
-              CASE WHEN exact_match THEN 0 ELSE similarity_score END DESC,
+            ORDER BY match_tier DESC, similarity_score DESC,
               is_featured DESC, "name" ASC, "id" ASC
             OFFSET ${Math.max(0, (page - 1) * pageSize)}
             LIMIT ${pageSize}

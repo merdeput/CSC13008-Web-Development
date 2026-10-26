@@ -52,7 +52,11 @@ Public endpoints include:
 - `GET /api/health`, `/api/home`, `/api/menu`, `/api/dishes/:id`, `/api/chefs`, and `/api/config`
 - `POST /api/reservations`
 
+`GET /api/menu` accepts `page`, `pageSize` (1–100; defaults to 6), `categoryId`, and `q` query parameters.
+
 Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
+
+The 1,000-dish seed data uses menu-style names, dish descriptions, and curated food photos. To preview the one-time update for previously generated `Món mẫu` records, run `npm run db:clean:1000-dishes -- --dry-run`. Apply only those name, description, and photo updates with `npm run db:clean:1000-dishes -- --apply`.
 
 ## API smoke checks
 

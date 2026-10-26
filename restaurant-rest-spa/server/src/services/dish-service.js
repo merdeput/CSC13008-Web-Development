@@ -83,12 +83,20 @@ function createDishService(model) {
   }
 
   return {
-    async listPublic({ categoryId = '', q = '', page = 1 } = {}) {
+    async listPublic({ categoryId = '', q = '', page = 1, pageSize = 6 } = {}) {
       if (categoryId && !isUuid(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       if (categoryId && !await model.findCategory(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       const parsedPage = Number.parseInt(page, 10);
       const safePage = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? Math.min(parsedPage, 100000) : 1;
-      return model.listPublic({ categoryId, q: String(q || '').trim().slice(0, 100), page: safePage, pageSize: 6 });
+      const rawPageSize = pageSize == null ? '6' : typeof pageSize === 'number' ? String(pageSize) : pageSize;
+      if (typeof rawPageSize !== 'string' || !/^\d+$/.test(rawPageSize)) {
+        throw new ValidationError({ pageSize: 'Số món mỗi trang phải là số nguyên từ 1 đến 100.' });
+      }
+      const parsedPageSize = Number(rawPageSize);
+      if (!Number.isSafeInteger(parsedPageSize) || parsedPageSize < 1 || parsedPageSize > 100) {
+        throw new ValidationError({ pageSize: 'Số món mỗi trang phải là số nguyên từ 1 đến 100.' });
+      }
+      return model.listPublic({ categoryId, q: String(q || '').trim().slice(0, 100), page: safePage, pageSize: parsedPageSize });
     },
     async publicMenu(query = {}) {
       const [result, categories] = await Promise.all([this.listPublic(query), model.listCategories()]);

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, dateTime, dateTimeInputs, money, useLoad } from './api.js';
@@ -183,34 +183,26 @@ function HoverText({ children }) {
   return <>{pieces.map((piece, index) => /^\s+$/u.test(piece) ? <React.Fragment key={index}>{piece}</React.Fragment> : <span className="hover-letter" aria-hidden="true" key={index}>{piece}</span>)}</>;
 }
 
-function getPageNumberWindow(currentPage, pageCount) {
-  const total = Math.max(1, Number(pageCount) || 1);
-  const current = Math.min(total, Math.max(1, Number(currentPage) || 1));
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-
-  const start = Math.max(2, current - 2);
-  const end = Math.min(total - 1, current + 2);
-  const items = [1];
-  if (start > 2) items.push('ellipsis-before');
-  for (let page = start; page <= end; page += 1) items.push(page);
-  if (end < total - 1) items.push('ellipsis-after');
-  items.push(total);
-  return items;
-}
-
 function MenuPage() {
   const [params, setParams] = useSearchParams();
   const [paginationMode, setPaginationMode] = React.useState('pages');
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [pageSizeDraft, setPageSizeDraft] = React.useState('6');
+  const [pageSizeError, setPageSizeError] = React.useState('');
+  const [pageJumpDraft, setPageJumpDraft] = React.useState('1');
+  const [pageJumpError, setPageJumpError] = React.useState('');
   const [menuState, setMenuState] = React.useState({ items: [], categories: [], total: 0, page: 1, pageSize: 6, pageCount: 1, loading: true, loadingMore: false, error: '' });
   const settingsRef = React.useRef(null);
   const infiniteSentinelRef = React.useRef(null);
   const menuRequestRef = React.useRef({ id: 0, controller: null });
   const requestedPage = Number(params.get('page'));
   const numberedPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const requestedPageSize = Number(params.get('pageSize') || 6);
+  const selectedPageSize = Number.isSafeInteger(requestedPageSize) && requestedPageSize >= 1 && requestedPageSize <= 100 ? requestedPageSize : 6;
   const apiParams = new URLSearchParams();
   if (params.get('q')) apiParams.set('q', params.get('q'));
   if (params.get('category') || params.get('categoryId')) apiParams.set('categoryId', params.get('category') || params.get('categoryId'));
+  apiParams.set('pageSize', String(selectedPageSize));
   const query = apiParams.toString();
   const requestMenuPage = React.useCallback(async (targetPage, append = false) => {
     menuRequestRef.current.controller?.abort();
@@ -255,6 +247,14 @@ function MenuPage() {
     };
   }, [settingsOpen]);
   React.useEffect(() => {
+    setPageSizeDraft(String(selectedPageSize));
+    setPageSizeError('');
+  }, [selectedPageSize]);
+  React.useEffect(() => {
+    setPageJumpDraft(String(menuState.page));
+    setPageJumpError('');
+  }, [menuState.page]);
+  React.useEffect(() => {
     if (paginationMode !== 'infinite' || menuState.loading || menuState.loadingMore || menuState.page >= menuState.pageCount || !infiniteSentinelRef.current) return undefined;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) requestMenuPage(menuState.page + 1, true);
@@ -268,7 +268,31 @@ function MenuPage() {
     const next = new URLSearchParams();
     if (form.get('q')) next.set('q', String(form.get('q')).trim());
     if (form.get('categoryId')) next.set('category', String(form.get('categoryId')));
+    next.set('pageSize', String(selectedPageSize));
     setParams(next);
+  }
+  function applyPageSize(event) {
+    event.preventDefault();
+    const pageSize = Number(pageSizeDraft);
+    if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      setPageSizeError('Nhập số món từ 1 đến 100.');
+      return;
+    }
+    const next = new URLSearchParams(params);
+    next.set('pageSize', String(pageSize));
+    next.delete('page');
+    setPageSizeError('');
+    setParams(next);
+  }
+  function jumpToMenuPage(event) {
+    event.preventDefault();
+    const targetPage = Number(pageJumpDraft);
+    if (!Number.isSafeInteger(targetPage) || targetPage < 1 || targetPage > menuState.pageCount) {
+      setPageJumpError(`Nhập số trang từ 1 đến ${menuState.pageCount}.`);
+      return;
+    }
+    setPageJumpError('');
+    if (targetPage !== menuState.page) goToNumberedPage(targetPage);
   }
   function selectPaginationMode(mode) {
     if (mode !== 'pages' && params.has('page')) {
@@ -285,14 +309,21 @@ function MenuPage() {
     setParams(next);
   }
   const categoryId = params.get('category') || params.get('categoryId') || '';
+  const menuFilters = new URLSearchParams();
+  if (params.get('q')) menuFilters.set('q', params.get('q'));
+  menuFilters.set('pageSize', String(selectedPageSize));
+  const allDishesHref = `/menu?${menuFilters.toString()}`;
+  function categoryHref(id) {
+    const next = new URLSearchParams(menuFilters);
+    next.set('category', id);
+    return `/menu?${next.toString()}`;
+  }
   return <>
     <section className="page-hero page-hero-menu paper-texture" data-lantern-section data-scroll-drift><div className="wrap page-hero-inner reveal-copy" data-reveal-from="left"><p className="eyebrow">MÓN VIỆT · VỊ PHỐ HỘI</p><h1>Món ngon<br /><em>đợi bạn.</em></h1><p>Món ăn theo mùa, nấu vừa tay và luôn có một chút hương vị nhà.</p></div><span className="section-lantern" aria-hidden="true" /></section>
     <section className="menu-section section-pad"><div className="wrap">
       <form className="menu-search" onSubmit={submit} role="search"><label className="visually-hidden" htmlFor="dish-search">Tìm món ăn hoặc nguyên liệu</label><input id="dish-search" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tìm tên món, nguyên liệu…" /><div className="menu-search-actions"><button className="button button-dark" type="submit" disabled={menuState.loading}>Tìm món <span aria-hidden="true">⌕</span></button><div className="menu-pagination-settings" ref={settingsRef}><button className="menu-settings-button" type="button" aria-label="Chọn kiểu phân trang" aria-expanded={settingsOpen} aria-controls="menu-pagination-options" onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>{settingsOpen && <div className="menu-pagination-options" id="menu-pagination-options" role="menu" aria-label="Kiểu phân trang"><p>Kiểu xem thực đơn</p><button className={paginationMode === 'pages' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'pages'} onClick={() => selectPaginationMode('pages')}><span aria-hidden="true">1 2 3</span><strong>Phân trang</strong></button><button className={paginationMode === 'load-more' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'load-more'} onClick={() => selectPaginationMode('load-more')}><span aria-hidden="true">＋</span><strong>Tải thêm</strong></button><button className={paginationMode === 'infinite' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'infinite'} onClick={() => selectPaginationMode('infinite')}><span aria-hidden="true">↓</span><strong>Cuộn vô hạn</strong></button></div>}</div></div></form>
-      <nav className="category-filter" aria-label="Lọc theo danh mục"><Link className={categoryId ? '' : 'is-active'} to={`/menu${params.get('q') ? `?q=${encodeURIComponent(params.get('q'))}` : ''}`}>Tất cả món</Link>{menuState.categories.map((category) => <Link key={category.id} className={categoryId === category.id ? 'is-active' : ''} to={`/menu?category=${encodeURIComponent(category.id)}${params.get('q') ? `&q=${encodeURIComponent(params.get('q'))}` : ''}`} aria-current={categoryId === category.id ? 'page' : undefined}>{category.name}</Link>)}</nav>
-      {menuState.loading ? <Loading /> : menuState.error && !menuState.items.length ? <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page)} /> : <><p className="result-count">{menuState.total} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p>{menuState.items.length ? <><div className="dish-card-grid menu-card-grid">{menuState.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={(paginationMode === 'pages' ? (menuState.page - 1) * menuState.pageSize : 0) + index} />)}</div>{menuState.error && <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page + 1, true)} />}{paginationMode === 'pages' && menuState.pageCount > 1 && <nav className="menu-page-numbers" aria-label="Phân trang thực đơn"><button type="button" disabled={menuState.page === 1 || menuState.loading} onClick={() => requestMenuPage(menuState.page - 1)}>← Trước</button>{getPageNumberWindow(menuState.page, menuState.pageCount).map((item) => typeof item === 'number'
-                ? <button className={`menu-page-number${item === menuState.page ? ' is-active' : ''}`} type="button" aria-current={item === menuState.page ? 'page' : undefined} disabled={menuState.loading} onClick={() => requestMenuPage(item)} key={item}>{item}</button>
-                : <span className="menu-page-ellipsis" key={item} aria-hidden="true">…</span>)}<span className="menu-page-status" aria-live="polite">Trang {menuState.page} / {menuState.pageCount}</span><button type="button" disabled={menuState.page === menuState.pageCount || menuState.loading} onClick={() => requestMenuPage(menuState.page + 1)}>Sau →</button></nav>}{paginationMode === 'load-more' && <div className="menu-load-more">{menuState.page < menuState.pageCount ? <button className="button button-outline" type="button" disabled={menuState.loadingMore} onClick={() => requestMenuPage(menuState.page + 1, true)}>{menuState.loadingMore ? 'Đang tải…' : <>Tải thêm món <span aria-hidden="true">↓</span></>}</button> : <p>Đã hiển thị toàn bộ {menuState.total} món.</p>}</div>}{paginationMode === 'infinite' && <div className="menu-infinite-sentinel" ref={infiniteSentinelRef} aria-live="polite">{menuState.page < menuState.pageCount ? <>{menuState.loadingMore && <span className="api-spinner" aria-hidden="true" />}{menuState.loadingMore ? 'Đang tải thêm món…' : 'Cuộn xuống để xem thêm'}</> : <span>Đã hiển thị toàn bộ {menuState.total} món.</span>}</div>}</> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
+      <nav className="category-filter" aria-label="Lọc theo danh mục"><Link className={categoryId ? '' : 'is-active'} to={allDishesHref}>Tất cả món</Link>{menuState.categories.map((category) => <Link key={category.id} className={categoryId === category.id ? 'is-active' : ''} to={categoryHref(category.id)} aria-current={categoryId === category.id ? 'page' : undefined}>{category.name}</Link>)}</nav>
+      {menuState.loading ? <Loading /> : menuState.error && !menuState.items.length ? <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page)} /> : <><div className="menu-results-toolbar"><p className="result-count">{menuState.total} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p><form className="menu-page-size" onSubmit={applyPageSize}><label htmlFor="menu-page-size-input">{paginationMode === 'pages' ? 'Món mỗi trang' : 'Món mỗi lần tải'}</label><input id="menu-page-size-input" type="number" min="1" max="100" step="1" required value={pageSizeDraft} aria-describedby={pageSizeError ? 'menu-page-size-error' : undefined} onChange={(event) => { setPageSizeDraft(event.target.value); setPageSizeError(''); }} /><button type="submit" disabled={menuState.loading}>Áp dụng</button>{pageSizeError && <span className="menu-page-size-error" id="menu-page-size-error" role="alert">{pageSizeError}</span>}</form></div>{menuState.items.length ? <><div className="dish-card-grid menu-card-grid">{menuState.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={(paginationMode === 'pages' ? (menuState.page - 1) * menuState.pageSize : 0) + index} />)}</div>{menuState.error && <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page + 1, true)} />}{paginationMode === 'pages' && <nav className="menu-page-numbers" aria-label="Phân trang thực đơn"><button type="button" disabled={menuState.page <= 1 || menuState.loading} onClick={() => goToNumberedPage(menuState.page - 1)}>← Trước</button><form className="menu-page-jump" onSubmit={jumpToMenuPage}><label className="visually-hidden" htmlFor="menu-page-jump-input">Nhập trang cần mở</label><input id="menu-page-jump-input" type="text" inputMode="numeric" autoComplete="off" value={pageJumpDraft} aria-describedby={pageJumpError ? 'menu-page-jump-error' : undefined} aria-invalid={Boolean(pageJumpError)} disabled={menuState.loading} onChange={(event) => { setPageJumpDraft(event.target.value); setPageJumpError(''); }} onKeyDown={(event) => { if (event.key === 'Enter') jumpToMenuPage(event); }} /><span aria-hidden="true">/</span><span className="menu-page-jump__total">{menuState.pageCount}</span>{pageJumpError && <small id="menu-page-jump-error" className="menu-page-jump__error" role="alert">{pageJumpError}</small>}</form><button type="button" disabled={menuState.page >= menuState.pageCount || menuState.loading} onClick={() => goToNumberedPage(menuState.page + 1)}>Sau →</button></nav>}{paginationMode === 'load-more' && <div className="menu-load-more">{menuState.page < menuState.pageCount ? <button className="button button-outline" type="button" disabled={menuState.loadingMore} onClick={() => requestMenuPage(menuState.page + 1, true)}>{menuState.loadingMore ? 'Đang tải…' : <>Tải thêm món <span aria-hidden="true">↓</span></>}</button> : <p>Đã hiển thị toàn bộ {menuState.total} món.</p>}</div>}{paginationMode === 'infinite' && <div className="menu-infinite-sentinel" ref={infiniteSentinelRef} aria-live="polite">{menuState.page < menuState.pageCount ? <>{menuState.loadingMore && <span className="api-spinner" aria-hidden="true" />}{menuState.loadingMore ? 'Đang tải thêm món…' : 'Cuộn xuống để xem thêm'}</> : <span>Đã hiển thị toàn bộ {menuState.total} món.</span>}</div>}</> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
     </div><span className="section-lantern section-lantern--left" aria-hidden="true" /></section>
   </>;
 }
@@ -674,10 +705,9 @@ function AdminList({ resource }) {
     return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Món ăn</h1><p>{result?.total ?? 0} món trong danh mục quản trị.</p></div><Link className="admin-primary-button" to="/admin/dishes/new">+ Thêm món ăn</Link></section>
       <section className="admin-panel admin-panel--dishes">
         {categoryState.loading ? <Loading label="Đang tải danh mục món…" /> : categoryState.error ? <ErrorState message={categoryState.error} onRetry={categoryState.reload} /> : <div className="admin-dish-browser">
+          <aside className="admin-dish-sidebar" aria-label="Quản lý danh mục và bộ lọc món ăn">
           <CategoryManager categories={dishCategories} onCreated={addCategory} onUpdated={updateCategory} onDeleted={removeCategory} selectable={false} title="Quản lý danh mục" createdMessage="vào danh sách danh mục." />
-          <section className="admin-dish-results" aria-labelledby="admin-dish-results-title">
-            <header className="admin-dish-results__heading"><div><p className="eyebrow">DANH SÁCH MÓN</p><h2 id="admin-dish-results-title">{categoryHeading}</h2><p>{result?.total ?? 0} món{selectedCategories.length ? ` thuộc ${selectedCategories.length} danh mục đã chọn` : ''}</p></div><span className="admin-count">{result?.total ?? 0} mục</span></header>
-            <form className="admin-search admin-dish-search" onSubmit={filter} role="search" aria-label="Tìm món ăn"><div className="admin-search-field"><label htmlFor="adminSearch">Tìm món ăn</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tên món, nguyên liệu, đầu bếp…" /></div><button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
+          <div className="admin-dish-sidebar-controls">
             <div className="admin-dish-sortbar" aria-label="Lọc và sắp xếp danh sách món ăn">
               <button className="admin-dish-filter-trigger" type="button" aria-haspopup="dialog" aria-expanded={dishFiltersOpen} aria-label={activeFilterCount ? `Bộ lọc món ăn, ${activeFilterCount} nhóm đang áp dụng` : 'Bộ lọc món ăn'} onClick={() => setDishFiltersOpen(true)} ref={dishFilterButtonRef}><span aria-hidden="true">☷</span> Bộ lọc{activeFilterCount > 0 && <span className="admin-dish-filter-count">{activeFilterCount}</span>}</button>
               <span>Sắp xếp món ăn</span>
@@ -685,6 +715,11 @@ function AdminList({ resource }) {
               <button className="admin-dish-sort-direction" type="button" onClick={toggleSortDirection} aria-label={`Đổi thứ tự sắp xếp ${currentSortDirection === 'asc' ? 'giảm dần' : 'tăng dần'}`}>{currentSortDirection === 'asc' ? '↑ Tăng dần' : '↓ Giảm dần'}</button>
             </div>
             {filterChips.length > 0 && <div className="admin-dish-active-filters" aria-label="Bộ lọc đang áp dụng"><span>Đang lọc:</span>{filterChips.map((chip) => <button className="admin-dish-filter-chip" type="button" key={`${chip.field}-${chip.value || chip.label}`} onClick={() => removeDishFilter(chip.field, chip.value)} aria-label={`Bỏ bộ lọc ${chip.label}`}>{chip.label}<span aria-hidden="true">×</span></button>)}<button className="admin-dish-filter-clear" type="button" onClick={clearDishFilters}>Xóa tất cả</button></div>}
+          </div>
+          </aside>
+          <section className="admin-dish-results" aria-labelledby="admin-dish-results-title">
+            <header className="admin-dish-results__heading"><div><p className="eyebrow">DANH SÁCH MÓN</p><h2 id="admin-dish-results-title">{categoryHeading}</h2><p>{result?.total ?? 0} món{selectedCategories.length ? ` thuộc ${selectedCategories.length} danh mục đã chọn` : ''}</p></div><span className="admin-count">{result?.total ?? 0} mục</span></header>
+            <form className="admin-search admin-dish-search" onSubmit={filter} role="search" aria-label="Tìm món ăn"><div className="admin-search-field"><label htmlFor="adminSearch">Tìm món ăn</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tên món, nguyên liệu, đầu bếp…" /></div><button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
             {notice && <div className="admin-notice" role="status"><span>{notice}</span><button className="admin-notice-dismiss" type="button" aria-label="Đóng thông báo" onClick={() => setNotice('')}>×</button></div>}
             {state.loading ? <Loading /> : state.error ? <ErrorState message={state.error} onRetry={state.reload} /> : rows.length ? <AdminDishCards rows={rows} categories={dishCategories} location={location} params={params} setParams={setParams} result={result} /> : <p className="admin-empty">{params.get('q') ? 'Không tìm thấy món ăn phù hợp.' : 'Danh mục này chưa có món ăn.'}</p>}
           </section>
@@ -875,7 +910,7 @@ function AdminForm({ resource }) {
           <AdminField id="description" label="Mô tả" wide required error={fieldErrors.description}><textarea id="description" required maxLength="2400" rows="4" value={form.description || ''} onChange={(e) => change('description', e.target.value)} /></AdminField>
           <AdminField id="price" label="Giá nguyên VND" required error={fieldErrors.price}><div className="input-suffix"><input id="price" type="number" min="0" max="999999999999" step="1" inputMode="numeric" required value={form.price || ''} onChange={(e) => change('price', e.target.value)} /><span>₫</span></div></AdminField>
           <AdminField id="imageUrl" label="Đường dẫn ảnh" error={fieldErrors.imageUrl}><input id="imageUrl" type="url" maxLength="2048" value={form.imageUrl || ''} onChange={(e) => change('imageUrl', e.target.value)} placeholder="https://…" /></AdminField>
-          <AdminField id="chefId" label="Đầu bếp" error={fieldErrors.chefId}><select id="chefId" value={form.chefId || ''} onChange={(e) => change('chefId', e.target.value)}><option value="">Chưa gán đầu bếp</option>{options.chefs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></AdminField>
+          <ChefPicker chefs={options.chefs} selectedId={form.chefId || ''} error={fieldErrors.chefId} onSelect={(chefId) => change('chefId', chefId)} />
           <IngredientPicker ingredients={options.ingredients} selected={form.ingredientIds} error={fieldErrors.ingredientIds} onToggle={toggleIngredient} />
           <fieldset className="checkbox-fieldset form-field-wide"><legend>Trạng thái món ăn</legend><CheckField label="Công khai trên website" description="Món chưa công khai không xuất hiện ở trang khách." value={form.isPublished} onChange={(v) => change('isPublished', v)} /><CheckField label="Đang phục vụ" description="Món tạm hết vẫn có thể hiển thị nhãn trên thực đơn." value={form.isAvailable} onChange={(v) => change('isAvailable', v)} /><CheckField label="Món nổi bật" description="Món nổi bật có thể xuất hiện trên trang chủ." value={form.isFeatured} onChange={(v) => change('isFeatured', v)} /></fieldset>
         </>}
@@ -1201,6 +1236,19 @@ function AdminField({ id, label, wide = false, required = false, error, children
 }
 function clearFieldError(errors, field) { const next = { ...errors }; delete next[field]; return next; }
 function CheckField({ label, description, value, onChange }) { return <label className="check-row"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /><span><strong>{label}</strong>{description && <small>{description}</small>}</span></label>; }
+
+function ChefPicker({ chefs, selectedId, error, onSelect }) {
+  const [query, setQuery] = React.useState('');
+  const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLocaleLowerCase('vi');
+  const filtered = chefs.filter((chef) => normalize(chef.name).includes(normalize(query.trim())));
+  const selectedChef = chefs.find((chef) => chef.id === selectedId);
+  return <div className="form-field form-field-wide ingredient-picker chef-picker">
+    <div className="ingredient-picker__selected" role="group" aria-label="Đầu bếp phụ trách món ăn"><div className="ingredient-picker__selected-heading"><strong>Đầu bếp phụ trách</strong><span>{selectedChef ? '1 đầu bếp' : 'Không bắt buộc'}</span></div><div className="ingredient-picker__chips" aria-live="polite">{selectedChef ? <span className="ingredient-picker__chip">{selectedChef.name}<button className="ingredient-picker__remove" type="button" aria-label={`Bỏ phân công ${selectedChef.name}`} onClick={() => onSelect('')}>×</button></span> : <span className="ingredient-picker__empty">Chưa gán đầu bếp nào.</span>}</div></div>
+    <label htmlFor="chefSearch">Tìm đầu bếp</label><input id="chefSearch" type="search" autoComplete="off" placeholder="Tìm đầu bếp theo tên…" value={query} onChange={(event) => setQuery(event.target.value)} aria-describedby="chef-picker-help" aria-controls="chef-options" />
+    <small id="chef-picker-help" className="field-help">Chọn một đầu bếp phụ trách món này. Có thể để trống hoặc bỏ phân công bất kỳ lúc nào.</small>
+    <fieldset id="chefId" className="ingredient-picker__list" aria-invalid={Boolean(error)} aria-describedby={error ? 'chefId-error chef-picker-help' : 'chef-picker-help'}><legend className="visually-hidden">Chọn đầu bếp phụ trách món ăn</legend><div id="chef-options" className="ingredient-picker__options">{filtered.map((chef) => <label className="ingredient-picker__option" key={chef.id}><input type="radio" name="dishChefId" checked={selectedId === chef.id} onChange={() => onSelect(chef.id)} /><span>{chef.name}</span></label>)}</div>{!chefs.length ? <p className="ingredient-picker__no-results">Chưa có đầu bếp nào để phân công.</p> : query && !filtered.length ? <p className="ingredient-picker__no-results">Không tìm thấy đầu bếp phù hợp.</p> : null}</fieldset>{error && <small id="chefId-error" className="field-error">{error}</small>}
+  </div>;
+}
 
 function IngredientPicker({ ingredients, selected, error, onToggle }) {
   const [query, setQuery] = React.useState('');
