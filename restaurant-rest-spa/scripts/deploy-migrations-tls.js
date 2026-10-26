@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client } = require('pg');
-const { getSslOptions, normalizeConnectionString } = require('../src/lib/postgres-adapter');
+const { getSslOptions, normalizeConnectionString } = require('../server/src/lib/postgres-adapter');
 
 const migrationsDirectory = path.join(__dirname, '..', 'prisma', 'migrations');
 const migrationsTableSql = `CREATE TABLE "_prisma_migrations" (

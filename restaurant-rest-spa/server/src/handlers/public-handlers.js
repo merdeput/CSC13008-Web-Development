@@ -13,8 +13,9 @@ function createPublicHandlers(services) {
     async menu(req, res) {
       const categoryId = typeof req.query.categoryId === 'string' ? req.query.categoryId.trim() : '';
       const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
-      const [items, categories] = await Promise.all([services.dishes.listPublic({ categoryId, q }), services.dishes.listCategories()]);
-      return res.json({ ok: true, data: { items, categories, total: items.length } });
+      const page = typeof req.query.page === 'string' ? req.query.page : '1';
+      const [result, categories] = await Promise.all([services.dishes.listPublic({ categoryId, q, page }), services.dishes.listCategories()]);
+      return res.json({ ok: true, data: { ...result, categories } });
     },
     async dish(req, res) {
       if (!isUuid(req.params.id)) throw new HttpError(404, NOT_FOUND_MESSAGE);

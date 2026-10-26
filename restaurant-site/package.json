@@ -15,6 +15,7 @@
     "db:seed": "prisma db seed",
     "db:seed:phocafe": "node seed-phocafe-new.mjs --apply --demo-prices --factory=./src/lib/seed-prisma-factory.mjs",
     "db:seed:bep-hoi": "node prisma/seed-bephoi.js",
+    "db:seed:private-chefs": "node scripts/seed-private-chefs.js",
     "test": "node --test",
     "postinstall": "prisma generate"
   },

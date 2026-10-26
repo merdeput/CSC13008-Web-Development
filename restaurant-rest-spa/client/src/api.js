@@ -39,6 +39,10 @@ export async function api(path, options = {}) {
 export function useLoad(path) {
   const [state, setState] = useState({ data: null, loading: Boolean(path), error: '', errorCode: '', fields: {}, version: 0 });
   const reload = useCallback(() => setState((old) => ({ ...old, loading: true, error: '', errorCode: '', fields: {}, version: old.version + 1 })), []);
+  const mutate = useCallback((updater) => setState((old) => ({
+    ...old,
+    data: typeof updater === 'function' ? updater(old.data) : updater
+  })), []);
   useEffect(() => {
     if (!path) { setState({ data: null, loading: false, error: '', errorCode: '', fields: {}, version: 0 }); return undefined; }
     const controller = new AbortController();
@@ -50,7 +54,7 @@ export function useLoad(path) {
       });
     return () => controller.abort();
   }, [path, state.version]);
-  return { ...state, reload };
+  return { ...state, reload, mutate };
 }
 
 export function money(value) {

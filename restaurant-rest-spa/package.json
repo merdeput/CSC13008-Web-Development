@@ -13,6 +13,7 @@
     "db:validate": "prisma validate",
     "db:status": "prisma migrate status",
     "db:deploy": "prisma migrate deploy",
+    "db:seed:1000-dishes": "node scripts/seed-1000-dishes.js",
     "postinstall": "prisma generate"
   },
   "engines": { "node": ">=20.19" },

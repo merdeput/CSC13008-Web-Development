@@ -19,15 +19,103 @@ const adminSorts = {
 
 function createDishModel(db) {
   return {
-    listPublic({ categoryId = '', q = '' } = {}) {
-      const where = { isPublished: true };
-      if (categoryId) where.categoryId = categoryId;
-      if (q) where.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-        { ingredients: { some: { ingredient: { name: { contains: q, mode: 'insensitive' } } } } }
-      ];
-      return db.dish.findMany({ where, include: dishInclude, orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }] });
+    async listPublic({ categoryId = '', q = '', page = 1, pageSize = 6 } = {}) {
+      const searchText = String(q || '').trim();
+      if (searchText) {
+        const categoryFilter = categoryId
+          ? Prisma.sql`AND d."categoryId" = CAST(${categoryId} AS uuid)`
+          : Prisma.empty;
+        const fuzzyMatches = searchText.length >= 3 ? Prisma.sql`
+            UNION ALL
+
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
+              extensions.similarity(d."name", q.search_text) AS similarity_score
+            FROM "Dish" AS d
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND d."name" OPERATOR(extensions.%) q.search_text
+
+            UNION ALL
+
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
+              extensions.word_similarity(q.search_text, d."description") AS similarity_score
+            FROM "Dish" AS d
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND q.search_text OPERATOR(extensions.<%) d."description"
+
+            UNION ALL
+
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", false AS exact_match,
+              extensions.similarity(i."name", q.search_text) AS similarity_score
+            FROM "Ingredient" AS i
+            JOIN "DishIngredient" AS di ON di."ingredientId" = i."id"
+            JOIN "Dish" AS d ON d."id" = di."dishId"
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND i."name" OPERATOR(extensions.%) q.search_text
+          ` : Prisma.empty;
+        const matches = await db.$queryRaw`
+          WITH parsed_query AS (
+            SELECT websearch_to_tsquery('simple', ${searchText}) AS terms, ${searchText}::text AS search_text
+          ), candidates AS (
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", true AS exact_match,
+              0::real AS similarity_score
+            FROM "Dish" AS d
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND to_tsvector('simple', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')) @@ q.terms
+
+            UNION
+
+            SELECT d."id", d."isFeatured" AS is_featured, d."name", true AS exact_match,
+              0::real AS similarity_score
+            FROM "Ingredient" AS i
+            JOIN "DishIngredient" AS di ON di."ingredientId" = i."id"
+            JOIN "Dish" AS d ON d."id" = di."dishId"
+            CROSS JOIN parsed_query AS q
+            WHERE d."isPublished" = true
+              ${categoryFilter}
+              AND to_tsvector('simple', COALESCE(i."name", '')) @@ q.terms
+
+            ${fuzzyMatches}
+          ), matches AS MATERIALIZED (
+            SELECT "id", is_featured, "name", bool_or(exact_match) AS exact_match,
+              max(similarity_score) AS similarity_score
+            FROM candidates
+            GROUP BY "id", is_featured, "name"
+          ), total AS (
+            SELECT COUNT(*) AS total FROM matches
+          ), page AS (
+            SELECT "id"
+            FROM matches
+            ORDER BY exact_match DESC,
+              CASE WHEN exact_match THEN 0 ELSE similarity_score END DESC,
+              is_featured DESC, "name" ASC, "id" ASC
+            OFFSET ${Math.max(0, (page - 1) * pageSize)}
+            LIMIT ${pageSize}
+          )
+          SELECT total.total, page."id"
+          FROM total
+          LEFT JOIN page ON true
+        `;
+        const total = Number(matches[0]?.total || 0);
+        const ids = matches.map(({ id }) => id).filter(Boolean);
+        const records = ids.length ? await db.dish.findMany({ where: { id: { in: ids } }, include: dishInclude }) : [];
+        const recordsById = new Map(records.map((dish) => [dish.id, dish]));
+        return pageResult(ids.map((id) => recordsById.get(id)).filter(Boolean), total, page, pageSize);
+      }
+
+      const where = { isPublished: true, ...(categoryId ? { categoryId } : {}) };
+      const [items, total] = await Promise.all([
+        db.dish.findMany({ where, include: dishInclude, orderBy: [{ isFeatured: 'desc' }, { name: 'asc' }, { id: 'asc' }], skip: (page - 1) * pageSize, take: pageSize }),
+        db.dish.count({ where })
+      ]);
+      return pageResult(items, total, page, pageSize);
     },
     listFeatured(limit = 4) {
       return db.dish.findMany({ where: { isPublished: true, isFeatured: true }, include: dishInclude, orderBy: { name: 'asc' }, take: limit });
@@ -36,13 +124,24 @@ function createDishModel(db) {
       const page = getPage(query);
       const sort = getAdminSort(query, adminSorts, 'updatedAt', 'desc');
       const q = getAdminSearch(query.q);
-      const where = q ? { OR: [
-        { name: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-        { category: { name: { contains: q, mode: 'insensitive' } } },
-        { chef: { name: { contains: q, mode: 'insensitive' } } },
-        { ingredients: { some: { ingredient: { name: { contains: q, mode: 'insensitive' } } } } }
-      ] } : {};
+      const price = {
+        ...(query.minPrice !== undefined ? { gte: new Prisma.Decimal(query.minPrice) } : {}),
+        ...(query.maxPrice !== undefined ? { lte: new Prisma.Decimal(query.maxPrice) } : {})
+      };
+      const where = {
+        ...(query.categoryIds?.length ? { categoryId: { in: query.categoryIds } } : query.categoryId ? { categoryId: query.categoryId } : {}),
+        ...(query.isPublished !== undefined ? { isPublished: query.isPublished } : {}),
+        ...(query.isAvailable !== undefined ? { isAvailable: query.isAvailable } : {}),
+        ...(query.isFeatured !== undefined ? { isFeatured: query.isFeatured } : {}),
+        ...(Object.keys(price).length ? { price } : {}),
+        ...(q ? { OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { category: { name: { contains: q, mode: 'insensitive' } } },
+          { chef: { name: { contains: q, mode: 'insensitive' } } },
+          { ingredients: { some: { ingredient: { name: { contains: q, mode: 'insensitive' } } } } }
+        ] } : {})
+      };
       const [items, total] = await Promise.all([
         db.dish.findMany({ where, include: dishInclude, orderBy: sort.orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
         db.dish.count({ where })

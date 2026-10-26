@@ -21,8 +21,12 @@ function isPrismaCode(error, code) {
 
 function isUniqueFieldError(error, field) {
   if (!isPrismaCode(error, 'P2002')) return false;
-  const target = error.meta && error.meta.target;
-  return Array.isArray(target) ? target.includes(field) : String(target || '').includes(field);
+  const constraint = error.meta?.driverAdapterError?.cause?.constraint;
+  const targets = [error.meta?.target, constraint?.fields, constraint?.index, constraint?.name];
+  return targets.some((target) => (Array.isArray(target) ? target : [target]).some((value) => {
+    const name = String(value || '').replace(/["`]/g, '');
+    return name === field || name.endsWith(`_${field}_key`);
+  }));
 }
 
 module.exports = { HttpError, ValidationError, isPrismaCode, isUniqueFieldError };

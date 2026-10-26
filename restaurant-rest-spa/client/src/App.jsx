@@ -183,13 +183,85 @@ function HoverText({ children }) {
   return <>{pieces.map((piece, index) => /^\s+$/u.test(piece) ? <React.Fragment key={index}>{piece}</React.Fragment> : <span className="hover-letter" aria-hidden="true" key={index}>{piece}</span>)}</>;
 }
 
+function getPageNumberWindow(currentPage, pageCount) {
+  const total = Math.max(1, Number(pageCount) || 1);
+  const current = Math.min(total, Math.max(1, Number(currentPage) || 1));
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+
+  const start = Math.max(2, current - 2);
+  const end = Math.min(total - 1, current + 2);
+  const items = [1];
+  if (start > 2) items.push('ellipsis-before');
+  for (let page = start; page <= end; page += 1) items.push(page);
+  if (end < total - 1) items.push('ellipsis-after');
+  items.push(total);
+  return items;
+}
+
 function MenuPage() {
   const [params, setParams] = useSearchParams();
+  const [paginationMode, setPaginationMode] = React.useState('pages');
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [menuState, setMenuState] = React.useState({ items: [], categories: [], total: 0, page: 1, pageSize: 6, pageCount: 1, loading: true, loadingMore: false, error: '' });
+  const settingsRef = React.useRef(null);
+  const infiniteSentinelRef = React.useRef(null);
+  const menuRequestRef = React.useRef({ id: 0, controller: null });
+  const requestedPage = Number(params.get('page'));
+  const numberedPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const apiParams = new URLSearchParams();
   if (params.get('q')) apiParams.set('q', params.get('q'));
   if (params.get('category') || params.get('categoryId')) apiParams.set('categoryId', params.get('category') || params.get('categoryId'));
   const query = apiParams.toString();
-  const state = useLoad(`/api/menu${query ? `?${query}` : ''}`);
+  const requestMenuPage = React.useCallback(async (targetPage, append = false) => {
+    menuRequestRef.current.controller?.abort();
+    const controller = new AbortController();
+    const requestId = menuRequestRef.current.id + 1;
+    menuRequestRef.current = { id: requestId, controller };
+    setMenuState((current) => append
+      ? { ...current, loadingMore: true, error: '' }
+      : { ...current, items: [], page: targetPage, loading: true, loadingMore: false, error: '' });
+    const requestParams = new URLSearchParams(query);
+    requestParams.set('page', String(targetPage));
+    try {
+      const data = await api(`/api/menu?${requestParams.toString()}`, { signal: controller.signal });
+      if (menuRequestRef.current.id !== requestId) return;
+      setMenuState((current) => {
+        const items = append
+          ? [...current.items, ...data.items.filter((item) => !current.items.some((existing) => existing.id === item.id))]
+          : data.items;
+        return { ...current, ...data, items, loading: false, loadingMore: false, error: '' };
+      });
+    } catch (requestError) {
+      if (requestError.name === 'AbortError' || menuRequestRef.current.id !== requestId) return;
+      setMenuState((current) => ({ ...current, loading: false, loadingMore: false, error: requestError.message }));
+    }
+  }, [query]);
+  React.useEffect(() => {
+    requestMenuPage(paginationMode === 'pages' ? numberedPage : 1);
+    return () => menuRequestRef.current.controller?.abort();
+  }, [numberedPage, paginationMode, requestMenuPage]);
+  React.useEffect(() => {
+    if (!settingsOpen) return undefined;
+    function closeSettings(event) {
+      if (event.type === 'keydown' && event.key !== 'Escape') return;
+      if (event.type === 'pointerdown' && settingsRef.current?.contains(event.target)) return;
+      setSettingsOpen(false);
+    }
+    document.addEventListener('pointerdown', closeSettings);
+    document.addEventListener('keydown', closeSettings);
+    return () => {
+      document.removeEventListener('pointerdown', closeSettings);
+      document.removeEventListener('keydown', closeSettings);
+    };
+  }, [settingsOpen]);
+  React.useEffect(() => {
+    if (paginationMode !== 'infinite' || menuState.loading || menuState.loadingMore || menuState.page >= menuState.pageCount || !infiniteSentinelRef.current) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) requestMenuPage(menuState.page + 1, true);
+    }, { rootMargin: '240px 0px' });
+    observer.observe(infiniteSentinelRef.current);
+    return () => observer.disconnect();
+  }, [menuState.loading, menuState.loadingMore, menuState.page, menuState.pageCount, paginationMode, requestMenuPage]);
   function submit(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -198,13 +270,29 @@ function MenuPage() {
     if (form.get('categoryId')) next.set('category', String(form.get('categoryId')));
     setParams(next);
   }
+  function selectPaginationMode(mode) {
+    if (mode !== 'pages' && params.has('page')) {
+      const next = new URLSearchParams(params);
+      next.delete('page');
+      setParams(next);
+    }
+    setPaginationMode(mode);
+    setSettingsOpen(false);
+  }
+  function goToNumberedPage(page) {
+    const next = new URLSearchParams(params);
+    next.set('page', String(page));
+    setParams(next);
+  }
   const categoryId = params.get('category') || params.get('categoryId') || '';
   return <>
     <section className="page-hero page-hero-menu paper-texture" data-lantern-section data-scroll-drift><div className="wrap page-hero-inner reveal-copy" data-reveal-from="left"><p className="eyebrow">MÓN VIỆT · VỊ PHỐ HỘI</p><h1>Món ngon<br /><em>đợi bạn.</em></h1><p>Món ăn theo mùa, nấu vừa tay và luôn có một chút hương vị nhà.</p></div><span className="section-lantern" aria-hidden="true" /></section>
     <section className="menu-section section-pad"><div className="wrap">
-      <form className="menu-search" onSubmit={submit} role="search"><label className="visually-hidden" htmlFor="dish-search">Tìm món ăn hoặc nguyên liệu</label><input id="dish-search" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tìm tên món, nguyên liệu…" /><button className="button button-dark" type="submit" disabled={state.loading}>Tìm món <span aria-hidden="true">⌕</span></button></form>
-      <nav className="category-filter" aria-label="Lọc theo danh mục"><Link className={categoryId ? '' : 'is-active'} to={`/menu${params.get('q') ? `?q=${encodeURIComponent(params.get('q'))}` : ''}`}>Tất cả món</Link>{(state.data?.categories || []).map((category) => <Link key={category.id} className={categoryId === category.id ? 'is-active' : ''} to={`/menu?category=${encodeURIComponent(category.id)}${params.get('q') ? `&q=${encodeURIComponent(params.get('q'))}` : ''}`} aria-current={categoryId === category.id ? 'page' : undefined}>{category.name}</Link>)}</nav>
-      {state.loading ? <Loading /> : state.error ? <ErrorState message={state.error} onRetry={state.reload} /> : <><p className="result-count">{state.data?.total ?? state.data?.items?.length ?? 0} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p>{state.data?.items?.length ? <div className="dish-card-grid menu-card-grid">{state.data.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={index} />)}</div> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
+      <form className="menu-search" onSubmit={submit} role="search"><label className="visually-hidden" htmlFor="dish-search">Tìm món ăn hoặc nguyên liệu</label><input id="dish-search" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tìm tên món, nguyên liệu…" /><div className="menu-search-actions"><button className="button button-dark" type="submit" disabled={menuState.loading}>Tìm món <span aria-hidden="true">⌕</span></button><div className="menu-pagination-settings" ref={settingsRef}><button className="menu-settings-button" type="button" aria-label="Chọn kiểu phân trang" aria-expanded={settingsOpen} aria-controls="menu-pagination-options" onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>{settingsOpen && <div className="menu-pagination-options" id="menu-pagination-options" role="menu" aria-label="Kiểu phân trang"><p>Kiểu xem thực đơn</p><button className={paginationMode === 'pages' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'pages'} onClick={() => selectPaginationMode('pages')}><span aria-hidden="true">1 2 3</span><strong>Phân trang</strong></button><button className={paginationMode === 'load-more' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'load-more'} onClick={() => selectPaginationMode('load-more')}><span aria-hidden="true">＋</span><strong>Tải thêm</strong></button><button className={paginationMode === 'infinite' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'infinite'} onClick={() => selectPaginationMode('infinite')}><span aria-hidden="true">↓</span><strong>Cuộn vô hạn</strong></button></div>}</div></div></form>
+      <nav className="category-filter" aria-label="Lọc theo danh mục"><Link className={categoryId ? '' : 'is-active'} to={`/menu${params.get('q') ? `?q=${encodeURIComponent(params.get('q'))}` : ''}`}>Tất cả món</Link>{menuState.categories.map((category) => <Link key={category.id} className={categoryId === category.id ? 'is-active' : ''} to={`/menu?category=${encodeURIComponent(category.id)}${params.get('q') ? `&q=${encodeURIComponent(params.get('q'))}` : ''}`} aria-current={categoryId === category.id ? 'page' : undefined}>{category.name}</Link>)}</nav>
+      {menuState.loading ? <Loading /> : menuState.error && !menuState.items.length ? <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page)} /> : <><p className="result-count">{menuState.total} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p>{menuState.items.length ? <><div className="dish-card-grid menu-card-grid">{menuState.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={(paginationMode === 'pages' ? (menuState.page - 1) * menuState.pageSize : 0) + index} />)}</div>{menuState.error && <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page + 1, true)} />}{paginationMode === 'pages' && menuState.pageCount > 1 && <nav className="menu-page-numbers" aria-label="Phân trang thực đơn"><button type="button" disabled={menuState.page === 1 || menuState.loading} onClick={() => requestMenuPage(menuState.page - 1)}>← Trước</button>{getPageNumberWindow(menuState.page, menuState.pageCount).map((item) => typeof item === 'number'
+                ? <button className={`menu-page-number${item === menuState.page ? ' is-active' : ''}`} type="button" aria-current={item === menuState.page ? 'page' : undefined} disabled={menuState.loading} onClick={() => requestMenuPage(item)} key={item}>{item}</button>
+                : <span className="menu-page-ellipsis" key={item} aria-hidden="true">…</span>)}<span className="menu-page-status" aria-live="polite">Trang {menuState.page} / {menuState.pageCount}</span><button type="button" disabled={menuState.page === menuState.pageCount || menuState.loading} onClick={() => requestMenuPage(menuState.page + 1)}>Sau →</button></nav>}{paginationMode === 'load-more' && <div className="menu-load-more">{menuState.page < menuState.pageCount ? <button className="button button-outline" type="button" disabled={menuState.loadingMore} onClick={() => requestMenuPage(menuState.page + 1, true)}>{menuState.loadingMore ? 'Đang tải…' : <>Tải thêm món <span aria-hidden="true">↓</span></>}</button> : <p>Đã hiển thị toàn bộ {menuState.total} món.</p>}</div>}{paginationMode === 'infinite' && <div className="menu-infinite-sentinel" ref={infiniteSentinelRef} aria-live="polite">{menuState.page < menuState.pageCount ? <>{menuState.loadingMore && <span className="api-spinner" aria-hidden="true" />}{menuState.loadingMore ? 'Đang tải thêm món…' : 'Cuộn xuống để xem thêm'}</> : <span>Đã hiển thị toàn bộ {menuState.total} món.</span>}</div>}</> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
     </div><span className="section-lantern section-lantern--left" aria-hidden="true" /></section>
   </>;
 }
@@ -301,6 +389,127 @@ function SortHeader({ label, field, sortBy, sortDirection, onSort }) {
   </th>;
 }
 
+function readAdminDishFilters(params) {
+  const categoryIds = [...params.getAll('categoryIds'), ...params.getAll('categoryId')]
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return {
+    categoryIds: [...new Set(categoryIds)],
+    isPublished: params.get('isPublished') || '',
+    isAvailable: params.get('isAvailable') || '',
+    isFeatured: params.get('isFeatured') || '',
+    minPrice: params.get('minPrice') || '',
+    maxPrice: params.get('maxPrice') || ''
+  };
+}
+
+function AdminDishFilterDialog({ categories, initialFilters, onClose, onApply }) {
+  const [draft, setDraft] = React.useState(() => ({ ...initialFilters, categoryIds: [...initialFilters.categoryIds] }));
+  const dialogRef = React.useRef(null);
+  const closeButtonRef = React.useRef(null);
+  const rangeInvalid = draft.minPrice !== '' && draft.maxPrice !== '' && Number(draft.minPrice) > Number(draft.maxPrice);
+  const enteredPrice = Math.max(Number(draft.minPrice) || 0, Number(draft.maxPrice) || 0);
+  const sliderMax = Math.max(500000, Math.ceil((enteredPrice + 1000) / 50000) * 50000);
+  const sliderMinValue = Math.min(Number(draft.minPrice) || 0, sliderMax);
+  const sliderMaxValue = Math.max(sliderMinValue, Math.min(draft.maxPrice === '' ? sliderMax : Number(draft.maxPrice), sliderMax));
+  const sliderRangeStyle = {
+    '--price-range-start': `${(sliderMinValue / sliderMax) * 100}%`,
+    '--price-range-end': `${(sliderMaxValue / sliderMax) * 100}%`
+  };
+
+  React.useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  function update(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function toggleCategory(categoryId) {
+    setDraft((current) => ({
+      ...current,
+      categoryIds: current.categoryIds.includes(categoryId)
+        ? current.categoryIds.filter((id) => id !== categoryId)
+        : [...current.categoryIds, categoryId]
+    }));
+  }
+
+  function updatePriceSlider(field, value) {
+    const price = Number(value);
+    if (field === 'minPrice') {
+      const upperBound = draft.maxPrice === '' ? sliderMax : Number(draft.maxPrice);
+      update(field, String(Math.min(price, upperBound)));
+      return;
+    }
+    const lowerBound = draft.minPrice === '' ? 0 : Number(draft.minPrice);
+    update(field, String(Math.max(price, lowerBound)));
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+    const focusable = [...dialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled)')];
+    if (!focusable.length) return;
+    if (event.shiftKey && document.activeElement === focusable[0]) {
+      event.preventDefault();
+      focusable.at(-1).focus();
+    } else if (!event.shiftKey && document.activeElement === focusable.at(-1)) {
+      event.preventDefault();
+      focusable[0].focus();
+    }
+  }
+
+  return createPortal(<div className="admin-filter-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="admin-panel admin-dish-filter-dialog" role="dialog" aria-modal="true" aria-labelledby="dish-filter-title" aria-describedby="dish-filter-description" ref={dialogRef} onKeyDown={handleKeyDown}>
+      <header className="admin-dish-filter-dialog__heading">
+        <div><p className="eyebrow">DANH SÁCH MÓN</p><h2 id="dish-filter-title">Lọc món ăn</h2><p id="dish-filter-description">Kết hợp nhiều điều kiện để thu hẹp danh sách.</p></div>
+        <button className="admin-delete-close" type="button" aria-label="Đóng bộ lọc" onClick={onClose} ref={closeButtonRef}>×</button>
+      </header>
+      <div className="admin-dish-filter-dialog__body">
+        <fieldset className="admin-dish-filter-group admin-dish-filter-group--categories">
+          <legend>Danh mục</legend>
+          {categories.length ? <div className="admin-dish-filter-categories">{categories.map((category) => <label className="admin-dish-filter-category" key={category.id}>
+            <input type="checkbox" checked={draft.categoryIds.includes(category.id)} onChange={() => toggleCategory(category.id)} />
+            <span>{category.name}</span>
+          </label>)}</div> : <p className="admin-dish-filter-empty">Chưa có danh mục.</p>}
+        </fieldset>
+        <div className="admin-dish-filter-selects">
+          <label className="admin-dish-filter-field" htmlFor="dish-filter-published"><span>Hiển thị</span><select id="dish-filter-published" value={draft.isPublished} onChange={(event) => update('isPublished', event.target.value)}><option value="">Tất cả</option><option value="true">Công khai</option><option value="false">Bản nháp</option></select></label>
+          <label className="admin-dish-filter-field" htmlFor="dish-filter-available"><span>Phục vụ</span><select id="dish-filter-available" value={draft.isAvailable} onChange={(event) => update('isAvailable', event.target.value)}><option value="">Tất cả</option><option value="true">Đang phục vụ</option><option value="false">Tạm hết</option></select></label>
+          <label className="admin-dish-filter-field" htmlFor="dish-filter-featured"><span>Nổi bật</span><select id="dish-filter-featured" value={draft.isFeatured} onChange={(event) => update('isFeatured', event.target.value)}><option value="">Tất cả</option><option value="true">Món nổi bật</option><option value="false">Không nổi bật</option></select></label>
+        </div>
+        <fieldset className="admin-dish-filter-group">
+          <legend>Khoảng giá (₫)</legend>
+          <div className="admin-dish-price-slider" style={sliderRangeStyle}>
+            <div className="admin-dish-price-slider__track">
+              <input type="range" min="0" max={sliderMax} step="1000" value={sliderMinValue} aria-label="Giá tối thiểu" aria-valuetext={draft.minPrice === '' ? 'Không giới hạn dưới' : money(draft.minPrice)} onChange={(event) => updatePriceSlider('minPrice', event.target.value)} />
+              <input type="range" min="0" max={sliderMax} step="1000" value={sliderMaxValue} aria-label="Giá tối đa" aria-valuetext={draft.maxPrice === '' ? 'Không giới hạn trên' : money(draft.maxPrice)} onChange={(event) => updatePriceSlider('maxPrice', event.target.value)} />
+            </div>
+            <div className="admin-dish-price-slider__labels"><span>0 ₫</span><span>{money(sliderMax)}</span></div>
+          </div>
+          <div className="admin-dish-filter-prices">
+            <label className="admin-dish-filter-field" htmlFor="dish-filter-min-price"><span>Từ</span><input id="dish-filter-min-price" type="number" min="0" max="999999999999" step="1" inputMode="numeric" value={draft.minPrice} onChange={(event) => update('minPrice', event.target.value)} placeholder="Không giới hạn" /></label>
+            <label className="admin-dish-filter-field" htmlFor="dish-filter-max-price"><span>Đến</span><input id="dish-filter-max-price" type="number" min="0" max="999999999999" step="1" inputMode="numeric" value={draft.maxPrice} onChange={(event) => update('maxPrice', event.target.value)} placeholder="Không giới hạn" /></label>
+          </div>
+          {rangeInvalid && <p className="admin-dish-filter-error" role="alert">Giá tối đa phải bằng hoặc lớn hơn giá tối thiểu.</p>}
+        </fieldset>
+      </div>
+      <footer className="admin-dish-filter-dialog__actions">
+        <button className="admin-secondary-button" type="button" onClick={() => setDraft({ categoryIds: [], isPublished: '', isAvailable: '', isFeatured: '', minPrice: '', maxPrice: '' })}>Đặt lại</button>
+        <div><button className="admin-secondary-button" type="button" onClick={onClose}>Hủy</button><button className="admin-primary-button" type="button" disabled={rangeInvalid} onClick={() => onApply({ ...draft, minPrice: draft.minPrice.trim(), maxPrice: draft.maxPrice.trim() })}>Áp dụng bộ lọc</button></div>
+      </footer>
+    </section>
+  </div>, document.body);
+}
+
 function AdminDashboard() {
   const state = useLoad('/api/admin/dashboard');
   if (state.loading) return <Loading />;
@@ -318,14 +527,41 @@ function AdminList({ resource }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [notice, setNotice] = React.useState(location.state?.notice || '');
+  const [dishFiltersOpen, setDishFiltersOpen] = React.useState(false);
+  const dishFilterButtonRef = React.useRef(null);
   const query = params.toString();
   const path = `/api/admin/${config.endpoint}${query ? `?${query}` : ''}`;
   const state = useLoad(path);
+  const categoryState = useLoad(resource === 'dishes' ? '/api/admin/categories' : null);
+  const [dishCategories, setDishCategories] = React.useState([]);
+  React.useEffect(() => {
+    if (categoryState.data) setDishCategories(categoryState.data);
+  }, [categoryState.data]);
+  React.useEffect(() => {
+    if (resource !== 'dishes' || params.get('sortBy') !== 'featured') return;
+    const next = new URLSearchParams(params);
+    next.delete('sortBy');
+    next.delete('sortDirection');
+    next.delete('page');
+    setParams(next, { replace: true });
+  }, [params, resource, setParams]);
   React.useEffect(() => {
     if (!location.state?.notice) return;
     setNotice(location.state.notice);
+    if (location.state.deletedId) {
+      state.mutate((data) => {
+        if (!data?.items?.some((item) => item.id === location.state.deletedId)) return data;
+        const total = Math.max(0, (data.total ?? data.items.length) - 1);
+        return {
+          ...data,
+          items: data.items.filter((item) => item.id !== location.state.deletedId),
+          total,
+          pageCount: Math.max(1, Math.ceil(total / (data.pageSize || 10)))
+        };
+      });
+    }
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
-  }, [location.key, location.pathname, location.search, location.state, navigate]);
+  }, [location.key, location.pathname, location.search, location.state, navigate, state.mutate]);
   function filter(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -336,6 +572,10 @@ function AdminList({ resource }) {
     }
     next.delete('page');
     setParams(next);
+  }
+  function closeDishFilters() {
+    setDishFiltersOpen(false);
+    window.requestAnimationFrame(() => dishFilterButtonRef.current?.focus());
   }
   function sortByField(field) {
     const defaults = ADMIN_LIST_SORTS[resource];
@@ -348,6 +588,19 @@ function AdminList({ resource }) {
     next.delete('page');
     setParams(next);
   }
+  function chooseSortField(field) {
+    const next = new URLSearchParams(params);
+    if (field !== currentSortBy) next.set('sortDirection', 'asc');
+    next.set('sortBy', field);
+    next.delete('page');
+    setParams(next);
+  }
+  function toggleSortDirection() {
+    const next = new URLSearchParams(params);
+    next.set('sortDirection', currentSortDirection === 'asc' ? 'desc' : 'asc');
+    next.delete('page');
+    setParams(next);
+  }
   const result = state.data;
   const rows = result?.items || [];
   const defaults = ADMIN_LIST_SORTS[resource];
@@ -355,6 +608,101 @@ function AdminList({ resource }) {
   const currentSortDirection = params.get('sortDirection') || result?.sortDirection || defaults.direction;
   const sortHeader = (label, field) => <SortHeader key={field} label={label} field={field} sortBy={currentSortBy} sortDirection={currentSortDirection} onSort={sortByField} />;
   const filterError = (field) => state.errorCode === 'VALIDATION_FAILED' ? state.fields[field] : '';
+  if (resource === 'dishes') {
+    const activeDishFilters = readAdminDishFilters(params);
+    const selectedCategories = activeDishFilters.categoryIds.map((id) => dishCategories.find((category) => category.id === id)).filter(Boolean);
+    const activeFilterCount = [
+      activeDishFilters.categoryIds.length > 0,
+      activeDishFilters.isPublished !== '',
+      activeDishFilters.isAvailable !== '',
+      activeDishFilters.isFeatured !== '',
+      activeDishFilters.minPrice !== '' || activeDishFilters.maxPrice !== ''
+    ].filter(Boolean).length;
+    const filterChips = [
+      ...activeDishFilters.categoryIds.map((id) => ({ field: 'categoryIds', value: id, label: dishCategories.find((category) => category.id === id)?.name || 'Danh mục' })),
+      ...(activeDishFilters.isPublished !== '' ? [{ field: 'isPublished', label: activeDishFilters.isPublished === 'true' ? 'Công khai' : 'Bản nháp' }] : []),
+      ...(activeDishFilters.isAvailable !== '' ? [{ field: 'isAvailable', label: activeDishFilters.isAvailable === 'true' ? 'Đang phục vụ' : 'Tạm hết' }] : []),
+      ...(activeDishFilters.isFeatured !== '' ? [{ field: 'isFeatured', label: activeDishFilters.isFeatured === 'true' ? 'Món nổi bật' : 'Không nổi bật' }] : []),
+      ...((activeDishFilters.minPrice !== '' || activeDishFilters.maxPrice !== '') ? [{
+        field: 'priceRange',
+        label: activeDishFilters.minPrice !== '' && activeDishFilters.maxPrice !== ''
+          ? `Giá: ${money(activeDishFilters.minPrice)} – ${money(activeDishFilters.maxPrice)}`
+          : activeDishFilters.minPrice !== '' ? `Giá từ ${money(activeDishFilters.minPrice)}` : `Giá đến ${money(activeDishFilters.maxPrice)}`
+      }] : [])
+    ];
+    function applyDishFilters(filters) {
+      const next = new URLSearchParams(params);
+      for (const key of ['categoryId', 'categoryIds', 'isPublished', 'isAvailable', 'isFeatured', 'minPrice', 'maxPrice']) next.delete(key);
+      if (filters.categoryIds.length) next.set('categoryIds', filters.categoryIds.join(','));
+      for (const key of ['isPublished', 'isAvailable', 'isFeatured', 'minPrice', 'maxPrice']) {
+        if (filters[key] !== '') next.set(key, filters[key]);
+      }
+      next.delete('page');
+      setParams(next);
+      closeDishFilters();
+    }
+    function removeDishFilter(field, value) {
+      const next = new URLSearchParams(params);
+      if (field === 'categoryIds') {
+        const remaining = activeDishFilters.categoryIds.filter((id) => id !== value);
+        next.delete('categoryId');
+        next.delete('categoryIds');
+        if (remaining.length) next.set('categoryIds', remaining.join(','));
+      } else if (field === 'priceRange') {
+        next.delete('minPrice');
+        next.delete('maxPrice');
+      } else {
+        next.delete(field);
+      }
+      next.delete('page');
+      setParams(next);
+    }
+    function clearDishFilters() {
+      applyDishFilters({ categoryIds: [], isPublished: '', isAvailable: '', isFeatured: '', minPrice: '', maxPrice: '' });
+    }
+    const addCategory = (category) => {
+      setDishCategories((current) => [...current.filter((item) => item.id !== category.id), category]);
+    };
+    const updateCategory = (category) => setDishCategories((current) => current.map((item) => item.id === category.id ? category : item));
+    const removeCategory = (categoryId) => {
+      setDishCategories((current) => current.filter((item) => item.id !== categoryId));
+      if (activeDishFilters.categoryIds.includes(categoryId)) {
+        applyDishFilters({ ...activeDishFilters, categoryIds: activeDishFilters.categoryIds.filter((id) => id !== categoryId) });
+      }
+    };
+    const categoryHeading = selectedCategories.length === 1 ? selectedCategories[0].name : selectedCategories.length ? `${selectedCategories.length} danh mục đã chọn` : 'Tất cả món ăn';
+    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Món ăn</h1><p>{result?.total ?? 0} món trong danh mục quản trị.</p></div><Link className="admin-primary-button" to="/admin/dishes/new">+ Thêm món ăn</Link></section>
+      <section className="admin-panel admin-panel--dishes">
+        {categoryState.loading ? <Loading label="Đang tải danh mục món…" /> : categoryState.error ? <ErrorState message={categoryState.error} onRetry={categoryState.reload} /> : <div className="admin-dish-browser">
+          <CategoryManager categories={dishCategories} onCreated={addCategory} onUpdated={updateCategory} onDeleted={removeCategory} selectable={false} title="Quản lý danh mục" createdMessage="vào danh sách danh mục." />
+          <section className="admin-dish-results" aria-labelledby="admin-dish-results-title">
+            <header className="admin-dish-results__heading"><div><p className="eyebrow">DANH SÁCH MÓN</p><h2 id="admin-dish-results-title">{categoryHeading}</h2><p>{result?.total ?? 0} món{selectedCategories.length ? ` thuộc ${selectedCategories.length} danh mục đã chọn` : ''}</p></div><span className="admin-count">{result?.total ?? 0} mục</span></header>
+            <form className="admin-search admin-dish-search" onSubmit={filter} role="search" aria-label="Tìm món ăn"><div className="admin-search-field"><label htmlFor="adminSearch">Tìm món ăn</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tên món, nguyên liệu, đầu bếp…" /></div><button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
+            <div className="admin-dish-sortbar" aria-label="Lọc và sắp xếp danh sách món ăn">
+              <button className="admin-dish-filter-trigger" type="button" aria-haspopup="dialog" aria-expanded={dishFiltersOpen} aria-label={activeFilterCount ? `Bộ lọc món ăn, ${activeFilterCount} nhóm đang áp dụng` : 'Bộ lọc món ăn'} onClick={() => setDishFiltersOpen(true)} ref={dishFilterButtonRef}><span aria-hidden="true">☷</span> Bộ lọc{activeFilterCount > 0 && <span className="admin-dish-filter-count">{activeFilterCount}</span>}</button>
+              <span>Sắp xếp món ăn</span>
+              <label className="admin-dish-sort"><span className="visually-hidden">Tiêu chí sắp xếp</span><select value={currentSortBy} onChange={(event) => chooseSortField(event.target.value)} aria-label="Sắp xếp món ăn theo"><option value="updatedAt">Cập nhật gần đây</option><option value="name">Tên món</option><option value="category">Danh mục</option><option value="price">Giá bán</option><option value="visibility">Hiển thị</option><option value="availability">Phục vụ</option></select></label>
+              <button className="admin-dish-sort-direction" type="button" onClick={toggleSortDirection} aria-label={`Đổi thứ tự sắp xếp ${currentSortDirection === 'asc' ? 'giảm dần' : 'tăng dần'}`}>{currentSortDirection === 'asc' ? '↑ Tăng dần' : '↓ Giảm dần'}</button>
+            </div>
+            {filterChips.length > 0 && <div className="admin-dish-active-filters" aria-label="Bộ lọc đang áp dụng"><span>Đang lọc:</span>{filterChips.map((chip) => <button className="admin-dish-filter-chip" type="button" key={`${chip.field}-${chip.value || chip.label}`} onClick={() => removeDishFilter(chip.field, chip.value)} aria-label={`Bỏ bộ lọc ${chip.label}`}>{chip.label}<span aria-hidden="true">×</span></button>)}<button className="admin-dish-filter-clear" type="button" onClick={clearDishFilters}>Xóa tất cả</button></div>}
+            {notice && <div className="admin-notice" role="status"><span>{notice}</span><button className="admin-notice-dismiss" type="button" aria-label="Đóng thông báo" onClick={() => setNotice('')}>×</button></div>}
+            {state.loading ? <Loading /> : state.error ? <ErrorState message={state.error} onRetry={state.reload} /> : rows.length ? <AdminDishCards rows={rows} categories={dishCategories} location={location} params={params} setParams={setParams} result={result} /> : <p className="admin-empty">{params.get('q') ? 'Không tìm thấy món ăn phù hợp.' : 'Danh mục này chưa có món ăn.'}</p>}
+          </section>
+          {dishFiltersOpen && <AdminDishFilterDialog categories={dishCategories} initialFilters={activeDishFilters} onClose={closeDishFilters} onApply={applyDishFilters} />}
+        </div>}
+      </section>
+    </>;
+  }
+  if (resource === 'chefs') {
+    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Đầu bếp</h1><p>{result?.total ?? 0} hồ sơ trong danh mục quản trị.</p></div><Link className="admin-primary-button" to="/admin/chefs/new">+ Thêm đầu bếp</Link></section>
+      <section className="admin-panel admin-panel--chefs">
+        <header className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></header>
+        <form className="admin-search" onSubmit={filter} role="search" aria-label="Tìm đầu bếp"><div className="admin-search-field"><label htmlFor="adminSearch">Tìm đầu bếp</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tên, chức danh, sở trường…" /></div><button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
+        {notice && <div className="admin-notice" role="status"><span>{notice}</span><button className="admin-notice-dismiss" type="button" aria-label="Đóng thông báo" onClick={() => setNotice('')}>×</button></div>}
+        {state.loading ? <Loading /> : state.error && state.errorCode !== 'VALIDATION_FAILED' ? <ErrorState message={state.error} onRetry={state.reload} /> : state.error ? <p className="api-error" role="alert">{state.error}</p> : rows.length ? <AdminChefCards rows={rows} result={result} location={location} params={params} setParams={setParams} sortBy={currentSortBy} sortDirection={currentSortDirection} onSortBy={chooseSortField} onToggleSort={toggleSortDirection} /> : <p className="admin-empty">{params.get('q') ? 'Không tìm thấy đầu bếp phù hợp.' : 'Chưa có hồ sơ đầu bếp nào.'}</p>}
+      </section>
+    </>;
+  }
   return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / {resource === 'reservations' ? 'DỊCH VỤ' : 'QUẢN TRỊ'}</p><h1>{config.label === 'Đặt bàn' ? 'Yêu cầu đặt bàn' : config.label}</h1><p>{resource === 'reservations' ? 'Khách gửi yêu cầu trước; nhà hàng cần liên hệ để xác nhận.' : `${result?.total ?? 0} mục trong danh mục quản trị.`}</p></div>{resource !== 'reservations' && <Link className="admin-primary-button" to={`/admin/${resource}/new`}>+ Thêm {config.label.toLowerCase()}</Link>}</section>
     <section className={`admin-panel${resource === 'ingredients' ? ' admin-panel--ingredients' : ''}`}><div className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>{resource === 'chefs' ? 'Người giữ bếp' : `Tất cả ${config.label.toLowerCase()}`}</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></div>
     <form className="admin-search" onSubmit={filter} role="search" aria-label={`Tìm ${config.label.toLowerCase()}`}><div className="admin-search-field"><label htmlFor="adminSearch">{resource === 'reservations' ? 'Tìm yêu cầu đặt bàn' : `Tìm ${config.label.toLowerCase()}`}</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder={`Tên, thông tin ${config.label.toLowerCase()}…`} /></div>{resource === 'reservations' && <><div className="admin-filters"><div className="form-field"><label htmlFor="statusFilter">Trạng thái</label><select id="statusFilter" name="status" defaultValue={params.get('status') || ''} aria-invalid={Boolean(filterError('status'))} aria-describedby={filterError('status') ? 'statusFilter-error' : undefined}><option value="">Tất cả trạng thái</option>{Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{filterError('status') && <small id="statusFilter-error" className="field-error">{filterError('status')}</small>}</div><div className="form-field"><label htmlFor="fromFilter">Từ ngày</label><input id="fromFilter" type="date" name="from" defaultValue={params.get('from') || ''} aria-invalid={Boolean(filterError('from'))} aria-describedby={filterError('from') ? 'fromFilter-error' : undefined} />{filterError('from') && <small id="fromFilter-error" className="field-error">{filterError('from')}</small>}</div><div className="form-field"><label htmlFor="toFilter">Đến ngày</label><input id="toFilter" type="date" name="to" defaultValue={params.get('to') || ''} aria-invalid={Boolean(filterError('to'))} aria-describedby={filterError('to') ? 'toFilter-error' : undefined} />{filterError('to') && <small id="toFilter-error" className="field-error">{filterError('to')}</small>}</div></div></>}<button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
@@ -393,6 +741,54 @@ function AdminIngredientCards({ rows, result, sortDirection, onSort, location, p
           </div>
         </article>;
       })}
+    </div>
+    <Pagination result={result} params={params} setParams={setParams} />
+  </>;
+}
+
+function AdminDishCards({ rows, categories, location, params, setParams, result }) {
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  return <>
+    <div className="admin-dish-card-list" role="list" aria-label="Danh sách món ăn">
+      {rows.map((dish) => {
+        const category = categoriesById.get(dish.categoryId) || dish.category;
+        return <article className="admin-dish-card" role="listitem" key={dish.id}>
+          <Link className="admin-dish-card__image" to={`/admin/dishes/${dish.id}/edit`} aria-label={`Chỉnh sửa ${dish.name}`}>
+            <img src={dish.imageUrl || FALLBACK} alt="" loading="lazy" onError={(event) => { event.currentTarget.src = FALLBACK; }} />
+          </Link>
+          <div className="admin-dish-card__content">
+            <div className="admin-dish-card__title"><h3><Link to={`/admin/dishes/${dish.id}/edit`}>{dish.name}</Link></h3><strong>{money(dish.price)}</strong></div>
+            <p className="admin-dish-card__description">{dish.description || 'Chưa có mô tả cho món ăn này.'}</p>
+            <p className="admin-dish-card__meta">{category?.name || 'Chưa phân loại'}{dish.chef?.name ? ` · ${dish.chef.name}` : ''}</p>
+            <div className="admin-dish-card__statuses"><span className={`status-badge ${dish.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{dish.isPublished ? 'Đã công khai' : 'Bản nháp'}</span><span className={`status-badge ${dish.isAvailable ? 'status-confirmed' : 'status-pending'}`}>{dish.isAvailable ? 'Đang phục vụ' : 'Tạm hết'}</span>{dish.isFeatured && <span className="admin-dish-featured">Nổi bật</span>}</div>
+          </div>
+          <div className="admin-dish-card__actions"><AdminRowActions resource="dishes" row={dish} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></div>
+        </article>;
+      })}
+    </div>
+    <Pagination result={result} params={params} setParams={setParams} />
+  </>;
+}
+
+function AdminChefCards({ rows, result, location, params, setParams, sortBy, sortDirection, onSortBy, onToggleSort }) {
+  return <>
+    <div className="admin-chef-toolbar">
+      <span>Đang hiển thị {rows.length} / {result.total}</span>
+      <label className="admin-chef-sort"><span>Sắp xếp</span><select value={sortBy} onChange={(event) => onSortBy(event.target.value)} aria-label="Sắp xếp hồ sơ đầu bếp theo">
+        <option value="sortOrder">Thứ tự</option><option value="name">Họ tên</option><option value="title">Chức danh</option><option value="specialty">Sở trường</option><option value="visibility">Hiển thị</option>
+      </select><button className="admin-chef-sort-direction" type="button" onClick={onToggleSort} aria-label={`Đổi thứ tự sắp xếp ${sortDirection === 'asc' ? 'giảm dần' : 'tăng dần'}`}>{sortDirection === 'asc' ? '↑ Tăng dần' : '↓ Giảm dần'}</button></label>
+    </div>
+    <div className="admin-chef-card-grid" role="list" aria-label="Danh sách hồ sơ đầu bếp">
+      {rows.map((chef) => <article className="admin-chef-card" role="listitem" key={chef.id}>
+        <img className="admin-chef-card__image" src={chef.imageUrl || FALLBACK} alt={`Chân dung ${chef.name}`} loading="lazy" onError={(event) => { event.currentTarget.src = FALLBACK; }} />
+        <div className="admin-chef-card__content">
+          <div className="admin-chef-card__heading"><div><h3>{chef.name}</h3><p>{chef.title}</p></div><span className={`status-badge ${chef.isPublished ? 'status-confirmed' : 'status-cancelled'}`}>{chef.isPublished ? 'Công khai' : 'Bản nháp'}</span></div>
+          {chef.specialty && <p className="admin-chef-card__specialty">{chef.specialty}</p>}
+          {chef.bio && <p className="admin-chef-card__bio">{chef.bio}</p>}
+          <p className="admin-chef-card__dishes"><strong>{chef.dishes?.length || 0} món phụ trách</strong>{chef.dishes?.length ? ` · ${chef.dishes.map((dish) => dish.name).join(', ')}` : ''}</p>
+        </div>
+        <footer className="admin-chef-card__actions"><span>Thứ tự {chef.sortOrder}</span><AdminRowActions resource="chefs" row={chef} returnTo={`${location.pathname}${location.search}`} backgroundLocation={location} /></footer>
+      </article>)}
     </div>
     <Pagination result={result} params={params} setParams={setParams} />
   </>;
@@ -499,7 +895,7 @@ function AdminForm({ resource }) {
   </>;
 }
 
-function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdated, onDeleted }) {
+function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdated, onDeleted, allowAll = false, selectable = true, title = 'Danh mục món', createdMessage = 'và chọn cho món này.' }) {
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -549,9 +945,9 @@ function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdate
       onCreated(category);
       setName('');
       setAdding(false);
-      setNotice(`Đã thêm “${category.name}” và chọn cho món này.`);
+      setNotice(`Đã thêm “${category.name}” ${createdMessage}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(requestError.fields?.name || requestError.message);
     } finally {
       setBusy(false);
     }
@@ -579,7 +975,7 @@ function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdate
       setEditing(null);
       setNotice(`Đã cập nhật danh mục “${updated.name}”.`);
     } catch (requestError) {
-      setActionError(requestError.message);
+      setActionError(requestError.fields?.name || requestError.message);
     } finally {
       setActionBusy(false);
     }
@@ -616,8 +1012,9 @@ function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdate
 
   return <aside className="admin-category-panel" aria-labelledby="admin-category-title">
     <header className="admin-category-panel__heading">
-      <h2 id="admin-category-title">Danh mục món</h2>
+      <h2 id="admin-category-title">{title}</h2>
     </header>
+    {allowAll && selectable && <button className={`admin-category-all${selectedId ? '' : ' is-selected'}`} type="button" aria-pressed={!selectedId} onClick={() => onSelect('')}><span className="admin-category-option__mark" aria-hidden="true">{selectedId ? '·' : '✓'}</span><span>Tất cả món</span></button>}
     <div className="admin-category-list" role="list" aria-label="Danh mục hiện có">
       {categories.length ? categories.map((category) => <div className="admin-category-list__item" role="listitem" key={category.id}>
         {editing === category.id ? <form className="admin-category-edit" onSubmit={(event) => saveEdit(event, category)}>
@@ -626,10 +1023,10 @@ function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdate
           {actionError && <p className="admin-category-error" role="alert">{actionError}</p>}
           <div className="admin-category-create__actions"><button className="admin-primary-button" type="submit" disabled={actionBusy}>{actionBusy ? 'Đang lưu…' : 'Lưu'}</button><button className="admin-secondary-button" type="button" disabled={actionBusy} onClick={() => { setEditing(null); setActionError(''); }}>Hủy</button></div>
         </form> : <div className="admin-category-row">
-          <button className={`admin-category-option${selectedId === category.id ? ' is-selected' : ''}`} type="button" aria-pressed={selectedId === category.id} onClick={() => onSelect(category.id)}>
+          {selectable ? <button className={`admin-category-option${selectedId === category.id ? ' is-selected' : ''}`} type="button" aria-pressed={selectedId === category.id} onClick={() => onSelect(category.id)}>
             <span className="admin-category-option__mark" aria-hidden="true">{selectedId === category.id ? '✓' : '·'}</span>
             <span>{category.name}</span>
-          </button>
+          </button> : <span className="admin-category-option admin-category-option--static"><span className="admin-category-option__mark" aria-hidden="true">·</span><span>{category.name}</span></span>}
           <div className="admin-category-actions">
             <button className="admin-category-menu-trigger" type="button" aria-label={`Tùy chọn danh mục ${category.name}`} aria-expanded={menuFor === category.id} onClick={() => { setMenuFor(menuFor === category.id ? '' : category.id); setActionError(''); }}>•••</button>
             {menuFor === category.id && <div className="admin-category-menu" role="group" aria-label={`Thao tác với ${category.name}`}>
@@ -715,7 +1112,7 @@ function AdminDeletePage({ resource }) {
   React.useEffect(() => {
     if (!success) return undefined;
     const timer = window.setTimeout(() => {
-      navigate(successReturnTo, { replace: true, state: { notice: `Đã xóa ${config.label.toLowerCase()} “${state.data?.name || state.data?.referenceCode || ''}”.` } });
+      navigate(successReturnTo, { replace: true, state: { notice: `Đã xóa ${config.label.toLowerCase()} “${state.data?.name || state.data?.referenceCode || ''}”.`, deletedId: id } });
     }, 850);
     return () => window.clearTimeout(timer);
   }, [config.label, navigate, state.data, success, successReturnTo]);
