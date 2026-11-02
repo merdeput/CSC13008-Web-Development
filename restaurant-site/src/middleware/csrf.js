@@ -1,15 +1,27 @@
 const crypto = require('node:crypto');
 
 function attachCsrfToken(req, res, next) {
-  if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
-  res.locals.csrfToken = req.session.csrfToken;
+  const needsToken = Boolean(req.session && (
+    req.session.userId ||
+    req.path === '/login' ||
+    req.path === '/register' ||
+    req.path.startsWith('/register/') ||
+    req.path === '/activate' ||
+    req.path.startsWith('/activate/') ||
+    req.path.startsWith('/password-reset') ||
+    req.path === '/reservations/new'
+  ));
+  if (needsToken && !req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  res.locals.csrfToken = req.session && req.session.csrfToken;
   next();
 }
 
 function requireCsrf(req, res, next) {
   const submitted = req.body && req.body._csrf;
   const expected = req.session && req.session.csrfToken;
+  const isAuthRequest = /^\/(?:register|activate|login|password-reset|logout)(?:\/|$)/.test(req.path);
   if (typeof submitted !== 'string' || typeof expected !== 'string') {
+    if (isAuthRequest) console.warn('[auth] CSRF token missing', { path: req.path });
     return res.status(403).render('errors/error', {
       pageTitle: 'Yêu cầu không hợp lệ',
       status: 403,
@@ -19,6 +31,7 @@ function requireCsrf(req, res, next) {
   const submittedBuffer = Buffer.from(submitted);
   const expectedBuffer = Buffer.from(expected);
   if (submittedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(submittedBuffer, expectedBuffer)) {
+    if (isAuthRequest) console.warn('[auth] CSRF token rejected', { path: req.path });
     return res.status(403).render('errors/error', {
       pageTitle: 'Yêu cầu không hợp lệ',
       status: 403,

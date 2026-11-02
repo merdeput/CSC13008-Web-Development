@@ -79,6 +79,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .primary-navigation > a:hover::after, .primary-navigation > a.is-current::after { transform: scaleX(1); }
 .primary-navigation > .nav-booking { padding: .72rem 1rem; border: 1px solid var(--reddish-brown); color: var(--cream); background: var(--reddish-brown); }
 .nav-booking span { margin-left: .7rem; }
+.primary-navigation > a.nav-login { padding: .65rem .85rem; border: 1px solid rgba(255,249,236,.58); color: var(--cream); }
+.primary-navigation > a.nav-login::after { display: none; }
+.nav-logout-form { margin: 0; }
+.nav-logout { min-height: 42px; padding: .55rem .75rem; border: 1px solid rgba(255,249,236,.58); color: var(--cream); background: transparent; font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .mobile-nav-toggle { display: none; }
 
 /* Landing page */
@@ -350,6 +354,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .primary-navigation.is-open { display: flex; }
   .primary-navigation > a { padding: .85rem .6rem; border-bottom: 1px solid var(--line); }
   .primary-navigation > .nav-booking { margin-top: .7rem; text-align: center; }
+  .nav-logout-form { margin-top: .7rem; }
+  .primary-navigation .nav-login, .primary-navigation .nav-logout { display: block; width: 100%; text-align: center; }
   .home-hero { min-height: initial; padding-top: 2.5rem; }
   .hero-content { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
   .hero-copy { padding: 0; }

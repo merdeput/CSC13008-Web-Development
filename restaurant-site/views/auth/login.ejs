@@ -1,0 +1,24 @@
+<section class="auth-page section-pad">
+  <div class="auth-card">
+    <p class="eyebrow">BẾP HỘI / QUẢN TRỊ</p>
+    <h1>Đăng nhập</h1>
+    <p>Đăng nhập bằng email đã xác minh để mở khu vực quản trị.</p>
+    <% if (notice) { %><p class="auth-message" role="status"><%= notice %></p><% } %>
+    <% if (error) { %><p class="auth-message auth-message-error" role="alert"><%= error %></p><% } %>
+    <% if (loginAvailable) { %>
+      <form class="auth-form" action="/login" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+        <input type="hidden" name="returnTo" value="<%= returnTo %>">
+        <label for="login-email">Email</label>
+        <input id="login-email" name="email" type="email" autocomplete="username" maxlength="254" required value="<%= email %>">
+        <label for="login-password">Mật khẩu</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+        <div class="g-recaptcha" data-sitekey="<%= captchaSiteKey %>" data-theme="light"></div>
+        <button class="button button-dark button-wide" type="submit">Đăng nhập</button>
+      </form>
+      <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <% } %>
+    <p class="auth-switch"><a href="/password-reset">Quên mật khẩu?</a></p>
+    <p class="auth-switch">Chưa có tài khoản? <a href="/register">Đăng ký</a></p>
+  </div>
+</section>

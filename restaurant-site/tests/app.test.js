@@ -1,9 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const expressSession = require('express-session');
+const { promisify } = require('node:util');
 const request = require('supertest');
 const { createApp } = require('../src/app');
+const { PrismaSessionStore } = require('../src/lib/prisma-session-store');
 const { createDishService } = require('../src/services/dish-service');
+const { createAuthService } = require('../src/services/auth-service');
 const { canTransition } = require('../src/services/reservation-service');
 const { parseReservationDateTime, validateReservationInput } = require('../src/services/validation');
 const { formatDateTimeHcm } = require('../src/lib/format');
@@ -14,6 +18,23 @@ const secondIngredientId = 'c1cf927e-c17a-4ce6-bec1-976e034b9602';
 const dishId = '143bf0e8-7c88-4ecb-8da5-b901cb082cac';
 const chefId = '81f7350b-9af3-4564-88bc-0d38a728a59e';
 const reservationId = '0ac6032d-0681-480e-a667-9f38f9049762';
+const testAdminId = '6cb91747-b711-48c1-885c-4190b08ea211';
+const testAdminEmail = 'admin@example.test';
+const testAdminPassword = 'Test-Admin-Password-123';
+const registeredUserId = '10f852de-8ad7-4a2d-994a-dce5802bf9a1';
+const registeredEmail = 'new-user@example.test';
+const registeredPassword = 'New-User-Password-123';
+const resetToken = 'test-reset-token-with-enough-entropy-1234567890';
+
+process.env.NODE_ENV = 'test';
+process.env.RECAPTCHA_SITE_KEY = 'test-site-key';
+process.env.RECAPTCHA_SECRET_KEY = 'test-recaptcha-secret';
+process.env.RECAPTCHA_ALLOWED_HOSTNAMES = '127.0.0.1,localhost';
+process.env.OTP_HMAC_SECRET = 'test-otp-hmac-secret-123456789012';
+process.env.LOGIN_COUNTER_HMAC_SECRET = 'test-login-counter-secret-123456789';
+process.env.RESEND_API_KEY = 'test-resend-api-key';
+process.env.EMAIL_FROM = 'Bep Hoi <noreply@example.test>';
+process.env.PUBLIC_BASE_URL = 'http://localhost:3000';
 
 const category = { id: categoryId, name: 'Món nước', slug: 'mon-nuoc', sortOrder: 1 };
 const ingredients = [
@@ -36,7 +57,7 @@ function makeChef(overrides = {}) {
   return {
     id: chefId, name: 'Trần Minh An', title: 'Bếp trưởng điều hành',
     bio: 'Giữ lửa căn bếp.', specialty: 'Món Hội An', imageUrl: null,
-    isPublished: true, sortOrder: 1,
+    isPublished: true, sortOrder: 1, dishes: [],
     createdAt: new Date('2026-01-01T10:00:00Z'), updatedAt: new Date('2026-01-01T10:00:00Z'),
     ...overrides
   };
@@ -62,18 +83,36 @@ function makeServices() {
   }];
   let lastDishUpdate;
   let deleteCalls = 0;
+  const authUsers = new Map([[testAdminEmail, {
+    id: testAdminId, email: testAdminEmail, password: testAdminPassword,
+    role: 'viewer', status: 'ACTIVE', emailVerifiedAt: new Date()
+  }]]);
+  const authState = {
+    authUsers, registrationInput: null, loginAttempts: 0, resetCompleted: false,
+    resendResult: { status: 'sent' }, registrationDeliveryErrorCode: null
+  };
+  const adminFilters = {
+    categoryIds: [], isPublished: undefined, isAvailable: undefined, isFeatured: undefined,
+    minPrice: undefined, maxPrice: undefined
+  };
   return {
-    state: { dishes, chefs, reservations, get lastDishUpdate() { return lastDishUpdate; }, get deleteCalls() { return deleteCalls; } },
+    state: { dishes, chefs, reservations, auth: authState, get lastDishUpdate() { return lastDishUpdate; }, get deleteCalls() { return deleteCalls; } },
     services: {
       dishes: {
         listFeatured: async () => dishes.filter((dish) => dish.isFeatured && dish.isPublished),
-        listPublic: async ({ categoryId: filterCategoryId, q } = {}) => dishes.filter((dish) => dish.isPublished &&
-          (!filterCategoryId || dish.categoryId === filterCategoryId) && (!q || `${dish.name} ${dish.description}`.toLowerCase().includes(q.toLowerCase()))),
+        listPublic: async ({ categoryId: filterCategoryId, q, page = 1, pageSize = 6 } = {}) => {
+          const items = dishes.filter((dish) => dish.isPublished &&
+            (!filterCategoryId || dish.categoryId === filterCategoryId) && (!q || `${dish.name} ${dish.description}`.toLowerCase().includes(q.toLowerCase())));
+          return { items, total: items.length, page, pageSize, pageCount: 1 };
+        },
         listCategories: async () => [category],
         findPublicById: async (id) => dishes.find((dish) => dish.id === id && dish.isPublished) || null,
-        listAdmin: async ({ page = 1 } = {}) => ({ items: dishes, total: dishes.length, page: Number(page) || 1, pageCount: 1 }),
+        listAdmin: async ({ page = 1 } = {}) => ({
+          items: dishes, total: dishes.length, page: Number(page) || 1, pageCount: 1,
+          sortBy: 'updatedAt', sortDirection: 'desc', q: '', filters: adminFilters, filterErrors: {}
+        }),
         findById: async (id) => dishes.find((dish) => dish.id === id) || null,
-        formOptions: async () => ({ categories: [category], ingredients }),
+        formOptions: async () => ({ categories: [category], ingredients, chefs }),
         create: async (data) => {
           const dish = makeDish({
             ...data, id: crypto.randomUUID(), slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -100,6 +139,7 @@ function makeServices() {
       },
       chefs: {
         listPublished: async () => chefs.filter((chef) => chef.isPublished),
+        formOptions: async () => ({ dishes }),
         listAdmin: async ({ page = 1 } = {}) => ({ items: chefs, total: chefs.length, page: Number(page) || 1, pageCount: 1 }),
         findById: async (id) => chefs.find((chef) => chef.id === id) || null,
         create: async (data) => { const chef = makeChef({ ...data, id: crypto.randomUUID() }); chefs.push(chef); return chef; },
@@ -125,9 +165,63 @@ function makeServices() {
         count: async () => reservations.length,
         remove: async (id) => { const index = reservations.findIndex((item) => item.id === id); if (index < 0) return false; reservations.splice(index, 1); return true; }
       },
-      admin: { overview: async () => ({ dishCount: dishes.length, chefCount: chefs.length, reservationCount: reservations.length }) }
+      categories: {
+        list: async () => [category],
+        findById: async (id) => id === categoryId ? category : null
+      },
+      ingredients: { list: async () => ingredients },
+      admin: { overview: async () => ({ dishCount: dishes.length, chefCount: chefs.length, reservationCount: reservations.length }) },
+      auth: {
+        authenticate: async (email, password) => {
+          authState.loginAttempts += 1;
+          const user = authUsers.get(email);
+          return user && user.status === 'ACTIVE' && user.emailVerifiedAt && user.password === password
+            ? { id: user.id, email: user.email, role: user.role, status: user.status }
+            : null;
+        },
+        findById: async (id) => [...authUsers.values()].find((user) => user.id === id) || null,
+        beginRegistration: async (input) => {
+          authState.registrationInput = input;
+          authUsers.set(input.email, {
+            id: registeredUserId, email: input.email, password: registeredPassword,
+            role: 'viewer', status: 'PENDING', emailVerifiedAt: null
+          });
+          return {
+            userId: registeredUserId, created: true,
+            ...(authState.registrationDeliveryErrorCode ? { deliveryErrorCode: authState.registrationDeliveryErrorCode } : {})
+          };
+        },
+        activateAccount: async (id, code) => {
+          const user = [...authUsers.values()].find((item) => item.id === id);
+          if (!user || user.status !== 'PENDING' || code !== '123456') return { status: 'invalid' };
+          user.status = 'ACTIVE';
+          user.emailVerifiedAt = new Date();
+          return { status: 'activated' };
+        },
+        resendActivationCode: async () => authState.resendResult,
+        getLoginLockout: async () => ({ locked: false }),
+        recordLoginFailure: async () => {},
+        clearLoginFailures: async () => {},
+        requestPasswordReset: async () => ({ queued: true }),
+        isPasswordResetTokenValid: async (token) => token === resetToken,
+        completePasswordReset: async (token, password) => {
+          if (token !== resetToken) return false;
+          const user = authUsers.get(testAdminEmail);
+          user.password = password;
+          authState.resetCompleted = true;
+          return true;
+        }
+      }
     }
   };
+}
+
+function createTestApp(services, verifyRecaptcha = async () => true) {
+  return createApp({
+    services,
+    sessionStore: new expressSession.MemoryStore(),
+    verifyRecaptcha
+  });
 }
 
 async function csrfToken(agent, path) {
@@ -138,22 +232,238 @@ async function csrfToken(agent, path) {
   return match[1];
 }
 
+async function authenticatedAgent(app) {
+  const agent = request.agent(app);
+  const token = await csrfToken(agent, '/login');
+  const response = await agent.post('/login').type('form').send({
+    _csrf: token,
+    email: testAdminEmail,
+    password: testAdminPassword,
+    returnTo: '/admin',
+    'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.location, '/admin');
+  return agent;
+}
+
 test('customer and admin SSR pages render in Vietnamese without authentication', async () => {
   const { services } = makeServices();
-  const app = createApp({ services });
+  const app = createTestApp(services);
   const home = await request(app).get('/');
   assert.equal(home.status, 200);
   assert.match(home.text, /VỊ NHÀ/);
   assert.match(home.text, /Cao lầu Hội An/);
 
   const admin = await request(app).get('/admin');
-  assert.equal(admin.status, 200);
-  assert.match(admin.text, /khu vực quản trị mở trực tiếp/i);
+  assert.equal(admin.status, 303);
+  assert.equal(admin.headers.location, '/login?returnTo=%2Fadmin');
+  const signedIn = await authenticatedAgent(app);
+  assert.equal((await signedIn.get('/admin')).status, 200);
+});
+
+test('admin middleware rechecks that the session user remains active and verified', async () => {
+  const { services, state } = makeServices();
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
+  state.auth.authUsers.get(testAdminEmail).status = 'PENDING';
+  const rejected = await agent.get('/admin');
+  assert.equal(rejected.status, 303);
+  assert.equal(rejected.headers.location, '/login');
+});
+
+test('registration creates a pending viewer, blocks pending login, and activation does not sign in', async () => {
+  const { services, state } = makeServices();
+  const app = createTestApp(services);
+  const agent = request.agent(app);
+  const registerToken = await csrfToken(agent, '/register');
+  const registered = await agent.post('/register').type('form').send({
+    _csrf: registerToken, email: registeredEmail, password: registeredPassword,
+    role: 'admin', 'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(registered.status, 200);
+  assert.equal(state.auth.authUsers.get(registeredEmail).status, 'PENDING');
+  assert.equal(state.auth.authUsers.get(registeredEmail).role, 'viewer');
+  assert.equal(Object.hasOwn(state.auth.registrationInput, 'role'), false);
+
+  const loginToken = await csrfToken(agent, '/login');
+  const pendingLogin = await agent.post('/login').type('form').send({
+    _csrf: loginToken, email: registeredEmail, password: registeredPassword,
+    'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(pendingLogin.status, 401);
+
+  state.auth.resendResult = { status: 'limit' };
+  const resendToken = await csrfToken(agent, '/activate');
+  const limitedResend = await agent.post('/activate/resend').type('form').send({
+    _csrf: resendToken, 'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(limitedResend.status, 429);
+
+  const activationToken = await csrfToken(agent, '/activate');
+  const activated = await agent.post('/activate').type('form').send({ _csrf: activationToken, code: '123456' });
+  assert.equal(activated.status, 303);
+  assert.equal(activated.headers.location, '/login?activated=1');
+  assert.equal((await agent.get('/admin')).status, 303, 'activation does not create an authenticated session');
+
+  const postActivationLoginToken = await csrfToken(agent, '/login');
+  const loggedIn = await agent.post('/login').type('form').send({
+    _csrf: postActivationLoginToken, email: registeredEmail, password: registeredPassword,
+    'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(loggedIn.status, 303);
+  assert.equal(loggedIn.headers.location, '/admin');
+});
+
+test('registration and login reject failed server-side CAPTCHA verification', async () => {
+  const { services, state } = makeServices();
+  const app = createTestApp(services, async () => false);
+  const agent = request.agent(app);
+  let token = await csrfToken(agent, '/register');
+  const registration = await agent.post('/register').type('form').send({
+    _csrf: token, email: registeredEmail, password: registeredPassword, 'g-recaptcha-response': 'bad-token'
+  });
+  assert.equal(registration.status, 400);
+  assert.equal(state.auth.registrationInput, null);
+
+  token = await csrfToken(agent, '/login');
+  const login = await agent.post('/login').type('form').send({
+    _csrf: token, email: testAdminEmail, password: testAdminPassword, 'g-recaptcha-response': 'bad-token'
+  });
+  assert.equal(login.status, 400);
+  assert.equal(state.auth.loginAttempts, 0, 'failed CAPTCHA does not reach credential verification');
+});
+
+test('email provider rejection keeps registration generic and leaves activation recoverable', async () => {
+  const { services, state } = makeServices();
+  state.auth.registrationDeliveryErrorCode = 'EMAIL_PROVIDER_HTTP_403';
+  const app = createTestApp(services);
+  const agent = request.agent(app);
+  const token = await csrfToken(agent, '/register');
+  const response = await agent.post('/register').type('form').send({
+    _csrf: token, email: registeredEmail, password: registeredPassword, 'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(response.text, /EMAIL_PROVIDER_HTTP_403/);
+  assert.equal((await agent.get('/activate')).status, 200);
+});
+
+test('all admin CRUD route methods redirect unauthenticated requests with 303', async () => {
+  const { services } = makeServices();
+  const app = createTestApp(services);
+  const routes = [
+    ['get', '/admin'],
+    ['get', '/admin/categories'], ['post', '/admin/categories'], ['patch', '/admin/categories/11111111-1111-4111-8111-111111111111'], ['get', '/admin/categories/11111111-1111-4111-8111-111111111111/delete'], ['delete', '/admin/categories/11111111-1111-4111-8111-111111111111'],
+    ['get', '/admin/dishes'], ['get', '/admin/dishes/new'], ['post', '/admin/dishes'], ['get', '/admin/dishes/11111111-1111-4111-8111-111111111111'], ['get', '/admin/dishes/11111111-1111-4111-8111-111111111111/edit'], ['patch', '/admin/dishes/11111111-1111-4111-8111-111111111111'], ['get', '/admin/dishes/11111111-1111-4111-8111-111111111111/delete'], ['delete', '/admin/dishes/11111111-1111-4111-8111-111111111111'],
+    ['get', '/admin/chefs'], ['get', '/admin/chefs/new'], ['post', '/admin/chefs'], ['get', '/admin/chefs/11111111-1111-4111-8111-111111111111'], ['get', '/admin/chefs/11111111-1111-4111-8111-111111111111/edit'], ['patch', '/admin/chefs/11111111-1111-4111-8111-111111111111'], ['get', '/admin/chefs/11111111-1111-4111-8111-111111111111/delete'], ['delete', '/admin/chefs/11111111-1111-4111-8111-111111111111'],
+    ['get', '/admin/ingredients'], ['get', '/admin/ingredients/new'], ['post', '/admin/ingredients'], ['get', '/admin/ingredients/11111111-1111-4111-8111-111111111111/edit'], ['patch', '/admin/ingredients/11111111-1111-4111-8111-111111111111'], ['get', '/admin/ingredients/11111111-1111-4111-8111-111111111111/delete'], ['delete', '/admin/ingredients/11111111-1111-4111-8111-111111111111'], ['get', '/admin/ingredients/11111111-1111-4111-8111-111111111111'],
+    ['get', '/admin/reservations'], ['get', '/admin/reservations/11111111-1111-4111-8111-111111111111'], ['get', '/admin/reservations/11111111-1111-4111-8111-111111111111/edit'], ['patch', '/admin/reservations/11111111-1111-4111-8111-111111111111'], ['get', '/admin/reservations/11111111-1111-4111-8111-111111111111/delete'], ['delete', '/admin/reservations/11111111-1111-4111-8111-111111111111']
+  ];
+  for (const [method, path] of routes) {
+    const response = await request(app)[method](path);
+    assert.equal(response.status, 303, `${method.toUpperCase()} ${path}`);
+    assert.match(response.headers.location, /^\/login\?returnTo=/);
+  }
+});
+
+test('POST logout destroys the stored session and rejects replay of its old cookie', async () => {
+  const { services } = makeServices();
+  const app = createTestApp(services);
+  const agent = request.agent(app);
+  const loginPage = await agent.get('/login');
+  const loginCsrf = loginPage.text.match(/name="_csrf" value="([a-f0-9]+)"/);
+  assert.ok(loginCsrf);
+  const preAuthCookie = loginPage.headers['set-cookie'].find((value) => value.startsWith('bephoi.sid='));
+  assert.ok(preAuthCookie);
+  const login = await agent.post('/login').type('form').send({
+    _csrf: loginCsrf[1], email: testAdminEmail, password: testAdminPassword,
+    'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(login.status, 303);
+  const oldCookie = login.headers['set-cookie'].find((value) => value.startsWith('bephoi.sid='));
+  assert.ok(oldCookie);
+  assert.notEqual(preAuthCookie.split(';')[0], oldCookie.split(';')[0], 'login rotates the session identifier');
+  assert.equal((await request(app).get('/admin').set('Cookie', preAuthCookie.split(';')[0])).status, 303);
+
+  const logoutToken = await csrfToken(agent, '/');
+  const logout = await agent.post('/logout').type('form').send({ _csrf: logoutToken });
+  assert.equal(logout.status, 303);
+  assert.equal(logout.headers.location, '/');
+  assert.match(logout.headers['set-cookie'].join(';'), /Expires=Thu, 01 Jan 1970/i);
+
+  const replay = await request(app).get('/admin').set('Cookie', oldCookie.split(';')[0]);
+  assert.equal(replay.status, 303);
+});
+
+test('PostgreSQL session adapter stores userId and reloads the session from the shared store', async () => {
+  const records = new Map();
+  const db = { session: {
+    findUnique: async ({ where }) => records.get(where.sid) || null,
+    upsert: async ({ where, create, update }) => {
+      records.set(where.sid, { ...(records.get(where.sid) || create), ...update, ...(!records.has(where.sid) ? create : {}) });
+    },
+    deleteMany: async ({ where }) => {
+      const existed = records.delete(where.sid);
+      return { count: existed ? 1 : 0 };
+    }
+  } };
+  const firstProcessStore = new PrismaSessionStore(db, { pruneIntervalMs: 60_000 });
+  const sessionData = { userId: testAdminId, cookie: { expires: new Date(Date.now() + 60_000), maxAge: 60_000 } };
+  await promisify(firstProcessStore.set.bind(firstProcessStore))('persistent-session-id', sessionData);
+  firstProcessStore.close();
+  assert.equal(records.get('persistent-session-id').userId, testAdminId);
+
+  const restartedProcessStore = new PrismaSessionStore(db, { pruneIntervalMs: 60_000 });
+  const loaded = await promisify(restartedProcessStore.get.bind(restartedProcessStore))('persistent-session-id');
+  assert.equal(loaded.userId, testAdminId);
+  await promisify(restartedProcessStore.destroy.bind(restartedProcessStore))('persistent-session-id');
+  assert.equal(await promisify(restartedProcessStore.get.bind(restartedProcessStore))('persistent-session-id'), null);
+  restartedProcessStore.close();
+});
+
+test('persistent login lockout honors lockedUntil independently of the failure window', async () => {
+  const email = 'locked@example.test';
+  const ip = '203.0.113.25';
+  const keyHash = (type, value) => crypto.createHmac('sha256', process.env.LOGIN_COUNTER_HMAC_SECRET)
+    .update(`${type}:${value}`).digest('hex');
+  const counters = [
+    { keyType: 'EMAIL', keyHash: keyHash('EMAIL', email), failureCount: 10, windowStartedAt: new Date(Date.now() - 16 * 60_000), lockedUntil: new Date(Date.now() + 60_000) },
+    { keyType: 'IP', keyHash: keyHash('IP', ip), failureCount: 10, windowStartedAt: new Date(Date.now() - 16 * 60_000), lockedUntil: new Date(Date.now() + 60_000) }
+  ];
+  const auth = createAuthService({ loginFailureCounter: {
+    findMany: async ({ where }) => counters.filter((counter) => where.OR.some((key) => key.keyType === counter.keyType && key.keyHash === counter.keyHash))
+  } });
+
+  assert.equal((await auth.getLoginLockout(email, ip)).locked, true);
+  counters.forEach((counter) => { counter.lockedUntil = null; });
+  assert.equal((await auth.getLoginLockout(email, ip)).locked, false, 'expired windows stop blocking after lockedUntil elapses');
+});
+
+test('password reset routes use a generic request response and consume a valid reset token', async () => {
+  const { services, state } = makeServices();
+  const app = createTestApp(services);
+  const agent = request.agent(app);
+  const requestToken = await csrfToken(agent, '/password-reset');
+  const requested = await agent.post('/password-reset').type('form').send({
+    _csrf: requestToken, email: testAdminEmail, 'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(requested.status, 200);
+  assert.match(requested.text, /role="status"/);
+  assert.doesNotMatch(requested.text, new RegExp(testAdminEmail));
+
+  const confirmPath = `/password-reset/confirm?token=${encodeURIComponent(resetToken)}`;
+  const confirmToken = await csrfToken(agent, confirmPath);
+  const completed = await agent.post('/password-reset/confirm').type('form').send({
+    _csrf: confirmToken, token: resetToken, password: 'New-Reset-Password-123'
+  });
+  assert.equal(completed.status, 303);
+  assert.equal(completed.headers.location, '/login?reset=1');
+  assert.equal(state.auth.resetCompleted, true);
 });
 
 test('public dish navigation and category filters use IDs', async () => {
   const { services } = makeServices();
-  const app = createApp({ services });
+  const app = createTestApp(services);
   const menu = await request(app).get(`/menu?q=cao%20l%E1%BA%A7u&category=${categoryId}`);
   assert.equal(menu.status, 200);
   assert.match(menu.text, /Cao lầu Hội An/);
@@ -163,7 +473,7 @@ test('public dish navigation and category filters use IDs', async () => {
 
 test('reservation form validates, creates a pending request and shows a one-time reference after 303', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
+  const app = createTestApp(services);
   const agent = request.agent(app);
   const token = await csrfToken(agent, '/reservations/new');
   const date = futureLocalDate();
@@ -190,8 +500,8 @@ test('reservation form validates, creates a pending request and shows a one-time
 
 test('admin dish mutation uses POST method override, replaces ingredients and persists in service state', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
-  const agent = request.agent(app);
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
   const token = await csrfToken(agent, `/admin/dishes/${dishId}/edit`);
 
   const response = await agent.post(`/admin/dishes/${dishId}`).type('form').send({
@@ -208,8 +518,8 @@ test('admin dish mutation uses POST method override, replaces ingredients and pe
 
 test('admin can create a dish and its detail page shows the saved ingredient choices', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
-  const agent = request.agent(app);
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
   const token = await csrfToken(agent, '/admin/dishes/new');
   const created = await agent.post('/admin/dishes').type('form').send({
     _csrf: token, name: 'Gỏi cuốn vườn nhà', categoryId,
@@ -229,8 +539,8 @@ test('admin can create a dish and its detail page shows the saved ingredient cho
 
 test('admin chef create, update, and delete pages persist the edited profile', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
-  const agent = request.agent(app);
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
   const createToken = await csrfToken(agent, '/admin/chefs/new');
   const created = await agent.post('/admin/chefs').type('form').send({
     _csrf: createToken, name: 'Phạm Thu Hà', title: 'Bếp phó', specialty: 'Món chay',
@@ -258,8 +568,8 @@ test('admin chef create, update, and delete pages persist the edited profile', a
 
 test('GET delete confirmation never mutates, while POST DELETE requires CSRF and removes', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
-  const agent = request.agent(app);
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
   const token = await csrfToken(agent, `/admin/dishes/${dishId}/delete`);
   assert.equal((await agent.get(`/admin/dishes/${dishId}/delete?_method=DELETE`)).status, 200);
   assert.equal(state.deleteCalls, 0);
@@ -272,8 +582,8 @@ test('GET delete confirmation never mutates, while POST DELETE requires CSRF and
 
 test('missing reservation IDs return 404 and admin edits enforce state transitions', async () => {
   const { services, state } = makeServices();
-  const app = createApp({ services });
-  const agent = request.agent(app);
+  const app = createTestApp(services);
+  const agent = await authenticatedAgent(app);
   const missingId = 'b37be910-c88c-441e-b085-4ebfd912f307';
   assert.equal((await agent.get(`/admin/reservations/${missingId}`)).status, 404);
 

@@ -14,6 +14,7 @@ const server = app.listen(port, () => {
 
 async function shutdown(signal) {
   console.log(`\n${signal} received; closing the server.`);
+  app.locals.closeAuthenticationMaintenance();
   server.close(async () => {
     await disconnectPrisma();
     process.exit(0);

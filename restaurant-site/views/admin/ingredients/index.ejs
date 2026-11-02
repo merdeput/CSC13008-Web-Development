@@ -1,23 +1,12 @@
 <section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / BẾP</p><h1>Nguyên liệu</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} nguyên liệu trong kho dữ liệu.` %></p></div><a class="admin-primary-button" href="/admin/ingredients/new">+ Thêm nguyên liệu</a></section>
-<section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Tất cả nguyên liệu</h2></div><span class="admin-count"><%= total %> mục</span></div>
-  <%- include('../../partials/admin-search', { basePath, inputId: 'ingredientSearch', label: 'Tìm nguyên liệu', placeholder: 'Nhập tên nguyên liệu', q }) %>
-  <% if (items.length) { %>
-    <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
-      <%- include('../../partials/admin-sort-header', { label: 'Nguyên liệu', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Đang dùng trong món', sortKey: 'usage', sortBy, sortDirection, sortLinks }) %>
-      <th scope="col">Thao tác</th>
-    </tr></thead><tbody>
-      <% items.forEach((ingredient) => { %>
-        <tr>
-          <td><a class="table-primary-link" href="/admin/ingredients/<%= ingredient.id %>"><%= ingredient.name %></a></td>
-          <td><%= ingredient._count.dishes %></td>
-          <td><div class="admin-heading-actions">
-            <a class="table-action" href="/admin/ingredients/<%= ingredient.id %>">Mở</a>
-            <a class="table-action" href="/admin/ingredients/<%= ingredient.id %>/delete" aria-label="Xóa nguyên liệu <%= ingredient.name %>">Xóa</a>
-          </div></td>
-        </tr>
-      <% }) %>
-    </tbody></table></div>
-  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy nguyên liệu phù hợp với “${q}”.` : 'Chưa có nguyên liệu. Hãy thêm nguyên liệu đầu tiên.' %></p><% } %>
+<section class="admin-panel admin-panel--ingredients"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Tất cả nguyên liệu</h2></div><span class="admin-count"><%= total %> mục</span></div>
+  <form class="admin-search" action="/admin/ingredients" method="get" role="search" aria-label="Tìm nguyên liệu"><div class="admin-search-field"><label for="ingredientSearch">Tìm nguyên liệu</label><input id="ingredientSearch" type="search" name="q" maxlength="100" value="<%= q || '' %>" placeholder="Nhập tên nguyên liệu"></div><input type="hidden" name="sortBy" value="<%= sortBy %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>"><button class="admin-primary-button" type="submit">Tìm kiếm</button><% if (q) { %><a class="admin-text-link" href="<%= ingredientUrl({ q: '' }) %>">Xóa tìm kiếm</a><% } %></form>
+  <div class="admin-ingredient-toolbar"><span>Đang hiển thị <%= items.length %> / <%= total %></span><a class="admin-sort-button admin-ingredient-sort" href="<%= ingredientUrl({ sortBy: 'name', sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' }) %>" aria-label="Sắp xếp tên"><%= sortDirection === 'asc' ? 'Tên A–Z ↑' : 'Tên Z–A ↓' %></a></div>
+  <% if (items.length) { %><div class="admin-ingredient-grid" role="list" aria-label="Danh sách nguyên liệu">
+    <% items.forEach((ingredient) => { const dishCount = ingredient._count.dishes; %><article class="admin-ingredient-card" role="listitem" aria-label="<%= ingredient.name %>, dùng trong <%= dishCount %> món">
+      <div class="admin-ingredient-card__heading"><h3><%= ingredient.name %></h3><span class="admin-ingredient-status <%= dishCount ? 'is-used' : 'is-unused' %>"><%= dishCount ? 'Đang dùng' : 'Chưa dùng' %></span></div>
+      <div class="admin-ingredient-card__footer"><span><%= dishCount %> món ăn</span><div class="admin-row-actions"><a class="table-action" href="/admin/ingredients/<%= ingredient.id %>/edit">Sửa</a><a class="table-action admin-row-delete" href="/admin/ingredients/<%= ingredient.id %>/delete?returnTo=<%= encodeURIComponent(ingredientUrl()) %>" data-admin-delete>Xóa</a></div></div>
+    </article><% }) %>
+  </div><% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy nguyên liệu phù hợp với “${q}”.` : 'Chưa có nguyên liệu. Hãy thêm nguyên liệu đầu tiên.' %></p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

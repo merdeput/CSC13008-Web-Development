@@ -42,12 +42,14 @@ function validateDishInput(input = {}) {
   const name = asText(input.name);
   const description = asText(input.description);
   const categoryId = asText(input.categoryId);
+  const chefId = asText(input.chefId);
   const priceText = asText(input.price);
   const ingredientIds = [...new Set(asStringArray(input.ingredientIds))];
   const data = {
     name,
     description,
     categoryId,
+    chefId: chefId || null,
     price: priceText,
     imageUrl: checkedImageUrl(input.imageUrl, errors),
     isPublished: input.isPublished === 'on' || input.isPublished === 'true' || input.isPublished === true,
@@ -61,6 +63,7 @@ function validateDishInput(input = {}) {
   if (!description) errors.description = 'Vui lòng nhập mô tả món ăn.';
   else if (description.length > 2400) errors.description = 'Mô tả tối đa 2400 ký tự.';
   if (!isUuid(categoryId)) errors.categoryId = 'Vui lòng chọn một danh mục hợp lệ.';
+  if (chefId && !isUuid(chefId)) errors.chefId = 'Vui lòng chọn một đầu bếp hợp lệ.';
   if (!/^\d{1,12}$/.test(priceText)) errors.price = 'Giá phải là số nguyên VND không âm, tối đa 12 chữ số.';
   if (ingredientIds.length > 30 || ingredientIds.some((id) => !isUuid(id))) errors.ingredientIds = 'Danh sách nguyên liệu không hợp lệ.';
   return { data, errors };
@@ -77,7 +80,8 @@ function validateChefInput(input = {}) {
     specialty: optionalText(input.specialty),
     imageUrl: checkedImageUrl(input.imageUrl, errors),
     isPublished: input.isPublished === 'on' || input.isPublished === 'true' || input.isPublished === true,
-    sortOrder
+    sortOrder,
+    dishIds: [...new Set(asStringArray(input.dishIds))]
   };
   if (!data.name) errors.name = 'Vui lòng nhập tên đầu bếp.';
   else if (data.name.length > 120) errors.name = 'Tên tối đa 120 ký tự.';
@@ -86,7 +90,16 @@ function validateChefInput(input = {}) {
   if (data.bio && data.bio.length > 2400) errors.bio = 'Tiểu sử tối đa 2400 ký tự.';
   if (data.specialty && data.specialty.length > 180) errors.specialty = 'Sở trường tối đa 180 ký tự.';
   if (!Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) errors.sortOrder = 'Thứ tự phải là số nguyên không âm.';
+  if (data.dishIds.length > 1000 || data.dishIds.some((id) => !isUuid(id))) errors.dishIds = 'Danh sách món phụ trách không hợp lệ.';
   return { data, errors };
+}
+
+function validateCategoryInput(input = {}) {
+  const name = asText(input.name);
+  const errors = {};
+  if (!name) errors.name = 'Vui lòng nhập tên danh mục.';
+  else if (name.length > 80) errors.name = 'Tên danh mục tối đa 80 ký tự.';
+  return { data: { name }, errors };
 }
 
 function validateIngredientInput(input = {}) {
@@ -164,6 +177,7 @@ module.exports = {
   isUuid,
   validateDishInput,
   validateChefInput,
+  validateCategoryInput,
   validateIngredientInput,
   parseReservationDateTime,
   validateReservationInput,

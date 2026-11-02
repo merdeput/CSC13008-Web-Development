@@ -172,6 +172,9 @@ select:focus-visible, summary:focus-visible {
   transition: background .2s ease, transform .2s var(--ease-gentle), box-shadow .2s ease;
 }
 .primary-navigation > .nav-booking:hover { background: var(--yellow-bright); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16, 28, 19, .2); }
+.primary-navigation > a.nav-login { border-color: rgba(255, 249, 235, .56); color: var(--cream); }
+.primary-navigation > a.nav-login:hover { color: var(--yellow-bright); }
+.nav-logout { border-color: rgba(255, 249, 235, .56); color: var(--cream); }
 .mobile-nav-toggle { border-color: rgba(255, 249, 235, .45); background: var(--moss-deep); }
 .mobile-nav-toggle > span:not(.visually-hidden) { background: var(--cream); }
 
@@ -712,6 +715,8 @@ select:focus-visible, summary:focus-visible {
   .primary-navigation { background: var(--moss); box-shadow: 0 12px 22px rgba(25, 38, 28, .18); }
   .primary-navigation > a { border-bottom-color: rgba(255, 249, 235, .16); }
   .primary-navigation > .nav-booking { text-align: center; }
+  .nav-logout-form { margin-top: .65rem; }
+  .primary-navigation .nav-login, .primary-navigation .nav-logout { display: block; width: 100%; text-align: center; }
   html.no-js .mobile-nav-toggle { display: none; }
   html.no-js .primary-navigation {
     position: static;
@@ -962,3 +967,19 @@ select:focus-visible, summary:focus-visible {
   .reveal-pending:not(.is-visible) { opacity: 1; transform: none; transition-delay: 0ms; }
   .customer-shell main { animation: none; }
 }
+
+.auth-page { display: grid; place-items: start center; min-height: 64vh; background: var(--paper); }
+.auth-card { width: min(100%, 560px); padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid var(--line); background: var(--cream); box-shadow: var(--shadow-soft); }
+.auth-card h1 { margin: 0 0 .75rem; font: 800 clamp(2.4rem, 7vw, 4rem)/1 var(--font-display); letter-spacing: -.04em; }
+.auth-card > p:not(.eyebrow) { color: var(--ink-soft); }
+.auth-form { display: grid; gap: .7rem; margin-top: 1.5rem; }
+.auth-form label { font-size: .78rem; font-weight: 700; }
+.auth-form input:not([type="hidden"]) { width: 100%; min-height: 48px; padding: .7rem .8rem; border: 1px solid var(--line); background: white; }
+.auth-form .auth-help { margin: -.3rem 0 .3rem; color: var(--ink-soft); font-size: .7rem; }
+.auth-form .button { margin-top: .5rem; }
+.auth-resend-form { padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.auth-message { padding: .75rem .9rem; border: 1px solid var(--line); font-size: .82rem; }
+.auth-message-error { border-color: rgba(189, 92, 67, .4); color: var(--rust) !important; background: rgba(189, 92, 67, .08); }
+.auth-switch { margin-top: 1.5rem; font-size: .78rem; }
+.auth-switch a { color: var(--rust); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.g-recaptcha { min-height: 78px; }

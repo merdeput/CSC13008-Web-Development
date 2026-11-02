@@ -1,26 +1,15 @@
 <section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / ĐỘI NGŨ</p><h1>Đầu bếp</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} hồ sơ trong danh mục quản trị.` %></p></div><a class="admin-primary-button" href="/admin/chefs/new">+ Thêm đầu bếp</a></section>
-<section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span class="admin-count"><%= total %> mục</span></div>
-  <%- include('../../partials/admin-search', { basePath, inputId: 'chefSearch', label: 'Tìm đầu bếp', placeholder: 'Tên, chức danh, sở trường hoặc tiểu sử', q }) %>
-  <% if (items.length) { %>
-    <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
-      <%- include('../../partials/admin-sort-header', { label: 'Họ tên', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Chức danh', sortKey: 'title', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Sở trường', sortKey: 'specialty', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Thứ tự', sortKey: 'sortOrder', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Hiển thị', sortKey: 'visibility', sortBy, sortDirection, sortLinks }) %>
-      <th scope="col">Thao tác</th>
-    </tr></thead><tbody>
-      <% items.forEach((chef) => { %>
-        <tr>
-          <td><a class="table-primary-link" href="/admin/chefs/<%= chef.id %>"><%= chef.name %></a></td>
-          <td><%= chef.title %></td>
-          <td><%= chef.specialty || '—' %></td>
-          <td><%= chef.sortOrder %></td>
-          <td><span class="status-badge <%= chef.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= chef.isPublished ? 'Công khai' : 'Bản nháp' %></span></td>
-          <td><a class="table-action" href="/admin/chefs/<%= chef.id %>">Mở</a></td>
-        </tr>
-      <% }) %>
-    </tbody></table></div>
-  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy hồ sơ đầu bếp phù hợp với “${q}”.` : 'Chưa có hồ sơ đầu bếp.' %></p><% } %>
+<section class="admin-panel admin-panel--chefs"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span class="admin-count"><%= total %> mục</span></div>
+  <form class="admin-search" action="/admin/chefs" method="get" role="search" aria-label="Tìm đầu bếp"><div class="admin-search-field"><label for="chefSearch">Tìm đầu bếp</label><input id="chefSearch" type="search" name="q" maxlength="100" value="<%= q || '' %>" placeholder="Tên, chức danh, sở trường hoặc tiểu sử"></div><input type="hidden" name="sortBy" value="<%= sortBy %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>"><button class="admin-primary-button" type="submit">Tìm kiếm</button><% if (q) { %><a class="admin-text-link" href="<%= chefUrl({ q: '' }) %>">Xóa tìm kiếm</a><% } %></form>
+  <div class="admin-chef-toolbar"><span>Đang hiển thị <%= items.length %> / <%= total %></span><div class="admin-chef-sort"><span>Sắp xếp</span><form action="/admin/chefs" method="get"><input type="hidden" name="q" value="<%= q %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>"><select name="sortBy" aria-label="Sắp xếp hồ sơ đầu bếp theo" data-admin-auto-submit><option value="sortOrder" <%= sortBy === 'sortOrder' ? 'selected' : '' %>>Thứ tự</option><option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>Họ tên</option><option value="title" <%= sortBy === 'title' ? 'selected' : '' %>>Chức danh</option><option value="specialty" <%= sortBy === 'specialty' ? 'selected' : '' %>>Sở trường</option><option value="visibility" <%= sortBy === 'visibility' ? 'selected' : '' %>>Hiển thị</option></select></form><a class="admin-chef-sort-direction" href="<%= chefUrl({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' }) %>" aria-label="Đổi thứ tự sắp xếp"><%= sortDirection === 'asc' ? '↑ Tăng dần' : '↓ Giảm dần' %></a></div></div>
+  <% if (items.length) { %><div class="admin-chef-card-grid" role="list" aria-label="Danh sách hồ sơ đầu bếp">
+    <% items.forEach((chef) => { %><article class="admin-chef-card" role="listitem">
+      <img class="admin-chef-card__image" src="<%= chef.imageUrl || '/images/food-fallback.svg' %>" alt="Chân dung <%= chef.name %>" loading="lazy" data-fallback="/images/food-fallback.svg">
+      <div class="admin-chef-card__content"><div class="admin-chef-card__heading"><div><h3><%= chef.name %></h3><p><%= chef.title %></p></div><span class="status-badge <%= chef.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= chef.isPublished ? 'Công khai' : 'Bản nháp' %></span></div>
+        <% if (chef.specialty) { %><p class="admin-chef-card__specialty"><%= chef.specialty %></p><% } %><% if (chef.bio) { %><p class="admin-chef-card__bio"><%= chef.bio %></p><% } %>
+        <p class="admin-chef-card__dishes"><strong><%= chef.dishes.length %> món phụ trách</strong><%= chef.dishes.length ? ` · ${chef.dishes.map((dish) => dish.name).join(', ')}` : '' %></p></div>
+      <footer class="admin-chef-card__actions"><span>Thứ tự <%= chef.sortOrder %></span><div class="admin-row-actions"><a class="table-action" href="/admin/chefs/<%= chef.id %>/edit">Sửa</a><a class="table-action admin-row-delete" href="/admin/chefs/<%= chef.id %>/delete?returnTo=<%= encodeURIComponent(chefUrl()) %>" data-admin-delete>Xóa</a></div></footer>
+    </article><% }) %>
+  </div><% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy hồ sơ đầu bếp phù hợp với “${q}”.` : 'Chưa có hồ sơ đầu bếp.' %></p><% } %>
   <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
 </section>

@@ -1,0 +1,6 @@
+ALTER TABLE "Dish" ADD COLUMN "chefId" UUID;
+
+CREATE INDEX "Dish_chefId_idx" ON "Dish"("chefId");
+
+ALTER TABLE "Dish" ADD CONSTRAINT "Dish_chefId_fkey"
+  FOREIGN KEY ("chefId") REFERENCES "Chef"("id") ON DELETE SET NULL ON UPDATE CASCADE;

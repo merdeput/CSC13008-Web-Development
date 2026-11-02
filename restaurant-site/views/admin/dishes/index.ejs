@@ -1,28 +1,49 @@
-<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / THỰC ĐƠN</p><h1>Món ăn</h1><p><%= q ? `${total} kết quả phù hợp với “${q}”.` : `${total} món trong danh mục quản trị.` %></p></div><a class="admin-primary-button" href="/admin/dishes/new">+ Thêm món ăn</a></section>
-<section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Tất cả món ăn</h2></div><span class="admin-count"><%= total %> mục</span></div>
-  <%- include('../../partials/admin-search', { basePath, inputId: 'dishSearch', label: 'Tìm món ăn', placeholder: 'Tên món, mô tả, danh mục hoặc nguyên liệu', q }) %>
-  <% if (items.length) { %>
-    <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
-      <%- include('../../partials/admin-sort-header', { label: 'Món ăn', sortKey: 'name', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Danh mục', sortKey: 'category', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Giá', sortKey: 'price', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Hiển thị', sortKey: 'visibility', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Phục vụ', sortKey: 'availability', sortBy, sortDirection, sortLinks }) %>
-      <%- include('../../partials/admin-sort-header', { label: 'Cập nhật', sortKey: 'updatedAt', sortBy, sortDirection, sortLinks }) %>
-      <th scope="col">Thao tác</th>
-    </tr></thead><tbody>
-      <% items.forEach((dish) => { %>
-        <tr>
-          <td><a class="table-primary-link" href="/admin/dishes/<%= dish.id %>"><%= dish.name %></a><small class="table-subline">ID: <%= dish.id %></small></td>
-          <td><%= dish.category.name %></td>
-          <td><%= formatVnd(dish.price) %></td>
-          <td><span class="status-badge <%= dish.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= dish.isPublished ? 'Đã công khai' : 'Bản nháp' %></span></td>
-          <td><%= dish.isAvailable ? 'Đang có' : 'Tạm hết' %><%= dish.isFeatured ? ' · Nổi bật' : '' %></td>
-          <td><%= formatDateTimeHcm(dish.updatedAt) %></td>
-          <td><a class="table-action" href="/admin/dishes/<%= dish.id %>">Mở</a></td>
-        </tr>
-      <% }) %>
-    </tbody></table></div>
-  <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy món ăn phù hợp với “${q}”.` : 'Chưa có món ăn. Hãy thêm món đầu tiên.' %></p><% } %>
-  <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Món ăn</h1><p><%= total %> món trong danh mục quản trị.</p></div><a class="admin-primary-button" href="/admin/dishes/new">+ Thêm món ăn</a></section>
+<section class="admin-panel admin-panel--dishes">
+  <div class="admin-dish-browser">
+    <aside class="admin-dish-sidebar" aria-label="Quản lý danh mục và bộ lọc món ăn">
+      <%- include('../categories/manager', { categories, returnTo: dishUrl(), title: 'Quản lý danh mục' }) %>
+      <div class="admin-dish-sidebar-controls">
+        <div class="admin-dish-sortbar" aria-label="Lọc và sắp xếp danh sách món ăn">
+          <button class="admin-dish-filter-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Bộ lọc món ăn" data-admin-filter-open><span aria-hidden="true">☷</span> Bộ lọc<% if (filterChips.length) { %><span class="admin-dish-filter-count"><%= filterChips.length %></span><% } %></button>
+          <span>Sắp xếp món ăn</span>
+          <form class="admin-dish-sort" action="/admin/dishes" method="get">
+            <input type="hidden" name="q" value="<%= q %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>">
+            <input type="hidden" name="categoryIds" value="<%= filters.categoryIds.join(',') %>"><input type="hidden" name="isPublished" value="<%= filters.isPublished === undefined ? '' : filters.isPublished %>"><input type="hidden" name="isAvailable" value="<%= filters.isAvailable === undefined ? '' : filters.isAvailable %>"><input type="hidden" name="isFeatured" value="<%= filters.isFeatured === undefined ? '' : filters.isFeatured %>"><input type="hidden" name="minPrice" value="<%= filters.minPrice || '' %>"><input type="hidden" name="maxPrice" value="<%= filters.maxPrice || '' %>">
+            <label><span class="visually-hidden">Tiêu chí sắp xếp</span><select name="sortBy" aria-label="Sắp xếp món ăn theo" data-admin-auto-submit><option value="updatedAt" <%= sortBy === 'updatedAt' ? 'selected' : '' %>>Cập nhật gần đây</option><option value="name" <%= sortBy === 'name' ? 'selected' : '' %>>Tên món</option><option value="category" <%= sortBy === 'category' ? 'selected' : '' %>>Danh mục</option><option value="price" <%= sortBy === 'price' ? 'selected' : '' %>>Giá bán</option><option value="visibility" <%= sortBy === 'visibility' ? 'selected' : '' %>>Hiển thị</option><option value="availability" <%= sortBy === 'availability' ? 'selected' : '' %>>Phục vụ</option></select></label>
+          </form>
+          <a class="admin-dish-sort-direction" href="<%= sortDirectionUrl %>" aria-label="Đổi thứ tự sắp xếp"><%= sortDirection === 'asc' ? '↑ Tăng dần' : '↓ Giảm dần' %></a>
+        </div>
+        <% if (filterChips.length) { %><div class="admin-dish-active-filters" aria-label="Bộ lọc đang áp dụng"><span>Đang lọc:</span><% filterChips.forEach((chip, index) => { %><a class="admin-dish-filter-chip" href="<%= removeFilterUrl(chip) %>" aria-label="Bỏ bộ lọc <%= chip.label %>"><%= chip.label %><span aria-hidden="true">×</span></a><% }) %><a class="admin-dish-filter-clear" href="<%= dishUrl({ categoryIds: '', isPublished: '', isAvailable: '', isFeatured: '', minPrice: '', maxPrice: '', page: '' }) %>">Xóa tất cả</a></div><% } %>
+      </div>
+    </aside>
+    <section class="admin-dish-results" aria-labelledby="admin-dish-results-title">
+      <header class="admin-dish-results__heading"><div><p class="eyebrow">DANH SÁCH MÓN</p><h2 id="admin-dish-results-title"><%= filterChips.filter((chip) => chip.field === 'categoryIds').length ? filterChips.filter((chip) => chip.field === 'categoryIds').map((chip) => chip.label).join(', ') : 'Tất cả món ăn' %></h2><p><%= total %> món<%= filterChips.some((chip) => chip.field === 'categoryIds') ? ' thuộc danh mục đã chọn' : '' %></p></div><span class="admin-count"><%= total %> mục</span></header>
+      <form class="admin-search admin-dish-search" action="/admin/dishes" method="get" role="search" aria-label="Tìm món ăn"><div class="admin-search-field"><label for="adminSearch">Tìm món ăn</label><input id="adminSearch" type="search" name="q" maxlength="100" value="<%= q %>" placeholder="Tên món, mô tả, danh mục, đầu bếp hoặc nguyên liệu…"></div><input type="hidden" name="sortBy" value="<%= sortBy %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>"><input type="hidden" name="categoryIds" value="<%= filters.categoryIds.join(',') %>"><input type="hidden" name="isPublished" value="<%= filters.isPublished === undefined ? '' : filters.isPublished %>"><input type="hidden" name="isAvailable" value="<%= filters.isAvailable === undefined ? '' : filters.isAvailable %>"><input type="hidden" name="isFeatured" value="<%= filters.isFeatured === undefined ? '' : filters.isFeatured %>"><input type="hidden" name="minPrice" value="<%= filters.minPrice || '' %>"><input type="hidden" name="maxPrice" value="<%= filters.maxPrice || '' %>"><button class="admin-primary-button" type="submit">Tìm kiếm</button></form>
+      <% if (Object.keys(filterErrors || {}).length) { %><ul class="menu-filter-errors" role="alert"><% Object.values(filterErrors).forEach((message) => { %><li><%= message %></li><% }) %></ul><% } %>
+      <% if (items.length) { %>
+        <div class="admin-dish-card-list" role="list" aria-label="Danh sách món ăn">
+          <% items.forEach((dish) => { %><article class="admin-dish-card" role="listitem">
+            <a class="admin-dish-card__image" href="/admin/dishes/<%= dish.id %>/edit" aria-label="Chỉnh sửa <%= dish.name %>"><img src="<%= dish.imageUrl || '/images/food-fallback.svg' %>" alt="" loading="lazy" data-fallback="/images/food-fallback.svg"></a>
+            <div class="admin-dish-card__content"><div class="admin-dish-card__title"><h3><a href="/admin/dishes/<%= dish.id %>/edit"><%= dish.name %></a></h3><strong><%= formatVnd(dish.price) %></strong></div><p class="admin-dish-card__description"><%= dish.description || 'Chưa có mô tả cho món ăn này.' %></p><p class="admin-dish-card__meta"><%= dish.category.name %><%= dish.chef ? ` · ${dish.chef.name}` : '' %></p><div class="admin-dish-card__statuses"><span class="status-badge <%= dish.isPublished ? 'status-confirmed' : 'status-cancelled' %>"><%= dish.isPublished ? 'Đã công khai' : 'Bản nháp' %></span><span class="status-badge <%= dish.isAvailable ? 'status-confirmed' : 'status-pending' %>"><%= dish.isAvailable ? 'Đang phục vụ' : 'Tạm hết' %></span><% if (dish.isFeatured) { %><span class="admin-dish-featured">Nổi bật</span><% } %></div></div>
+            <div class="admin-dish-card__actions"><div class="admin-row-actions"><a class="table-action" href="/admin/dishes/<%= dish.id %>/edit">Sửa</a><a class="table-action admin-row-delete" href="/admin/dishes/<%= dish.id %>/delete" data-admin-delete>Xóa</a></div></div>
+          </article><% }) %>
+        </div>
+      <% } else { %><p class="admin-empty"><%= q ? `Không tìm thấy món ăn phù hợp với “${q}”.` : 'Danh mục này chưa có món ăn.' %></p><% } %>
+      <%- include('../../partials/pagination', { page, pageCount, basePath, paginationQuery }) %>
+    </section>
+  </div>
 </section>
+<div class="admin-filter-overlay" role="presentation" data-admin-filter-overlay hidden>
+  <section class="admin-panel admin-dish-filter-dialog" role="dialog" aria-modal="true" aria-labelledby="dish-filter-title" aria-describedby="dish-filter-description" tabindex="-1" data-admin-filter-dialog>
+    <header class="admin-dish-filter-dialog__heading"><div><p class="eyebrow">DANH SÁCH MÓN</p><h2 id="dish-filter-title">Lọc món ăn</h2><p id="dish-filter-description">Kết hợp nhiều điều kiện để thu hẹp danh sách.</p></div><button class="admin-delete-close" type="button" aria-label="Đóng bộ lọc" data-admin-filter-close>×</button></header>
+    <form id="dish-filter-form" class="admin-dish-filter-dialog__body" action="/admin/dishes" method="get" data-admin-filter-form>
+      <input type="hidden" name="q" value="<%= q %>"><input type="hidden" name="sortBy" value="<%= sortBy %>"><input type="hidden" name="sortDirection" value="<%= sortDirection %>">
+      <fieldset class="admin-dish-filter-group admin-dish-filter-group--categories"><legend>Danh mục</legend><% if (categories.length) { %><div class="admin-dish-filter-categories"><% categories.forEach((category) => { %><label class="admin-dish-filter-category"><input type="checkbox" name="categoryIds" value="<%= category.id %>" <%= filters.categoryIds.includes(category.id) ? 'checked' : '' %>><span><%= category.name %></span></label><% }) %></div><% } else { %><p class="admin-dish-filter-empty">Chưa có danh mục.</p><% } %></fieldset>
+      <div class="admin-dish-filter-selects"><label class="admin-dish-filter-field" for="dish-filter-published"><span>Hiển thị</span><select id="dish-filter-published" name="isPublished"><option value="">Tất cả</option><option value="true" <%= filters.isPublished === true ? 'selected' : '' %>>Công khai</option><option value="false" <%= filters.isPublished === false ? 'selected' : '' %>>Bản nháp</option></select></label><label class="admin-dish-filter-field" for="dish-filter-available"><span>Phục vụ</span><select id="dish-filter-available" name="isAvailable"><option value="">Tất cả</option><option value="true" <%= filters.isAvailable === true ? 'selected' : '' %>>Đang phục vụ</option><option value="false" <%= filters.isAvailable === false ? 'selected' : '' %>>Tạm hết</option></select></label><label class="admin-dish-filter-field" for="dish-filter-featured"><span>Nổi bật</span><select id="dish-filter-featured" name="isFeatured"><option value="">Tất cả</option><option value="true" <%= filters.isFeatured === true ? 'selected' : '' %>>Món nổi bật</option><option value="false" <%= filters.isFeatured === false ? 'selected' : '' %>>Không nổi bật</option></select></label></div>
+      <% const enteredPrice = Math.max(Number(filters.minPrice) || 0, Number(filters.maxPrice) || 0); const sliderMax = Math.max(500000, Math.ceil((enteredPrice + 1000) / 50000) * 50000); const sliderMinValue = Math.min(Number(filters.minPrice) || 0, sliderMax); const sliderMaxValue = Math.max(sliderMinValue, Math.min(filters.maxPrice === undefined ? sliderMax : Number(filters.maxPrice), sliderMax)); %>
+      <fieldset class="admin-dish-filter-group"><legend>Khoảng giá (₫)</legend><div class="admin-dish-price-slider" style="--price-range-start: <%= sliderMinValue / sliderMax * 100 %>%; --price-range-end: <%= sliderMaxValue / sliderMax * 100 %>%"><div class="admin-dish-price-slider__track"><input type="range" min="0" max="<%= sliderMax %>" step="1000" value="<%= sliderMinValue %>" aria-label="Giá tối thiểu" data-price-slider="min"><input type="range" min="0" max="<%= sliderMax %>" step="1000" value="<%= sliderMaxValue %>" aria-label="Giá tối đa" data-price-slider="max"></div><div class="admin-dish-price-slider__labels"><span>0 ₫</span><span><%= formatVnd(sliderMax) %></span></div></div><div class="admin-dish-filter-prices"><label class="admin-dish-filter-field" for="dish-filter-min-price"><span>Từ</span><input id="dish-filter-min-price" name="minPrice" type="number" min="0" max="999999999999" step="1" inputmode="numeric" value="<%= filters.minPrice || '' %>" placeholder="Không giới hạn" data-price-input="min"></label><label class="admin-dish-filter-field" for="dish-filter-max-price"><span>Đến</span><input id="dish-filter-max-price" name="maxPrice" type="number" min="0" max="999999999999" step="1" inputmode="numeric" value="<%= filters.maxPrice || '' %>" placeholder="Không giới hạn" data-price-input="max"></label></div><p class="admin-dish-filter-error" data-price-error hidden>Giá tối đa phải bằng hoặc lớn hơn giá tối thiểu.</p></fieldset>
+    </form>
+    <footer class="admin-dish-filter-dialog__actions"><button class="admin-secondary-button" type="button" data-admin-filter-reset>Đặt lại</button><div><button class="admin-secondary-button" type="button" data-admin-filter-close>Hủy</button><button class="admin-primary-button" type="submit" form="dish-filter-form" data-admin-filter-submit>Áp dụng bộ lọc</button></div></footer>
+  </section>
+</div>

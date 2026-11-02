@@ -1,0 +1,22 @@
+<section class="auth-page section-pad">
+  <div class="auth-card">
+    <p class="eyebrow">BẾP HỘI / TÀI KHOẢN</p>
+    <h1>Tạo tài khoản</h1>
+    <p>Tạo tài khoản quản trị bằng email đã xác minh. Vai trò do máy chủ gán.</p>
+    <% if (error) { %><p class="auth-message auth-message-error" role="alert"><%= error %></p><% } %>
+    <% if (registrationAvailable) { %>
+      <form class="auth-form" action="/register" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+        <label for="register-email">Email</label>
+        <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required value="<%= email %>">
+        <label for="register-password">Mật khẩu</label>
+        <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        <p class="auth-help">Dùng ít nhất 12 ký tự. Mật khẩu được băm trước khi lưu.</p>
+        <div class="g-recaptcha" data-sitekey="<%= captchaSiteKey %>" data-theme="light"></div>
+        <button class="button button-dark button-wide" type="submit">Gửi mã xác minh</button>
+      </form>
+      <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <% } %>
+    <p class="auth-switch">Đã có tài khoản? <a href="/login">Đăng nhập</a></p>
+  </div>
+</section>

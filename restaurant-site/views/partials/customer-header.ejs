@@ -7,6 +7,12 @@
       <a class="<%= currentPath.startsWith('/menu') || currentPath.startsWith('/dishes') ? 'is-current' : '' %>" href="/menu" <%- currentPath.startsWith('/menu') || currentPath.startsWith('/dishes') ? 'aria-current="page"' : '' %>>Thực đơn</a>
       <a class="<%= currentPath.startsWith('/chefs') ? 'is-current' : '' %>" href="/chefs" <%- currentPath.startsWith('/chefs') ? 'aria-current="page"' : '' %>>Người giữ bếp</a>
       <a class="nav-booking" href="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></a>
+      <% if (authUser) { %>
+        <a class="nav-login" href="/admin">Quản trị</a>
+        <form class="nav-logout-form" action="/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken || '' %>"><button class="nav-login nav-logout" type="submit">Đăng xuất</button></form>
+      <% } else { %>
+        <a class="nav-login" href="/login">Đăng nhập</a>
+      <% } %>
     </nav>
   </div>
 </header>

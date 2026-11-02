@@ -1,0 +1,24 @@
+<section class="auth-page section-pad">
+  <div class="auth-card">
+    <p class="eyebrow">BẾP HỘI / KÍCH HOẠT TÀI KHOẢN</p>
+    <h1>Nhập mã kích hoạt</h1>
+    <p><%= message %></p>
+    <% if (error) { %><p class="auth-message auth-message-error" role="alert"><%= error %></p><% } %>
+    <form class="auth-form" action="/activate" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+      <label for="activation-code">Mã gồm 6 chữ số</label>
+      <input id="activation-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required>
+      <button class="button button-dark button-wide" type="submit">Kích hoạt tài khoản</button>
+    </form>
+    <% if (registrationAvailable) { %>
+      <form class="auth-form auth-resend-form" action="/activate/resend" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>">
+        <div class="g-recaptcha" data-sitekey="<%= captchaSiteKey %>" data-theme="light"></div>
+        <button class="button button-outline button-wide" type="submit">Gửi mã mới</button>
+      </form>
+      <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <% } %>
+    <p class="auth-switch">Đã có tài khoản? <a href="/login">Đăng nhập</a> hoặc <a href="/password-reset">đặt lại mật khẩu</a>.</p>
+    <p class="auth-switch"><a href="/register">Bắt đầu lại đăng ký</a></p>
+  </div>
+</section>

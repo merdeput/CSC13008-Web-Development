@@ -6,6 +6,6 @@
     <ul class="ingredient-usage-list"><% ingredient.dishes.forEach((link) => { %><li><a class="table-primary-link" href="/admin/dishes/<%= link.dish.id %>/edit"><%= link.dish.name %></a></li><% }) %></ul>
   <% } else { %>
     <p>Thao tác này không thể hoàn tác.</p>
-    <form action="/admin/ingredients/<%= ingredient.id %>" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="_method" value="DELETE"><div class="admin-form-actions"><button class="admin-danger-button" type="submit">Xác nhận xóa nguyên liệu</button><a class="admin-secondary-button" href="/admin/ingredients/<%= ingredient.id %>">Hủy</a></div></form>
+    <form action="/admin/ingredients/<%= ingredient.id %>" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="_method" value="DELETE"><input type="hidden" name="returnTo" value="<%= returnTo %>"><div class="admin-form-actions"><button class="admin-danger-button" type="submit">Xác nhận xóa nguyên liệu</button><a class="admin-secondary-button" href="<%= returnTo %>">Hủy</a></div></form>
   <% } %>
 </section>

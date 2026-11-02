@@ -43,7 +43,7 @@ Nếu database đã có schema hoặc dữ liệu, **không chạy reset**. Ki�
 
 Trên Windows, nếu Prisma CLI báo `P1011` khi bắt tay TLS với Supabase Session pooler, dùng `npm.cmd run db:deploy:tls`. Lệnh dự phòng chạy các file `migration.sql` đã commit qua kết nối PostgreSQL TLS, khóa triển khai đồng thời và ghi checksum vào `_prisma_migrations`; lệnh từ chối database có bảng hiện hữu nhưng chưa được baseline. Chỉ dùng với migration PostgreSQL có thể chạy trong transaction.
 
-Migration tạo đúng sáu model: `Category`, `Dish`, `Ingredient`, `DishIngredient`, `Chef`, `Reservation`. Giá dùng `DECIMAL(12,0)`, thời điểm dùng `TIMESTAMPTZ`, bảng reservation có index thời gian và `(status, startsAt)`, cùng check constraint cho giá, số khách và thứ tự không âm. Xóa `Dish` xóa các liên kết `DishIngredient`; danh mục và nguyên liệu đang được tham chiếu thì không thể xóa.
+The database schema includes the restaurant models plus `User`, `ActivationChallenge`, `PasswordReset`, `LoginFailureCounter`, and `Session` for authentication.
 
 Ứng dụng kết nối trực tiếp PostgreSQL qua Prisma, không gọi Supabase Data API. Không cần bật public table grants cho trang web.
 
@@ -55,7 +55,7 @@ npm.cmd run dev
 
 Mở `http://localhost:3000`. Dùng `npm.cmd start` để chạy tiến trình production sau khi đã cấu hình biến môi trường và áp dụng migrations.
 
-`/admin` mở trực tiếp theo yêu cầu, không có đăng nhập hay phân quyền. Hãy triển khai trong môi trường mạng phù hợp với quyết định này. Biểu mẫu mutation có CSRF token; trang đặt bàn có giới hạn gửi 5 yêu cầu mỗi 15 phút cho mỗi IP. Đặt reverse proxy bằng `TRUST_PROXY=true` nếu triển khai sau proxy TLS.
+`/admin` is available only to users with an active login. New accounts store the `viewer` role, but viewer accounts currently have the same access as admin. See [AUTHENTICATION.md](AUTHENTICATION.md) for provider configuration and rollout.
 
 ## Cấu hình mặc định
 

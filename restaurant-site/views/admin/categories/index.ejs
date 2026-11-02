@@ -1,0 +1,15 @@
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / THỰC ĐƠN</p><h1>Danh mục món</h1><p>Quản lý nhóm món dùng trên thực đơn và biểu mẫu món ăn.</p></div><a class="admin-secondary-button" href="/admin/dishes">← Danh sách món</a></section>
+<section class="admin-panel admin-category-manager">
+  <div class="admin-panel-heading"><div><p class="eyebrow"><%= editingCategory ? 'CẬP NHẬT' : 'THÊM MỚI' %></p><h2><%= editingCategory ? `Sửa ${editingCategory.name}` : 'Thêm danh mục' %></h2></div></div>
+  <form class="admin-form admin-category-form" action="<%= editingCategory ? `/admin/categories/${editingCategory.id}` : '/admin/categories' %>" method="post" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (editingCategory) { %><input type="hidden" name="_method" value="PATCH"><% } %>
+    <div class="form-field"><label for="categoryName">Tên danh mục <span aria-hidden="true">*</span></label><input id="categoryName" name="name" maxlength="80" required value="<%= formData.name || '' %>" aria-invalid="<%= errors.name ? 'true' : 'false' %>"><%- include('../../partials/field-error', { errors, field: 'name' }) %></div>
+    <div class="admin-form-actions"><button class="admin-primary-button" type="submit"><%= editingCategory ? 'Lưu danh mục' : 'Thêm danh mục' %></button><% if (editingCategory) { %><a class="admin-secondary-button" href="/admin/categories">Hủy</a><% } %></div>
+  </form>
+</section>
+<section class="admin-panel"><div class="admin-panel-heading"><div><p class="eyebrow">DANH SÁCH</p><h2>Danh mục hiện có</h2></div><span class="admin-count"><%= categories.length %> mục</span></div>
+  <% if (notice) { %><p class="admin-notice" role="status"><%= notice %></p><% } %>
+  <% if (categories.length) { %><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th scope="col">Tên danh mục</th><th scope="col">Số món đang dùng</th><th scope="col">Thao tác</th></tr></thead><tbody>
+    <% categories.forEach((category) => { %><tr><td><strong><%= category.name %></strong></td><td><%= category._count.dishes %></td><td class="admin-category-actions"><a class="table-action" href="/admin/categories?edit=<%= encodeURIComponent(category.id) %>">Sửa</a><% if (category._count.dishes) { %><span class="table-action-muted" title="Danh mục đang được dùng">Đang được dùng</span><% } else { %><a class="table-action table-action-danger" href="/admin/categories/<%= category.id %>/delete">Xóa</a><% } %></td></tr><% }) %>
+  </tbody></table></div><% } else { %><p class="admin-empty">Chưa có danh mục. Hãy thêm danh mục đầu tiên.</p><% } %>
+</section>

@@ -1,0 +1,15 @@
+<section class="admin-page-heading"><div><p class="eyebrow">NỘI DUNG / THỰC ĐƠN</p><h1>Xóa danh mục</h1><p>Kiểm tra danh mục trước khi xóa.</p></div><a class="admin-secondary-button" href="<%= returnTo %>">← Danh sách món</a></section>
+<section class="admin-panel confirm-panel">
+  <% if (category._count.dishes) { %>
+    <p class="admin-notice" role="alert">Danh mục “<strong><%= category.name %></strong>” đang được dùng bởi <%= category._count.dishes %> món ăn nên chưa thể xóa.</p>
+    <a class="admin-secondary-button" href="<%= returnTo %>">Quay lại danh mục</a>
+  <% } else { %>
+    <p>Bạn sắp xóa danh mục <strong><%= category.name %></strong>. Thao tác này không thể hoàn tác.</p>
+    <form action="/admin/categories/<%= category.id %>" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="returnTo" value="<%= returnTo %>">
+      <input type="hidden" name="_method" value="DELETE">
+      <div class="admin-form-actions"><button class="admin-danger-button" type="submit">Xóa danh mục</button>
+      <a class="admin-secondary-button" href="<%= returnTo %>">Hủy</a></div>
+    </form>
+  <% } %>
+</section>

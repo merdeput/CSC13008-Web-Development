@@ -1,17 +1,25 @@
 const express = require('express');
 const asyncHandler = require('../lib/async-handler');
 const { requireCsrf } = require('../middleware/csrf');
+const { requireAuthenticated } = require('../middleware/authentication');
 const { createAdminController } = require('../controllers/admin-controller');
 
 function createAdminRouter(services) {
   const router = express.Router();
   const controller = createAdminController(services);
+  router.use(requireAuthenticated(services));
   router.use((_req, res, next) => {
     res.locals.layout = 'layouts/admin';
     next();
   });
 
   router.get('/', asyncHandler(controller.overview));
+
+  router.get('/categories', asyncHandler(controller.categoryList));
+  router.post('/categories', requireCsrf, asyncHandler(controller.categoryCreate));
+  router.patch('/categories/:id', requireCsrf, asyncHandler(controller.categoryUpdate));
+  router.get('/categories/:id/delete', asyncHandler(controller.categoryDeleteConfirm));
+  router.delete('/categories/:id', requireCsrf, asyncHandler(controller.categoryDelete));
 
   router.get('/dishes', asyncHandler(controller.dishList));
   router.get('/dishes/new', asyncHandler(controller.dishNew));

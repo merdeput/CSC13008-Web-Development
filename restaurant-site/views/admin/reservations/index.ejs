@@ -25,7 +25,7 @@
           <td><%= formatDateTimeHcm(reservation.startsAt) %></td>
           <td><%= reservation.guestCount %></td>
           <td><span class="status-badge status-<%= reservation.status.toLowerCase() %>"><%= statusLabels[reservation.status] %></span></td>
-          <td><a class="table-action" href="/admin/reservations/<%= reservation.id %>">Mở</a></td>
+          <td><div class="admin-row-actions"><a class="table-action" href="/admin/reservations/<%= reservation.id %>/edit">Mở</a><a class="table-action admin-row-delete" href="/admin/reservations/<%= reservation.id %>/delete?returnTo=<%= encodeURIComponent(reservationUrl()) %>" data-admin-delete>Xóa</a></div></td>
         </tr>
       <% }) %>
     </tbody></table></div>

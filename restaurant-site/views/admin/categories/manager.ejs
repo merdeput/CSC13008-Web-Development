@@ -1,0 +1,25 @@
+<section class="admin-category-panel" aria-labelledby="admin-category-manager-title">
+  <header class="admin-category-panel__heading"><h2 id="admin-category-manager-title"><%= title || 'Quản lý danh mục' %></h2><span class="admin-count"><%= categories.length %></span></header>
+  <details class="admin-category-create">
+    <summary class="admin-category-add">+ Thêm danh mục</summary>
+    <form action="/admin/categories" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="returnTo" value="<%= returnTo %>">
+      <label for="newCategoryName">Tên danh mục</label><input id="newCategoryName" name="name" maxlength="80" required>
+      <div class="admin-category-create__actions"><button class="admin-primary-button" type="submit">Lưu danh mục</button></div>
+    </form>
+  </details>
+  <% if (categories.length) { %>
+    <div class="admin-category-list">
+      <% categories.forEach((category) => { %>
+        <details class="admin-category-list__item">
+          <summary class="admin-category-option admin-category-option--static"><span class="admin-category-option__mark" aria-hidden="true">◈</span><span><%= category.name %></span><small><%= category._count?.dishes ?? 0 %> món</small></summary>
+          <form class="admin-category-edit" action="/admin/categories/<%= category.id %>" method="post">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="_method" value="PATCH"><input type="hidden" name="returnTo" value="<%= returnTo %>">
+            <label class="visually-hidden" for="category-<%= category.id %>">Tên danh mục</label><input id="category-<%= category.id %>" name="name" maxlength="80" required value="<%= category.name %>">
+            <div class="admin-category-create__actions"><button class="admin-secondary-button" type="submit">Lưu tên</button><% if ((category._count?.dishes ?? 0) === 0) { %><a class="table-action admin-row-delete" href="/admin/categories/<%= category.id %>/delete?returnTo=<%= encodeURIComponent(returnTo) %>">Xóa</a><% } %></div>
+          </form>
+        </details>
+      <% }) %>
+    </div>
+  <% } else { %><p class="admin-category-empty">Chưa có danh mục.</p><% } %>
+</section>
