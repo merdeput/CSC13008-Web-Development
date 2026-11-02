@@ -28,10 +28,104 @@ function fuzzySearchOptions(searchText) {
   return { canFuzzyMatch, canFuzzyMatchDescription };
 }
 
+async function hydrateDishPage(db, rows, page, pageSize) {
+  const total = Number(rows[0]?.total || 0);
+  const ids = rows.map(({ id }) => id).filter(Boolean);
+  const records = ids.length
+    ? await db.dish.findMany({ where: { id: { in: ids } }, include: dishInclude })
+    : [];
+  const byId = new Map(records.map((dish) => [dish.id, dish]));
+  return pageResult(ids.map((id) => byId.get(id)).filter(Boolean), total, page, pageSize);
+}
+
+async function listPublicSearchMode(db, { mode, categoryId, q, minPrice, maxPrice, available, page, pageSize }) {
+  const offset = Math.max(0, (page - 1) * pageSize);
+  const categoryClause = categoryId
+    ? Prisma.sql`AND d."categoryId" = CAST(${categoryId} AS uuid)`
+    : Prisma.empty;
+
+  if (mode === 'basic' || mode === 'advanced') {
+    const predicates = [Prisma.sql`d."isPublished" = true`];
+    if (categoryId) predicates.push(Prisma.sql`d."categoryId" = CAST(${categoryId} AS uuid)`);
+    if (q) predicates.push(Prisma.sql`POSITION(lower(${q}) IN lower(d."name")) > 0`);
+    if (mode === 'advanced') {
+      if (minPrice !== undefined) predicates.push(Prisma.sql`d."price" >= CAST(${minPrice} AS numeric)`);
+      if (maxPrice !== undefined) predicates.push(Prisma.sql`d."price" <= CAST(${maxPrice} AS numeric)`);
+      if (available !== undefined) predicates.push(Prisma.sql`d."isAvailable" = ${available}`);
+    }
+    const rows = await db.$queryRaw`
+      WITH filtered AS MATERIALIZED (
+        SELECT d."id", d."name" FROM "Dish" AS d
+        WHERE ${Prisma.join(predicates, ' AND ')}
+      ), total AS (
+        SELECT COUNT(*) AS total FROM filtered
+      ), page AS (
+        SELECT "id", row_number() OVER (ORDER BY "name" ASC, "id" ASC) AS position
+        FROM filtered ORDER BY "name" ASC, "id" ASC
+        OFFSET ${offset} LIMIT ${pageSize}
+      )
+      SELECT total.total, page."id" FROM total LEFT JOIN page ON true
+      ORDER BY page.position ASC NULLS LAST
+    `;
+    return hydrateDishPage(db, rows, page, pageSize);
+  }
+
+  if (mode === 'fulltext') {
+    const rows = await db.$queryRaw`
+      WITH terms AS (
+        SELECT websearch_to_tsquery('simple', ${q}) AS query
+      ), matches AS MATERIALIZED (
+        SELECT d."id",
+          ts_rank_cd(
+            to_tsvector('simple', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')),
+            terms.query
+          ) AS score
+        FROM "Dish" AS d CROSS JOIN terms
+        WHERE d."isPublished" = true ${categoryClause}
+          AND to_tsvector('simple', COALESCE(d."name", '') || ' ' || COALESCE(d."description", '')) @@ terms.query
+      ), total AS (
+        SELECT COUNT(*) AS total FROM matches
+      ), page AS (
+        SELECT "id", row_number() OVER (ORDER BY score DESC, "id" ASC) AS position
+        FROM matches ORDER BY score DESC, "id" ASC
+        OFFSET ${offset} LIMIT ${pageSize}
+      )
+      SELECT total.total, page."id" FROM total LEFT JOIN page ON true
+      ORDER BY page.position ASC NULLS LAST
+    `;
+    return hydrateDishPage(db, rows, page, pageSize);
+  }
+
+  return db.$transaction(async (transaction) => {
+    // SET LOCAL must share the connection and transaction with the trigram operator.
+    await transaction.$executeRawUnsafe('SET LOCAL pg_trgm.similarity_threshold = 0.3');
+    const rows = await transaction.$queryRaw`
+      WITH matches AS MATERIALIZED (
+        SELECT d."id", extensions.similarity(d."name", ${q}) AS score
+        FROM "Dish" AS d
+        WHERE d."isPublished" = true ${categoryClause}
+          AND d."name" OPERATOR(extensions.%) ${q}
+      ), total AS (
+        SELECT COUNT(*) AS total FROM matches
+      ), page AS (
+        SELECT "id", row_number() OVER (ORDER BY score DESC, "id" ASC) AS position
+        FROM matches ORDER BY score DESC, "id" ASC
+        OFFSET ${offset} LIMIT ${pageSize}
+      )
+      SELECT total.total, page."id" FROM total LEFT JOIN page ON true
+      ORDER BY page.position ASC NULLS LAST
+    `;
+    return hydrateDishPage(transaction, rows, page, pageSize);
+  });
+}
+
 function createDishModel(db) {
   return {
-    async listPublic({ categoryId = '', q = '', page = 1, pageSize = 6 } = {}) {
+    async listPublic({ categoryId = '', q = '', mode = 'combined', minPrice, maxPrice, available, page = 1, pageSize = 6 } = {}) {
       const searchText = String(q || '').trim();
+      if (mode !== 'combined') {
+        return listPublicSearchMode(db, { mode, categoryId, q: searchText, minPrice, maxPrice, available, page, pageSize });
+      }
       if (searchText) {
         const { canFuzzyMatch, canFuzzyMatchDescription } = fuzzySearchOptions(searchText);
         const categoryFilter = categoryId
@@ -130,7 +224,10 @@ function createDishModel(db) {
           ), total AS (
             SELECT COUNT(*) AS total FROM matches
           ), page AS (
-            SELECT "id"
+            SELECT "id", row_number() OVER (
+              ORDER BY match_tier DESC, similarity_score DESC,
+                is_featured DESC, "name" ASC, "id" ASC
+            ) AS position
             FROM matches
             ORDER BY match_tier DESC, similarity_score DESC,
               is_featured DESC, "name" ASC, "id" ASC
@@ -140,6 +237,7 @@ function createDishModel(db) {
           SELECT total.total, page."id"
           FROM total
           LEFT JOIN page ON true
+          ORDER BY page.position ASC NULLS LAST
         `;
         const total = Number(matches[0]?.total || 0);
         const ids = matches.map(({ id }) => id).filter(Boolean);

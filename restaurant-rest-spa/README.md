@@ -36,6 +36,8 @@ For a production build, run `npm.cmd run build`, then `npm.cmd start`. Express s
 | `npm.cmd run db:validate` | Validate the Prisma schema |
 | `npm.cmd run db:status` | Check migration status |
 | `npm.cmd run db:deploy` | Apply pending migrations |
+| `npm.cmd run db:seed:1000-dishes` | Recreate the 1,000 generated dishes |
+| `npm.cmd run db:verify:block7` | Run read-only Block 7 checks against the configured database and local API |
 
 ## Database
 
@@ -45,18 +47,27 @@ The additive migration adds a nullable chef relationship to dishes. Existing dis
 
 ## API
 
-Successful responses use `{"ok":true,"data":...}`. Errors use `{"ok":false,"error":"..."}`.
+Successful responses use `{"ok":true,"data":...}`. Validation and not-found responses use `{"ok":false,"error":{"code":"...","message":"..."}}`; validation errors also include a `fields` map.
 
 Public endpoints include:
 
 - `GET /api/health`, `/api/home`, `/api/menu`, `/api/dishes/:id`, `/api/chefs`, and `/api/config`
 - `POST /api/reservations`
 
-`GET /api/menu` accepts `page`, `pageSize` (1–100; defaults to 6), `categoryId`, and `q` query parameters.
+`GET /api/menu` accepts `page`, `pageSize` (1–100; defaults to 6), `categoryId`, `q`, and these search modes:
+
+| `mode` | Search behavior |
+| --- | --- |
+| `basic` | Case-insensitive literal substring in dish names; blank `q` lists dishes. |
+| `advanced` | The same name search plus optional `categoryId`, `minPrice`, `maxPrice`, and `available=true/false`, combined with AND. Blank `q` omits the name condition. |
+| `fulltext` | PostgreSQL `simple` full-text search over dish name and description. A nonempty `q` is required. |
+| `fuzzy` | `pg_trgm` dish-name similarity at threshold 0.3, set inside the query transaction. A nonempty `q` is required. |
+
+The menu UI sends a named mode. Omitting `mode` preserves the earlier combined full-text/fuzzy search for existing API links. All four named modes search the published dish collection before server-side pagination and return `items`, `total`, `page`, `pageSize`, and `pageCount`. Search results in `fulltext` and `fuzzy` order by score descending, then dish ID ascending. Invalid advanced filters and blank full-text/fuzzy queries return `VALIDATION_FAILED`.
 
 Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
 
-The 1,000-dish seed data uses menu-style names, dish descriptions, and curated food photos. To preview the one-time update for previously generated `Món mẫu` records, run `npm run db:clean:1000-dishes -- --dry-run`. Apply only those name, description, and photo updates with `npm run db:clean:1000-dishes -- --apply`.
+The 1,000-dish seed data uses menu-style names, dish descriptions, and curated food photos. One generated dish has a zero price for filter checks. To preview seed changes, run `npm run db:seed:1000-dishes -- --dry-run`. To preview the one-time update for previously generated `Món mẫu` records, run `npm run db:clean:1000-dishes -- --dry-run`. Apply only those name, description, and photo updates with `npm run db:clean:1000-dishes -- --apply`.
 
 ## API smoke checks
 

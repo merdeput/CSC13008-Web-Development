@@ -56,6 +56,39 @@ function parseAdminDishFilters(query = {}) {
   return { categoryIds: uniqueCategoryIds, isPublished, isAvailable, isFeatured, minPrice, maxPrice };
 }
 
+function parsePublicSearchInput({ mode, q, minPrice, maxPrice, available }) {
+  const searchMode = mode == null || mode === '' ? 'combined' : mode;
+  if (!['combined', 'basic', 'advanced', 'fulltext', 'fuzzy'].includes(searchMode)) {
+    throw new ValidationError({ mode: 'Chế độ tìm kiếm không hợp lệ.' });
+  }
+  const searchText = String(q || '').trim().slice(0, 100);
+  if ((searchMode === 'fulltext' || searchMode === 'fuzzy') && !searchText) {
+    throw new ValidationError({ q: 'Vui lòng nhập từ khóa tìm kiếm.' });
+  }
+  if (searchMode !== 'advanced') return { mode: searchMode, q: searchText };
+
+  const errors = {};
+  function priceValue(value, field) {
+    if (value == null || value === '') return undefined;
+    if (typeof value !== 'string' || !/^\d{1,12}$/.test(value) || Number(value) > MAX_DISH_PRICE) {
+      errors[field] = 'Giá phải là số nguyên từ 0 đến 999.999.999.999 đồng.';
+      return undefined;
+    }
+    return value;
+  }
+  const parsedMinPrice = priceValue(minPrice, 'minPrice');
+  const parsedMaxPrice = priceValue(maxPrice, 'maxPrice');
+  let parsedAvailable;
+  if (available === 'true') parsedAvailable = true;
+  else if (available === 'false') parsedAvailable = false;
+  else if (available != null && available !== '') errors.available = 'Trạng thái phục vụ không hợp lệ.';
+  if (parsedMinPrice !== undefined && parsedMaxPrice !== undefined && Number(parsedMinPrice) > Number(parsedMaxPrice)) {
+    errors.maxPrice = 'Giá tối đa phải bằng hoặc lớn hơn giá tối thiểu.';
+  }
+  if (Object.keys(errors).length) throw new ValidationError(errors);
+  return { mode: searchMode, q: searchText, minPrice: parsedMinPrice, maxPrice: parsedMaxPrice, available: parsedAvailable };
+}
+
 function createDishService(model) {
   async function validateReferences(data) {
     if (!isUuid(data.categoryId) || (data.chefId && !isUuid(data.chefId)) || data.ingredientIds.some((id) => !isUuid(id))) {
@@ -83,7 +116,7 @@ function createDishService(model) {
   }
 
   return {
-    async listPublic({ categoryId = '', q = '', page = 1, pageSize = 6 } = {}) {
+    async listPublic({ categoryId = '', q = '', mode, minPrice, maxPrice, available, page = 1, pageSize = 6 } = {}) {
       if (categoryId && !isUuid(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       if (categoryId && !await model.findCategory(categoryId)) throw new HttpError(404, NOT_FOUND_MESSAGE);
       const parsedPage = Number.parseInt(page, 10);
@@ -96,7 +129,8 @@ function createDishService(model) {
       if (!Number.isSafeInteger(parsedPageSize) || parsedPageSize < 1 || parsedPageSize > 100) {
         throw new ValidationError({ pageSize: 'Số món mỗi trang phải là số nguyên từ 1 đến 100.' });
       }
-      return model.listPublic({ categoryId, q: String(q || '').trim().slice(0, 100), page: safePage, pageSize: parsedPageSize });
+      const search = parsePublicSearchInput({ mode, q, minPrice, maxPrice, available });
+      return model.listPublic({ categoryId, ...search, page: safePage, pageSize: parsedPageSize });
     },
     async publicMenu(query = {}) {
       const [result, categories] = await Promise.all([this.listPublic(query), model.listCategories()]);

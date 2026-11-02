@@ -15,7 +15,8 @@ function createPublicHandlers(services) {
       const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
       const page = typeof req.query.page === 'string' ? req.query.page : '1';
       const pageSize = req.query.pageSize === undefined ? undefined : req.query.pageSize;
-      const [result, categories] = await Promise.all([services.dishes.listPublic({ categoryId, q, page, pageSize }), services.dishes.listCategories()]);
+      const { mode, minPrice, maxPrice, available } = req.query;
+      const [result, categories] = await Promise.all([services.dishes.listPublic({ categoryId, q, mode, minPrice, maxPrice, available, page, pageSize }), services.dishes.listCategories()]);
       return res.json({ ok: true, data: { ...result, categories } });
     },
     async dish(req, res) {

@@ -185,7 +185,9 @@ function HoverText({ children }) {
 
 function MenuPage() {
   const [params, setParams] = useSearchParams();
-  const [paginationMode, setPaginationMode] = React.useState('pages');
+  const searchMode = ['basic', 'advanced', 'fulltext', 'fuzzy'].includes(params.get('mode')) ? params.get('mode') : 'basic';
+  const awaitingQuery = (searchMode === 'fulltext' || searchMode === 'fuzzy') && !params.get('q')?.trim();
+  const paginationMode = ['pages', 'load-more', 'infinite'].includes(params.get('view')) ? params.get('view') : 'pages';
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [pageSizeDraft, setPageSizeDraft] = React.useState('6');
   const [pageSizeError, setPageSizeError] = React.useState('');
@@ -202,6 +204,12 @@ function MenuPage() {
   const apiParams = new URLSearchParams();
   if (params.get('q')) apiParams.set('q', params.get('q'));
   if (params.get('category') || params.get('categoryId')) apiParams.set('categoryId', params.get('category') || params.get('categoryId'));
+  apiParams.set('mode', searchMode);
+  if (searchMode === 'advanced') {
+    for (const field of ['minPrice', 'maxPrice', 'available']) {
+      if (params.has(field)) apiParams.set(field, params.get(field));
+    }
+  }
   apiParams.set('pageSize', String(selectedPageSize));
   const query = apiParams.toString();
   const requestMenuPage = React.useCallback(async (targetPage, append = false) => {
@@ -229,9 +237,14 @@ function MenuPage() {
     }
   }, [query]);
   React.useEffect(() => {
+    if (awaitingQuery) {
+      menuRequestRef.current.controller?.abort();
+      setMenuState((current) => ({ ...current, items: [], total: 0, page: 1, pageCount: 1, loading: false, loadingMore: false, error: '' }));
+      return undefined;
+    }
     requestMenuPage(paginationMode === 'pages' ? numberedPage : 1);
     return () => menuRequestRef.current.controller?.abort();
-  }, [numberedPage, paginationMode, requestMenuPage]);
+  }, [awaitingQuery, numberedPage, paginationMode, requestMenuPage]);
   React.useEffect(() => {
     if (!settingsOpen) return undefined;
     function closeSettings(event) {
@@ -266,9 +279,31 @@ function MenuPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const next = new URLSearchParams();
-    if (form.get('q')) next.set('q', String(form.get('q')).trim());
-    if (form.get('categoryId')) next.set('category', String(form.get('categoryId')));
+    const searchText = String(form.get('q') || '').trim();
+    if (searchText) next.set('q', searchText);
+    next.set('mode', searchMode);
+    next.set('view', paginationMode);
+    const category = searchMode === 'advanced' ? form.get('categoryId') : params.get('category') || params.get('categoryId');
+    if (category) next.set('category', String(category));
+    if (searchMode === 'advanced') {
+      for (const field of ['minPrice', 'maxPrice', 'available']) {
+        const value = String(form.get(field) || '').trim();
+        if (value !== '') next.set(field, value);
+      }
+    }
     next.set('pageSize', String(selectedPageSize));
+    setParams(next);
+  }
+  function changeSearchMode(event) {
+    const next = new URLSearchParams(params);
+    const draft = String(new FormData(event.currentTarget.form).get('q') || '').trim();
+    if (draft) next.set('q', draft);
+    else next.delete('q');
+    next.set('mode', event.target.value);
+    next.delete('page');
+    if (event.target.value !== 'advanced') {
+      for (const field of ['minPrice', 'maxPrice', 'available']) next.delete(field);
+    }
     setParams(next);
   }
   function applyPageSize(event) {
@@ -295,12 +330,10 @@ function MenuPage() {
     if (targetPage !== menuState.page) goToNumberedPage(targetPage);
   }
   function selectPaginationMode(mode) {
-    if (mode !== 'pages' && params.has('page')) {
-      const next = new URLSearchParams(params);
-      next.delete('page');
-      setParams(next);
-    }
-    setPaginationMode(mode);
+    const next = new URLSearchParams(params);
+    next.set('view', mode);
+    next.delete('page');
+    setParams(next);
     setSettingsOpen(false);
   }
   function goToNumberedPage(page) {
@@ -309,8 +342,11 @@ function MenuPage() {
     setParams(next);
   }
   const categoryId = params.get('category') || params.get('categoryId') || '';
-  const menuFilters = new URLSearchParams();
-  if (params.get('q')) menuFilters.set('q', params.get('q'));
+  const menuFilters = new URLSearchParams(params);
+  menuFilters.delete('page');
+  menuFilters.delete('category');
+  menuFilters.delete('categoryId');
+  menuFilters.set('mode', searchMode);
   menuFilters.set('pageSize', String(selectedPageSize));
   const allDishesHref = `/menu?${menuFilters.toString()}`;
   function categoryHref(id) {
@@ -321,9 +357,27 @@ function MenuPage() {
   return <>
     <section className="page-hero page-hero-menu paper-texture" data-lantern-section data-scroll-drift><div className="wrap page-hero-inner reveal-copy" data-reveal-from="left"><p className="eyebrow">MÓN VIỆT · VỊ PHỐ HỘI</p><h1>Món ngon<br /><em>đợi bạn.</em></h1><p>Món ăn theo mùa, nấu vừa tay và luôn có một chút hương vị nhà.</p></div><span className="section-lantern" aria-hidden="true" /></section>
     <section className="menu-section section-pad"><div className="wrap">
-      <form className="menu-search" onSubmit={submit} role="search"><label className="visually-hidden" htmlFor="dish-search">Tìm món ăn hoặc nguyên liệu</label><input id="dish-search" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tìm tên món, nguyên liệu…" /><div className="menu-search-actions"><button className="button button-dark" type="submit" disabled={menuState.loading}>Tìm món <span aria-hidden="true">⌕</span></button><div className="menu-pagination-settings" ref={settingsRef}><button className="menu-settings-button" type="button" aria-label="Chọn kiểu phân trang" aria-expanded={settingsOpen} aria-controls="menu-pagination-options" onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>{settingsOpen && <div className="menu-pagination-options" id="menu-pagination-options" role="menu" aria-label="Kiểu phân trang"><p>Kiểu xem thực đơn</p><button className={paginationMode === 'pages' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'pages'} onClick={() => selectPaginationMode('pages')}><span aria-hidden="true">1 2 3</span><strong>Phân trang</strong></button><button className={paginationMode === 'load-more' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'load-more'} onClick={() => selectPaginationMode('load-more')}><span aria-hidden="true">＋</span><strong>Tải thêm</strong></button><button className={paginationMode === 'infinite' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'infinite'} onClick={() => selectPaginationMode('infinite')}><span aria-hidden="true">↓</span><strong>Cuộn vô hạn</strong></button></div>}</div></div></form>
+      <form className="menu-search" onSubmit={submit} role="search" key={`${searchMode}|${params.get('q') || ''}|${categoryId}|${params.get('minPrice') || ''}|${params.get('maxPrice') || ''}|${params.get('available') || ''}|${menuState.categories.length}`}>
+        <label className="menu-search-mode" htmlFor="menu-search-mode">Kiểu tìm kiếm
+          <select id="menu-search-mode" value={searchMode} onChange={changeSearchMode}>
+            <option value="basic">Cơ bản</option>
+            <option value="advanced">Nâng cao</option>
+            <option value="fulltext">Toàn văn</option>
+            <option value="fuzzy">Gần đúng</option>
+          </select>
+        </label>
+        <label className="visually-hidden" htmlFor="dish-search">Tìm tên món ăn</label>
+        <input id="dish-search" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tìm tên món…" />
+        {searchMode === 'advanced' && <div className="menu-advanced-fields">
+          <label>Danh mục<select name="categoryId" defaultValue={categoryId}><option value="">Tất cả</option>{menuState.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label>Giá từ<input type="number" name="minPrice" min="0" max="999999999999" step="1" defaultValue={params.get('minPrice') || ''} /></label>
+          <label>Giá đến<input type="number" name="maxPrice" min="0" max="999999999999" step="1" defaultValue={params.get('maxPrice') || ''} /></label>
+          <label>Trạng thái<select name="available" defaultValue={params.get('available') || ''}><option value="">Tất cả</option><option value="true">Đang có</option><option value="false">Tạm hết</option></select></label>
+        </div>}
+        <div className="menu-search-actions"><button className="button button-dark" type="submit" disabled={menuState.loading}>Tìm món <span aria-hidden="true">⌕</span></button><div className="menu-pagination-settings" ref={settingsRef}><button className="menu-settings-button" type="button" aria-label="Chọn kiểu phân trang" aria-expanded={settingsOpen} aria-controls="menu-pagination-options" onClick={() => setSettingsOpen((open) => !open)}><span aria-hidden="true">⚙</span></button>{settingsOpen && <div className="menu-pagination-options" id="menu-pagination-options" role="menu" aria-label="Kiểu phân trang"><p>Kiểu xem thực đơn</p><button className={paginationMode === 'pages' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'pages'} onClick={() => selectPaginationMode('pages')}><span aria-hidden="true">1 2 3</span><strong>Phân trang</strong></button><button className={paginationMode === 'load-more' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'load-more'} onClick={() => selectPaginationMode('load-more')}><span aria-hidden="true">＋</span><strong>Tải thêm</strong></button><button className={paginationMode === 'infinite' ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={paginationMode === 'infinite'} onClick={() => selectPaginationMode('infinite')}><span aria-hidden="true">↓</span><strong>Cuộn vô hạn</strong></button></div>}</div></div>
+      </form>
       <nav className="category-filter" aria-label="Lọc theo danh mục"><Link className={categoryId ? '' : 'is-active'} to={allDishesHref}>Tất cả món</Link>{menuState.categories.map((category) => <Link key={category.id} className={categoryId === category.id ? 'is-active' : ''} to={categoryHref(category.id)} aria-current={categoryId === category.id ? 'page' : undefined}>{category.name}</Link>)}</nav>
-      {menuState.loading ? <Loading /> : menuState.error && !menuState.items.length ? <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page)} /> : <><div className="menu-results-toolbar"><p className="result-count">{menuState.total} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p><form className="menu-page-size" onSubmit={applyPageSize}><label htmlFor="menu-page-size-input">{paginationMode === 'pages' ? 'Món mỗi trang' : 'Món mỗi lần tải'}</label><input id="menu-page-size-input" type="number" min="1" max="100" step="1" required value={pageSizeDraft} aria-describedby={pageSizeError ? 'menu-page-size-error' : undefined} onChange={(event) => { setPageSizeDraft(event.target.value); setPageSizeError(''); }} /><button type="submit" disabled={menuState.loading}>Áp dụng</button>{pageSizeError && <span className="menu-page-size-error" id="menu-page-size-error" role="alert">{pageSizeError}</span>}</form></div>{menuState.items.length ? <><div className="dish-card-grid menu-card-grid">{menuState.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={(paginationMode === 'pages' ? (menuState.page - 1) * menuState.pageSize : 0) + index} />)}</div>{menuState.error && <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page + 1, true)} />}{paginationMode === 'pages' && <nav className="menu-page-numbers" aria-label="Phân trang thực đơn"><button type="button" disabled={menuState.page <= 1 || menuState.loading} onClick={() => goToNumberedPage(menuState.page - 1)}>← Trước</button><form className="menu-page-jump" onSubmit={jumpToMenuPage}><label className="visually-hidden" htmlFor="menu-page-jump-input">Nhập trang cần mở</label><input id="menu-page-jump-input" type="text" inputMode="numeric" autoComplete="off" value={pageJumpDraft} aria-describedby={pageJumpError ? 'menu-page-jump-error' : undefined} aria-invalid={Boolean(pageJumpError)} disabled={menuState.loading} onChange={(event) => { setPageJumpDraft(event.target.value); setPageJumpError(''); }} onKeyDown={(event) => { if (event.key === 'Enter') jumpToMenuPage(event); }} /><span aria-hidden="true">/</span><span className="menu-page-jump__total">{menuState.pageCount}</span>{pageJumpError && <small id="menu-page-jump-error" className="menu-page-jump__error" role="alert">{pageJumpError}</small>}</form><button type="button" disabled={menuState.page >= menuState.pageCount || menuState.loading} onClick={() => goToNumberedPage(menuState.page + 1)}>Sau →</button></nav>}{paginationMode === 'load-more' && <div className="menu-load-more">{menuState.page < menuState.pageCount ? <button className="button button-outline" type="button" disabled={menuState.loadingMore} onClick={() => requestMenuPage(menuState.page + 1, true)}>{menuState.loadingMore ? 'Đang tải…' : <>Tải thêm món <span aria-hidden="true">↓</span></>}</button> : <p>Đã hiển thị toàn bộ {menuState.total} món.</p>}</div>}{paginationMode === 'infinite' && <div className="menu-infinite-sentinel" ref={infiniteSentinelRef} aria-live="polite">{menuState.page < menuState.pageCount ? <>{menuState.loadingMore && <span className="api-spinner" aria-hidden="true" />}{menuState.loadingMore ? 'Đang tải thêm món…' : 'Cuộn xuống để xem thêm'}</> : <span>Đã hiển thị toàn bộ {menuState.total} món.</span>}</div>}</> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
+      {awaitingQuery ? <div className="empty-state"><h2>Nhập từ khóa để tìm kiếm</h2><p>Chế độ toàn văn và gần đúng bắt đầu sau khi bạn nhập từ khóa.</p></div> : menuState.loading ? <Loading /> : menuState.error && !menuState.items.length ? <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page)} /> : <><div className="menu-results-toolbar"><p className="result-count">{menuState.total} món{params.get('q') ? ` phù hợp với “${params.get('q')}”` : ''}</p><form className="menu-page-size" onSubmit={applyPageSize}><label htmlFor="menu-page-size-input">{paginationMode === 'pages' ? 'Món mỗi trang' : 'Món mỗi lần tải'}</label><input id="menu-page-size-input" type="number" min="1" max="100" step="1" required value={pageSizeDraft} aria-describedby={pageSizeError ? 'menu-page-size-error' : undefined} onChange={(event) => { setPageSizeDraft(event.target.value); setPageSizeError(''); }} /><button type="submit" disabled={menuState.loading}>Áp dụng</button>{pageSizeError && <span className="menu-page-size-error" id="menu-page-size-error" role="alert">{pageSizeError}</span>}</form></div>{menuState.items.length ? <><div className="dish-card-grid menu-card-grid">{menuState.items.map((dish, index) => <DishCard key={dish.id} dish={dish} index={(paginationMode === 'pages' ? (menuState.page - 1) * menuState.pageSize : 0) + index} />)}</div>{menuState.error && <ErrorState message={menuState.error} onRetry={() => requestMenuPage(menuState.page + 1, true)} />}{paginationMode === 'pages' && <nav className="menu-page-numbers" aria-label="Phân trang thực đơn"><button type="button" disabled={menuState.page <= 1 || menuState.loading} onClick={() => goToNumberedPage(menuState.page - 1)}>← Trước</button><form className="menu-page-jump" onSubmit={jumpToMenuPage}><label className="visually-hidden" htmlFor="menu-page-jump-input">Nhập trang cần mở</label><input id="menu-page-jump-input" type="text" inputMode="numeric" autoComplete="off" value={pageJumpDraft} aria-describedby={pageJumpError ? 'menu-page-jump-error' : undefined} aria-invalid={Boolean(pageJumpError)} disabled={menuState.loading} onChange={(event) => { setPageJumpDraft(event.target.value); setPageJumpError(''); }} onKeyDown={(event) => { if (event.key === 'Enter') jumpToMenuPage(event); }} /><span aria-hidden="true">/</span><span className="menu-page-jump__total">{menuState.pageCount}</span>{pageJumpError && <small id="menu-page-jump-error" className="menu-page-jump__error" role="alert">{pageJumpError}</small>}</form><button type="button" disabled={menuState.page >= menuState.pageCount || menuState.loading} onClick={() => goToNumberedPage(menuState.page + 1)}>Sau →</button></nav>}{paginationMode === 'load-more' && <div className="menu-load-more">{menuState.page < menuState.pageCount ? <button className="button button-outline" type="button" disabled={menuState.loadingMore} onClick={() => requestMenuPage(menuState.page + 1, true)}>{menuState.loadingMore ? 'Đang tải…' : <>Tải thêm món <span aria-hidden="true">↓</span></>}</button> : <p>Đã hiển thị toàn bộ {menuState.total} món.</p>}</div>}{paginationMode === 'infinite' && <div className="menu-infinite-sentinel" ref={infiniteSentinelRef} aria-live="polite">{menuState.page < menuState.pageCount ? <>{menuState.loadingMore && <span className="api-spinner" aria-hidden="true" />}{menuState.loadingMore ? 'Đang tải thêm món…' : 'Cuộn xuống để xem thêm'}</> : <span>Đã hiển thị toàn bộ {menuState.total} món.</span>}</div>}</> : <div className="empty-state"><h2>Chưa tìm thấy món phù hợp</h2><p>Thử một từ khóa khác hoặc xem tất cả món trong thực đơn.</p><Link className="text-link" to="/menu">Xem tất cả món <span aria-hidden="true">↗</span></Link></div>}</>}
     </div><span className="section-lantern section-lantern--left" aria-hidden="true" /></section>
   </>;
 }

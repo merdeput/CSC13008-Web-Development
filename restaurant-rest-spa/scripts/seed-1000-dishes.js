@@ -128,7 +128,10 @@ function generateSeedRows(categories, ingredients) {
           name,
           slug,
           description: `${definition.description} Thành phần chính: ${uniqueIngredients.map(({ name: ingredientName }) => ingredientName.toLocaleLowerCase('vi-VN')).join(', ')}.`,
-          price: definition.priceBase + ((index * 977) % definition.priceSpan),
+          // Keep one reproducible zero-price dish for Block 7 filter checks.
+          price: definition.slug === 'mon-khai-vi' && index === 0
+            ? 0
+            : definition.priceBase + ((index * 977) % definition.priceSpan),
           imageUrl: definition.images[index % definition.images.length],
           isPublished: true,
           isAvailable: false,
@@ -182,7 +185,7 @@ async function main() {
     const [currentRows, legacyRows] = await Promise.all([
       transaction.dish.findMany({
         where: { slug: { in: slugs } },
-        select: { id: true, slug: true, name: true, categoryId: true, description: true, imageUrl: true, isPublished: true, isAvailable: true, isFeatured: true }
+        select: { id: true, slug: true, name: true, categoryId: true, description: true, imageUrl: true, price: true, isPublished: true, isAvailable: true, isFeatured: true }
       }),
       transaction.dish.findMany({
         where: { name: { startsWith: 'Món mẫu ' }, categoryId: { in: categories.map(({ id }) => id) } },
@@ -222,7 +225,8 @@ async function main() {
     if (dryRun) {
       return {
         generated: rows.length, existing: existingCount, placeholdersToUpdate: legacyUpdates.length,
-        wouldCreate: cleanPlaceholdersOnly ? 0 : missingRows.length, created: 0
+        wouldCreate: cleanPlaceholdersOnly ? 0 : missingRows.length, created: 0,
+        wouldSetZeroPrice: Number(currentBySlug.get(rows[0].slug)?.price) !== 0
       };
     }
 
@@ -249,18 +253,23 @@ async function main() {
       where: { slug: { in: slugs }, OR: [{ isPublished: false }, { isAvailable: true }, { isFeatured: true }] },
       data: { isPublished: true, isAvailable: false, isFeatured: false }
     });
+    const zeroPriceUpdate = await transaction.dish.updateMany({
+      where: { slug: rows[0].slug, price: { not: 0 } },
+      data: { price: 0 }
+    });
     const verified = await transaction.dish.findMany({
       where: { slug: { in: slugs } },
-      select: { isPublished: true, isAvailable: true, imageUrl: true, description: true, ingredients: { select: { ingredientId: true } } }
+      select: { slug: true, price: true, isPublished: true, isAvailable: true, imageUrl: true, description: true, ingredients: { select: { ingredientId: true } } }
     });
     const complete = verified.length === rows.length && verified.every((dish) =>
       dish.isPublished && !dish.isAvailable && dish.imageUrl && dish.description && dish.ingredients.length >= 3
-    );
+    ) && verified.some((dish) => dish.slug === rows[0].slug && Number(dish.price) === 0);
     if (savedCount !== rows.length || !complete) throw new Error(`Verification failed for generated dishes (${verified.length}/1000).`);
 
     return {
       generated: rows.length, existing: existingCount, placeholdersUpdated: legacyUpdates.length,
-      wouldCreate: missingRows.length, created: missingRows.length
+      wouldCreate: missingRows.length, created: missingRows.length,
+      zeroPriceUpdated: zeroPriceUpdate.count
     };
   }, { maxWait: 15000, timeout: 120000 });
 
