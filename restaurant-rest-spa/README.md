@@ -30,6 +30,7 @@ For a production build, run `npm.cmd run build`, then `npm.cmd start`. Express s
 | --- | --- |
 | `npm.cmd run dev:server` | Start Express in watch mode |
 | `npm.cmd run dev:client` | Start the Vite development server |
+| `npm.cmd test` | Run server unit tests and React auth API mock tests |
 | `npm.cmd run build` | Build the React client |
 | `npm.cmd start` | Start Express and serve the production build |
 | `npm.cmd run db:generate` | Generate the Prisma client |
@@ -43,7 +44,7 @@ For a production build, run `npm.cmd run build`, then `npm.cmd start`. Express s
 
 The app uses the existing PostgreSQL database and data. The schema includes dishes, categories, chefs, ingredients, dish-ingredient links, and reservations. A dish can have one chef and multiple ingredients.
 
-The additive migration adds a nullable chef relationship to dishes. Existing dishes remain unassigned until linked in the admin form. Migration commands do not seed or reset data.
+The chef migration adds a nullable chef relationship to dishes. The SPA authentication tables are added by a separate additive JWT session migration. Existing dishes remain unassigned until linked in the admin form. Review migration plans before applying them to a shared or production database. Migration commands do not seed or reset data.
 
 Authentication migrations are separate. The JWT session migration is additive, but the inspected database has historical migration checksum mismatches. Reconcile the recorded history before running `db:deploy`; do not reset the database to resolve them.
 
@@ -53,8 +54,14 @@ Successful responses use `{"ok":true,"data":...}`. Validation and not-found resp
 
 Public endpoints include:
 
-- `GET /api/health`, `/api/home`, `/api/menu`, `/api/dishes/:id`, `/api/chefs`, and `/api/config`
+- `GET /api/health`, `/api/home`, `/api/menu`, `/api/dishes`, `/api/dishes/:id`, `/api/chefs`, and `/api/config`
 - `POST /api/reservations`
+
+`GET /api/dishes` is an unauthenticated alias of the searchable, paginated `/api/menu` endpoint. Reservations remain available without an account.
+
+### SPA authentication
+
+The React SPA keeps its 15-minute access JWT in JavaScript memory and sends it as a bearer token to `/api/admin/**`. Refresh uses a rotating opaque HttpOnly cookie. Authentication mutations require the signed CSRF value in X-CSRF-Token and a trusted Origin. Registration and OTP verification do not sign in the user. Registration always creates `viewer`, and the audited policy grants both `viewer` and `admin` access to the admin UI after login. All admin API routes require a valid active-account JWT. See [client/AUTHENTICATION.md](client/AUTHENTICATION.md) for endpoint response shapes, required configuration, evidence scenarios, and the reset policy.
 
 `GET /api/menu` accepts `page`, `pageSize` (1–100; defaults to 6), `categoryId`, `q`, and these search modes:
 
@@ -67,7 +74,7 @@ Public endpoints include:
 
 The menu UI sends a named mode. Omitting `mode` preserves the earlier combined full-text/fuzzy search for existing API links. All four named modes search the published dish collection before server-side pagination and return `items`, `total`, `page`, `pageSize`, and `pageCount`. Search results in `fulltext` and `fuzzy` order by score descending, then dish ID ascending. Invalid advanced filters and blank full-text/fuzzy queries return `VALIDATION_FAILED`.
 
-Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. They require a valid `Authorization: Bearer <accessToken>` header. The backend checks the user's active status and session on each request. Existing broad SSR role behavior is retained; role and resource authorization still need a product policy. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
+Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. They require a valid `Authorization: Bearer <accessToken>` header. The backend checks the user's active status and session on each request. The audited policy allows active verified viewer and admin accounts to use the admin UI; the server loads role and account status from the database for each protected request. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
 
 ## Authentication
 

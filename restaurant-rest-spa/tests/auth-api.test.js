@@ -329,3 +329,14 @@ test('refresh endpoint rotates cookies and rejects replayed refresh tokens', asy
   assert.equal(reused.status, 401);
   assert.equal((await reused.json()).error.code, 'REFRESH_REUSE');
 });
+
+test('production CSP allows the reCAPTCHA script, frame, and connection origins', async (t) => {
+  const ctx = await startApp();
+  t.after(ctx.close);
+  const response = await fetch(ctx.baseUrl + '/api/health');
+  const policy = response.headers.get('content-security-policy');
+  assert.match(policy, /script-src[^;]*www\.google\.com\/recaptcha/);
+  assert.match(policy, /script-src[^;]*www\.gstatic\.com\/recaptcha/);
+  assert.match(policy, /frame-src[^;]*recaptcha\.google\.com\/recaptcha/);
+  assert.match(policy, /connect-src[^;]*www\.google\.com\/recaptcha/);
+});

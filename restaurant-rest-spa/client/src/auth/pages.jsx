@@ -248,7 +248,7 @@ export function RegisterPage() {
 
 function registrationErrorMessage(error) {
   if (error?.code === 'VALIDATION_FAILED') return 'Hãy kiểm tra email và đảm bảo mật khẩu đáp ứng đủ các yêu cầu.';
-  if (error?.code === 'CAPTCHA_REJECTED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử đăng ký.';
+  if (error?.code === 'CAPTCHA_REQUIRED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử đăng ký.';
   return error?.message || 'Không thể tạo tài khoản lúc này. Vui lòng thử lại.';
 }
 
@@ -356,13 +356,13 @@ export function VerifyEmailPage() {
       navigate('/login?verified=1');
     } catch (cause) {
       const messages = {
-        OTP_INVALID: 'Mã này chưa thể xác minh. Hãy kiểm tra lại hoặc yêu cầu mã mới.',
+        INVALID_OTP: 'Mã này chưa thể xác minh. Hãy kiểm tra lại hoặc yêu cầu mã mới.',
         OTP_LOCKED: 'Bạn đã thử mã quá nhiều lần. Vui lòng chờ trước khi thử lại.'
       };
-      if (cause?.code === 'OTP_INVALID') {
+      if (cause?.code === 'INVALID_OTP') {
         setCode('');
         setActiveDigit(0);
-        verify.setFieldErrors({ code: messages.OTP_INVALID });
+        verify.setFieldErrors({ code: messages.INVALID_OTP });
         verify.setError('');
       } else {
         verify.setError(messages[cause?.code] || cause?.message || 'Không thể xác minh email. Hãy thử lại khi kết nối ổn định.');
@@ -469,12 +469,12 @@ export function VerifyEmailPage() {
 function loginErrorMessage(error) {
   if (error?.code === 'LOGIN_INVALID') return 'Email hoặc mật khẩu không chính xác.';
   if (error?.code === 'LOGIN_LOCKED') return 'Có quá nhiều lần đăng nhập chưa thành công. Vui lòng chờ rồi thử lại.';
-  if (error?.code === 'CAPTCHA_REJECTED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử đăng nhập.';
+  if (error?.code === 'CAPTCHA_REQUIRED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử đăng nhập.';
   return error?.message || 'Không thể đăng nhập lúc này. Vui lòng thử lại.';
 }
 
 function resendErrorMessage(error) {
-  if (error?.code === 'CAPTCHA_REJECTED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử gửi mã.';
+  if (error?.code === 'CAPTCHA_REQUIRED') return 'Hãy hoàn tất lại reCAPTCHA rồi thử gửi mã.';
   if (error?.code === 'RATE_LIMITED') return 'Đã có nhiều yêu cầu gần đây. Vui lòng chờ rồi thử lại.';
   return error?.message || 'Không thể gửi mã lúc này. Vui lòng thử lại.';
 }
@@ -613,7 +613,7 @@ export function ResetPasswordPage() {
       setComplete(true);
     } catch (cause) {
       const messages = {
-        RESET_INVALID: 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Hãy yêu cầu liên kết mới.',
+        INVALID_RESET_TOKEN: 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Hãy yêu cầu liên kết mới.',
         VALIDATION_FAILED: 'Mật khẩu cần có ít nhất 12 ký tự, không quá 128 byte, một chữ hoa, một chữ số và một ký tự đặc biệt.'
       };
       setError(messages[cause?.code] || cause?.message || 'Không thể cập nhật mật khẩu lúc này.');

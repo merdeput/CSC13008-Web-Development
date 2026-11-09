@@ -60,7 +60,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!registrationAvailable()) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Registration is temporarily unavailable.');
       const captcha = await checkCaptcha(req.body.captchaToken, 'registration');
       if (captcha.unavailable) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Registration is temporarily unavailable.');
-      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REJECTED', 'Complete the CAPTCHA and try again.');
+      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REQUIRED', 'Complete the CAPTCHA and try again.');
 
       try {
         const passwordHash = await hashPassword(password);
@@ -77,13 +77,13 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       const email = normalizeEmail(req.body && req.body.email);
       const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
       if (!validEmail(email) || !/^\d{6}$/.test(code)) {
-        return fail(res, 400, 'OTP_INVALID', 'The code is invalid, expired, or unavailable.');
+        return fail(res, 400, 'INVALID_OTP', 'The code is invalid, expired, or unavailable.');
       }
       try {
         const result = await services.auth.activateAccountByEmail(email, code);
         if (result.status === 'activated') return ok(res, { verified: true, loginRequired: true });
         if (result.status === 'locked') return fail(res, 429, 'OTP_LOCKED', 'The code is invalid, expired, or unavailable. Try again later.');
-        return fail(res, 400, 'OTP_INVALID', 'The code is invalid, expired, or unavailable.');
+        return fail(res, 400, 'INVALID_OTP', 'The code is invalid, expired, or unavailable.');
       } catch (error) {
         logFailure('OTP verification', error);
         return fail(res, 503, 'AUTH_UNAVAILABLE', 'Email verification is temporarily unavailable.');
@@ -96,7 +96,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!registrationAvailable()) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Activation resend is temporarily unavailable.');
       const captcha = await checkCaptcha(req.body.captchaToken, 'activation resend');
       if (captcha.unavailable) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Activation resend is temporarily unavailable.');
-      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REJECTED', 'Complete the CAPTCHA and try again.');
+      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REQUIRED', 'Complete the CAPTCHA and try again.');
       try {
         const result = await services.auth.resendActivationCodeByEmail(email);
         if (result.status === 'sent') return ok(res, { message: 'If activation is available, a code has been sent.' }, 202);
@@ -116,7 +116,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!loginAvailable()) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Login is temporarily unavailable.');
       const captcha = await checkCaptcha(req.body?.captchaToken, 'login');
       if (captcha.unavailable) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Login is temporarily unavailable.');
-      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REJECTED', 'Complete the CAPTCHA and try again.');
+      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REQUIRED', 'Complete the CAPTCHA and try again.');
 
       try {
         const lockout = await services.auth.getLoginLockout(email, req.ip);
@@ -197,7 +197,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!passwordResetAvailable()) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Password recovery is temporarily unavailable.');
       const captcha = await checkCaptcha(req.body?.captchaToken, 'password reset');
       if (captcha.unavailable) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Password recovery is temporarily unavailable.');
-      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REJECTED', 'Complete the CAPTCHA and try again.');
+      if (!captcha.ok) return fail(res, 400, 'CAPTCHA_REQUIRED', 'Complete the CAPTCHA and try again.');
       try {
         if (validEmail(email)) await services.auth.requestPasswordReset(email);
       } catch (error) {
@@ -212,7 +212,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!validPassword(password)) return fail(res, 400, 'VALIDATION_FAILED', 'Password must be 12 characters or more, no more than 128 bytes, and include an uppercase letter, a number, and a special character.');
       try {
         const completed = await services.auth.completePasswordReset(token, password);
-        if (!completed) return fail(res, 400, 'RESET_INVALID', 'The reset link is invalid, expired, or unavailable.');
+        if (!completed) return fail(res, 400, 'INVALID_RESET_TOKEN', 'The reset link is invalid, expired, or unavailable.');
         return ok(res, { reset: true, loginRequired: true });
       } catch (error) {
         logFailure('password reset completion', error);

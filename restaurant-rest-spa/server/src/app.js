@@ -46,7 +46,17 @@ function createApp(options = {}) {
 
   app.disable('x-powered-by');
   if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", 'https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'],
+        frameSrc: ["'self'", 'https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
+        connectSrc: ["'self'", 'https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'],
+        styleSrc: ["'self'", "'unsafe-inline'"]
+      }
+    }
+  }));
   app.use(cors({
     origin(origin, callback) {
       if (!origin) return callback(null, false);
