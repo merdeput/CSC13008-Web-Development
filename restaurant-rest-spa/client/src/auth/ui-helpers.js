@@ -74,8 +74,12 @@ export function getResendCooldownUntil(storage, now = Date.now()) {
   return 0;
 }
 
-export function startResendCooldown(storage, now = Date.now()) {
-  const until = now + OTP_RESEND_COOLDOWN_MS;
+export function startResendCooldown(storage, now = Date.now(), durationMs = OTP_RESEND_COOLDOWN_MS) {
+  const requestedDuration = Number(durationMs);
+  const cooldownMs = Number.isFinite(requestedDuration) && requestedDuration > 0
+    ? Math.min(Math.ceil(requestedDuration), 24 * 60 * 60 * 1000)
+    : OTP_RESEND_COOLDOWN_MS;
+  const until = now + cooldownMs;
   try { (storage || globalThis.sessionStorage)?.setItem(RESEND_UNTIL_KEY, String(until)); } catch {
     // The cooldown is a presentation hint; API limits remain authoritative.
   }

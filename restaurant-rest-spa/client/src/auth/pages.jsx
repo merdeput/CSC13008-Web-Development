@@ -14,28 +14,26 @@ import {
   startResendCooldown
 } from './ui-helpers.js';
 
-function AuthFrame({ eyebrow = 'BẾP HỘI · TÀI KHOẢN', title, intro, children, footer }) {
-  return <main className="auth-page"><div className="auth-shell">
+function AuthFrame({ eyebrow = 'BẾP HỘI · TÀI KHOẢN', title, intro, children, footer, variant = 'default' }) {
+  return <main className={`auth-page auth-page--${variant}`}><div className="auth-shell">
     <aside className="auth-story" aria-label="Bếp Hội, món Việt vị phố Hội">
-      <Link to="/" className="auth-brand" aria-label="Bếp Hội — về trang chủ">
-        <span className="auth-brand-mark" aria-hidden="true">B</span>
-        <span>BẾP <strong>HỘI</strong><small>MÓN VIỆT, VỊ PHỐ HỘI</small></span>
-      </Link>
-      <div className="auth-story-art" aria-hidden="true">
-        <svg viewBox="0 0 180 220" focusable="false">
-          <path d="M90 13v26M77 39h26M65 58c8-10 16-15 25-15s17 5 25 15l17 24c8 12 11 25 11 42v29H37v-29c0-17 3-30 11-42l17-24Z" />
-          <path d="M38 124h104M43 153h94M54 178h72M64 194h52M90 43v135M54 83c17 17 55 17 72 0M54 108c17 17 55 17 72 0" />
-          <path d="M78 203h24M90 203v9" />
-        </svg>
+      <img className="auth-story-photo" src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1100&q=85" alt="" fetchPriority="high" />
+      <div className="auth-story-shade" aria-hidden="true" />
+      <span className="hero-lantern auth-story-lantern" aria-hidden="true" />
+      <span className="hero-lantern auth-story-lantern auth-story-lantern--two" aria-hidden="true" />
+      <div className="auth-story-content">
+        <Link to="/" className="auth-brand" aria-label="Bếp Hội — về trang chủ">
+          <span className="auth-brand-mark" aria-hidden="true">B</span>
+          <span>BẾP <strong>HỘI</strong><small>MÓN VIỆT, VỊ PHỐ HỘI</small></span>
+        </Link>
+        <div className="auth-story-copy">
+          <p className="auth-story-eyebrow">HỘI AN · VIỆT NAM</p>
+          <p>Một căn bếp nhỏ, những món quen được nấu chậm và luôn có chỗ cho bạn quay về.</p>
+        </div>
+        <span className="auth-story-caption">CHẬM MỘT NHỊP, NGON MỘT ĐỜI</span>
       </div>
-      <div className="auth-story-copy">
-        <p className="auth-story-eyebrow">HỘI AN · VIỆT NAM</p>
-        <p>Một căn bếp nhỏ, những món quen được nấu chậm và luôn có chỗ cho bạn quay về.</p>
-      </div>
-      <span className="auth-story-caption">CHẬM MỘT NHỊP, NGON MỘT ĐỜI</span>
     </aside>
     <section className="auth-card" aria-labelledby="auth-title">
-      <Link to="/" className="auth-brand auth-brand-mobile" aria-label="Bếp Hội — về trang chủ">BẾP <strong>HỘI</strong></Link>
       <p className="auth-eyebrow">{eyebrow}</p>
       <h1 id="auth-title">{title}</h1>
       {intro && <p className="auth-intro">{intro}</p>}
@@ -97,7 +95,8 @@ function SubmitButton({ busy, disabled = false, children, loadingLabel = 'Đang 
 function CaptchaForm({
   busy, setBusy, error, setError, notice, setNotice, fieldErrors, setFieldErrors,
   captchaToken, setCaptchaToken, captchaRef, finishCaptcha, onSubmit, onSuccess,
-  onFailure, errorMessage, validate, children, submitLabel, loadingLabel, errorId = 'auth-error', disabled = false
+  onFailure, errorMessage, validate, children, submitLabel, loadingLabel, errorId = 'auth-error', disabled = false,
+  className = 'auth-form', showMessage = true
 }) {
   const submitLocked = React.useRef(false);
   const submit = async (event) => {
@@ -142,10 +141,10 @@ function CaptchaForm({
       });
     }
   };
-  return <form className="auth-form" onSubmit={submit} onInput={clearFieldError} noValidate>
+  return <form className={className} onSubmit={submit} onInput={clearFieldError} noValidate>
     {children}
     <Captcha token={captchaToken} setToken={setCaptchaToken} captchaRef={captchaRef} />
-    <Message id={errorId} error={error} notice={notice} />
+    {showMessage && <Message id={errorId} error={error} notice={notice} />}
     <SubmitButton busy={busy} disabled={disabled} loadingLabel={loadingLabel}>{submitLabel}</SubmitButton>
   </form>;
 }
@@ -264,8 +263,8 @@ function useResendCooldown() {
   React.useEffect(() => {
     if (until && now >= until) setUntil(0);
   }, [now, until]);
-  const start = React.useCallback(() => {
-    const deadline = startResendCooldown();
+  const start = React.useCallback((durationMs) => {
+    const deadline = startResendCooldown(undefined, Date.now(), durationMs);
     setUntil(deadline);
     setNow(Date.now());
   }, []);
@@ -285,7 +284,49 @@ export function VerifyEmailPage() {
   const resend = useFormState();
   const cooldown = useResendCooldown();
   const verifyLocked = React.useRef(false);
+  const resendCloseTimer = React.useRef(null);
+  const resendOpenFrame = React.useRef(null);
+  const [resendMounted, setResendMounted] = React.useState(false);
+  const [resendExpanded, setResendExpanded] = React.useState(false);
   const resendSeconds = Math.ceil(cooldown.remaining / 1000);
+
+  React.useEffect(() => () => {
+    if (resendCloseTimer.current) window.clearTimeout(resendCloseTimer.current);
+    if (resendOpenFrame.current) window.cancelAnimationFrame(resendOpenFrame.current);
+  }, []);
+
+  const expandResend = () => {
+    if (resendCloseTimer.current) {
+      window.clearTimeout(resendCloseTimer.current);
+      resendCloseTimer.current = null;
+    }
+    setResendMounted(true);
+    if (resendOpenFrame.current) window.cancelAnimationFrame(resendOpenFrame.current);
+    resendOpenFrame.current = window.requestAnimationFrame(() => {
+      resendOpenFrame.current = null;
+      setResendExpanded(true);
+    });
+  };
+
+  const collapseResend = (resetCaptcha = true) => {
+    if (resendOpenFrame.current) {
+      window.cancelAnimationFrame(resendOpenFrame.current);
+      resendOpenFrame.current = null;
+    }
+    if (resetCaptcha) resend.finishCaptcha();
+    setResendExpanded(false);
+    if (resendCloseTimer.current) window.clearTimeout(resendCloseTimer.current);
+    resendCloseTimer.current = window.setTimeout(() => {
+      setResendMounted(false);
+      resendCloseTimer.current = null;
+    }, 220);
+  };
+
+  const toggleResend = () => {
+    if (resend.busy) return;
+    if (resendExpanded) collapseResend();
+    else if (resendSeconds === 0) expandResend();
+  };
 
   const verifyCode = async (event) => {
     event.preventDefault();
@@ -330,10 +371,17 @@ export function VerifyEmailPage() {
     } finally { verifyLocked.current = false; verify.setBusy(false); }
   };
 
-  const resendCode = async (_form, captchaToken) => {
-    await authApi.resendOtp({ email: email.trim(), captchaToken });
+  const resendCode = (_form, captchaToken) =>
+    authApi.resendOtp({ email: email.trim(), captchaToken });
+
+  const resendSucceeded = () => {
     resend.setNotice('Nếu yêu cầu đủ điều kiện, mã mới sẽ được gửi đến email đã cung cấp.');
     cooldown.start();
+    collapseResend(false);
+  };
+
+  const resendFailed = (error) => {
+    if (error?.retryAfterMs > 0) cooldown.start(error.retryAfterMs);
   };
 
   const updateCode = (value) => {
@@ -382,16 +430,38 @@ export function VerifyEmailPage() {
       <Message id="verify-error" error={verify.error} notice={verify.notice} />
       <SubmitButton busy={verify.busy} loadingLabel="Đang xác minh…">Xác minh email</SubmitButton>
     </form>
-    <div className="auth-resend-block">
-      <p className="auth-resend-prompt">{resendSeconds > 0 ? <>Chưa nhận được mã? Gửi lại sau <strong>{formatCountdown(cooldown.remaining)}</strong></> : 'Chưa nhận được mã?'}</p>
-      <CaptchaForm
-        {...resend} onSubmit={resendCode} errorMessage={resendErrorMessage} errorId="resend-error" submitLabel="Gửi lại mã" loadingLabel="Đang gửi mã…"
-        disabled={resendSeconds > 0}
+    <section className="auth-resend-block" aria-label="Gửi lại mã xác minh">
+      <div className="auth-resend-control">
+        <p className="auth-resend-prompt">Chưa nhận được mã?</p>
+        <button
+          id="resend-toggle" className="auth-resend-toggle" type="button"
+          aria-expanded={resendExpanded} aria-controls="resend-panel"
+          aria-label={resendSeconds > 0 && !resendExpanded ? `Gửi lại mã sau ${formatCountdown(cooldown.remaining)}` : resendExpanded ? 'Thu gọn phần gửi lại mã' : 'Mở phần gửi lại mã'}
+          disabled={resend.busy || (resendSeconds > 0 && !resendExpanded)}
+          onClick={toggleResend}
+        >
+          <span>{resendSeconds > 0 && !resendExpanded ? `Gửi lại sau ${formatCountdown(cooldown.remaining)}` : resendExpanded ? 'Ẩn phần gửi lại' : 'Gửi lại mã'}</span>
+          <svg className="auth-resend-chevron" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m3 6 5 5 5-5" /></svg>
+        </button>
+      </div>
+      {(resend.error || resend.notice) && <Message id="resend-error" error={resend.error} notice={resend.notice} />}
+      <div
+        id="resend-panel" className={`auth-resend-panel${resendExpanded ? ' is-expanded' : ''}`}
+        role="region" aria-labelledby="resend-toggle" aria-hidden={!resendExpanded} inert={!resendExpanded}
       >
-        <input type="hidden" name="email" value={email} />
-      </CaptchaForm>
-      {resendSeconds === 0 && <p className="auth-help">Máy chủ vẫn áp dụng thời gian chờ và giới hạn gửi mã cho email này.</p>}
-    </div>
+        <div className="auth-resend-panel-inner">
+          {resendMounted && <CaptchaForm
+            {...resend} className="auth-form auth-resend-form" showMessage={false}
+            onSubmit={resendCode} onSuccess={resendSucceeded} onFailure={resendFailed}
+            errorMessage={resendErrorMessage} errorId="resend-error"
+            submitLabel="Xác nhận gửi lại mã" loadingLabel="Đang gửi mã…"
+            disabled={resendSeconds > 0}
+          >
+            <input type="hidden" name="email" value={email} />
+          </CaptchaForm>}
+        </div>
+      </div>
+    </section>
     <p className="auth-switch"><Link to="/login">Quay lại đăng nhập</Link><span aria-hidden="true"> · </span><Link to="/register">Đăng ký lại</Link></p>
   </AuthFrame>;
 }
@@ -453,7 +523,7 @@ export function LoginPage() {
   };
   const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
 
-  return <AuthFrame title="Đăng nhập" intro="Trở lại căn bếp để tiếp tục chăm chút từng món ăn.">
+  return <AuthFrame variant="login" title="Đăng nhập" intro="Đăng nhập để tiếp tục.">
     <CaptchaForm
       {...state} onSubmit={submit} onFailure={handleFailure} errorMessage={loginErrorMessage}
       submitLabel="Đăng nhập" loadingLabel="Đang đăng nhập…" disabled={remaining > 0}
