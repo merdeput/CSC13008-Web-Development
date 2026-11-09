@@ -1,34 +1,10 @@
 const { normalizeEmail } = require('../services/auth-service');
 const { isRecaptchaConfigured, verifyRecaptcha } = require('../lib/recaptcha');
 const { hashPassword } = require('../lib/password');
+const { registrationAvailable, loginAvailable, passwordResetAvailable, validEmail, validPassword } = require('../../../shared/auth/policy');
 
 const IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 const ABSOLUTE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
-
-function registrationAvailable() {
-  return isRecaptchaConfigured()
-    && Boolean(process.env.RESEND_API_KEY)
-    && Boolean(process.env.EMAIL_FROM)
-    && Boolean(process.env.OTP_HMAC_SECRET && Buffer.byteLength(process.env.OTP_HMAC_SECRET) >= 32);
-}
-
-function loginAvailable() {
-  return isRecaptchaConfigured()
-    && Boolean(process.env.LOGIN_COUNTER_HMAC_SECRET && Buffer.byteLength(process.env.LOGIN_COUNTER_HMAC_SECRET) >= 32);
-}
-
-function passwordResetAvailable() {
-  return isRecaptchaConfigured()
-    && Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.PUBLIC_BASE_URL);
-}
-
-function validEmail(email) {
-  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function validPassword(password) {
-  return Array.from(password).length >= 12 && Buffer.byteLength(password, 'utf8') <= 128;
-}
 
 function captchaSiteKey() {
   return process.env.RECAPTCHA_SITE_KEY || '';

@@ -8,7 +8,7 @@ const { createCategoryModel } = require('./category-model');
 function createModels(db) {
   return {
     dishes: createDishModel(db), chefs: createChefModel(db), ingredients: createIngredientModel(db),
-    reservations: createReservationModel(db), admin: createAdminModel(db), categories: createCategoryModel(db)
+    reservations: createReservationModel(db), admin: createAdminModel(db), categories: createCategoryModel(db), db
   };
 }
 

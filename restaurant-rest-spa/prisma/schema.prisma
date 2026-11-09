@@ -15,6 +15,11 @@ enum ReservationStatus {
   NO_SHOW
 }
 
+enum UserStatus {
+  PENDING
+  ACTIVE
+}
+
 model Category {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String   @unique @db.VarChar(80)
@@ -102,4 +107,112 @@ model Reservation {
   @@index([startsAt])
   @@index([status, startsAt])
   @@map("Reservation")
+}
+
+model User {
+  id                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                 String                @unique @db.VarChar(254)
+  passwordHash          String                @db.VarChar(255)
+  role                  String                @default("viewer") @db.VarChar(40)
+  status                UserStatus            @default(PENDING)
+  emailVerifiedAt       DateTime?             @db.Timestamptz(6)
+  createdAt             DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  activationChallenges  ActivationChallenge[]
+  passwordReset         PasswordReset?
+  sessions              Session[]
+  authSessions          AuthSession[]
+
+  @@map("User")
+}
+
+model ActivationChallenge {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @db.Uuid
+  purpose     String    @db.VarChar(32)
+  otpHash     String    @db.Char(64)
+  expiresAt   DateTime  @db.Timestamptz(6)
+  attempts    Int       @default(0)
+  lockedUntil DateTime? @db.Timestamptz(6)
+  resendCount Int       @default(0)
+  lastSentAt  DateTime  @db.Timestamptz(6)
+  usedAt      DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, purpose])
+  @@index([expiresAt])
+  @@map("ActivationChallenge")
+}
+
+model PasswordReset {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @unique @db.Uuid
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expiresAt])
+  @@map("PasswordReset")
+}
+
+model LoginFailureCounter {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  keyType         String    @db.VarChar(16)
+  keyHash         String    @db.Char(64)
+  failureCount    Int       @default(0)
+  windowStartedAt DateTime  @db.Timestamptz(6)
+  lockedUntil     DateTime? @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([keyType, keyHash])
+  @@index([lockedUntil])
+  @@map("LoginFailureCounter")
+}
+
+model Session {
+  id        String   @id @db.VarChar(255)
+  sid       String   @unique @db.VarChar(255)
+  userId    String?  @db.Uuid
+  data      String   @db.Text
+  expiresAt DateTime @db.Timestamptz(6)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("Session")
+}
+
+model AuthSession {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String         @db.Uuid
+  createdAt   DateTime       @default(now()) @db.Timestamptz(6)
+  lastUsedAt  DateTime?      @db.Timestamptz(6)
+  expiresAt   DateTime       @db.Timestamptz(6)
+  revokedAt   DateTime?      @db.Timestamptz(6)
+  revokeReason String?       @db.VarChar(40)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("AuthSession")
+}
+
+model RefreshToken {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId   String        @db.Uuid
+  tokenHash   String        @unique @db.Char(64)
+  parentId    String?       @unique @db.Uuid
+  issuedAt    DateTime      @default(now()) @db.Timestamptz(6)
+  expiresAt   DateTime      @db.Timestamptz(6)
+  usedAt      DateTime?     @db.Timestamptz(6)
+  session     AuthSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  parent      RefreshToken? @relation("RefreshTokenChain", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  successor   RefreshToken? @relation("RefreshTokenChain")
+
+  @@index([sessionId, expiresAt])
+  @@map("RefreshToken")
 }
