@@ -24,6 +24,11 @@ export function GuestRoute({ children }) {
   const auth = useAuth();
   const location = useLocation();
   if (auth.status === 'loading') return <RestoreState error={auth.error} retryRestore={auth.retryRestore} />;
-  if (auth.status === 'authenticated') return <Navigate to={location.state?.from?.pathname || '/admin'} replace />;
+  if (auth.status === 'authenticated') {
+    const requested = location.state?.from?.pathname;
+    const safeRequested = typeof requested === 'string' && requested.startsWith('/') && !requested.startsWith('//');
+    const destination = safeRequested ? requested : '/admin';
+    return <Navigate to={destination} replace />;
+  }
   return children;
 }

@@ -15,6 +15,11 @@ enum ReservationStatus {
   NO_SHOW
 }
 
+enum UserStatus {
+  PENDING
+  ACTIVE
+}
+
 model Category {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String   @unique @db.VarChar(80)
@@ -102,4 +107,81 @@ model Reservation {
   @@index([startsAt])
   @@index([status, startsAt])
   @@map("Reservation")
+}
+
+model User {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email               String               @unique @db.VarChar(254)
+  passwordHash        String               @db.VarChar(255)
+  role                String               @default("viewer") @db.VarChar(40)
+  status              UserStatus           @default(PENDING)
+  authVersion         Int                  @default(0)
+  emailVerifiedAt     DateTime?            @db.Timestamptz(6)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+  activationChallenge ActivationChallenge?
+  passwordReset       PasswordReset?
+  refreshTokens       RefreshToken[]
+
+  @@map("User")
+}
+
+model ActivationChallenge {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @unique @db.Uuid
+  otpHash   String    @db.Char(64)
+  expiresAt DateTime  @db.Timestamptz(6)
+  attempts  Int       @default(0)
+  lockedUntil DateTime? @db.Timestamptz(6)
+  resendCount Int     @default(0)
+  lastSentAt DateTime @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expiresAt])
+  @@map("ActivationChallenge")
+}
+
+model PasswordReset {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @unique @db.Uuid
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expiresAt])
+  @@map("PasswordReset")
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @db.Uuid
+  familyId  String    @db.Uuid
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime  @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([familyId])
+  @@map("RefreshToken")
+}
+
+model LoginFailureCounter {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  keyType         String    @db.VarChar(16)
+  keyHash         String    @db.Char(64)
+  failureCount    Int       @default(0)
+  windowStartedAt DateTime  @db.Timestamptz(6)
+  lockedUntil     DateTime? @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([keyType, keyHash])
+  @@index([lockedUntil])
+  @@map("LoginFailureCounter")
 }

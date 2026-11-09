@@ -11,8 +11,10 @@ export class ApiError extends Error {
 // The access JWT intentionally lives only in this module's JavaScript memory.
 let accessToken = null;
 let csrfToken = null;
+let csrfExpiresAt = 0;
 let csrfPromise = null;
 let refreshPromise = null;
+const REFRESH_LOCK_KEY = 'bephoi-auth-refresh-lock';
 
 export function getAccessToken() { return accessToken; }
 export function setAccessToken(value) { accessToken = typeof value === 'string' && value ? value : null; }
@@ -74,12 +76,14 @@ async function send(path, options = {}) {
 }
 
 async function getCsrfToken() {
-  if (csrfToken) return csrfToken;
+  if (csrfToken && Date.now() < csrfExpiresAt) return csrfToken;
+  csrfToken = null;
   if (!csrfPromise) {
     csrfPromise = send('/api/auth/csrf').then((data) => {
       const value = data?.csrfToken || data?.token;
       if (typeof value !== 'string' || !value) throw new ApiError('The server did not provide a CSRF token.', 502, { code: 'CSRF_TOKEN_MISSING' });
       csrfToken = value;
+      csrfExpiresAt = Date.now() + 11 * 60 * 60 * 1000;
       return value;
     }).finally(() => { csrfPromise = null; });
   }
@@ -102,6 +106,48 @@ async function performRefresh() {
   return nextToken;
 }
 
+function delay(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+async function withFallbackRefreshLock(run) {
+  let storage;
+  try { storage = typeof window !== 'undefined' ? window.localStorage : null; }
+  catch { storage = null; }
+  if (!storage) return run();
+
+  const owner = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    let current;
+    try { current = JSON.parse(storage.getItem(REFRESH_LOCK_KEY) || 'null'); }
+    catch { return run(); }
+    if (!current?.owner || !Number.isFinite(current.expiresAt) || current.expiresAt <= Date.now()) {
+      let claimed;
+      try {
+        storage.setItem(REFRESH_LOCK_KEY, JSON.stringify({ owner, expiresAt: Date.now() + 30000 }));
+        claimed = JSON.parse(storage.getItem(REFRESH_LOCK_KEY) || 'null');
+      } catch { return run(); }
+      if (claimed?.owner === owner) {
+        const heartbeat = setInterval(() => {
+          try {
+            const lease = JSON.parse(storage.getItem(REFRESH_LOCK_KEY) || 'null');
+            if (lease?.owner === owner) storage.setItem(REFRESH_LOCK_KEY, JSON.stringify({ owner, expiresAt: Date.now() + 30000 }));
+          } catch { /* The in-flight refresh remains usable if storage is cleared. */ }
+        }, 10000);
+        try { return await run(); }
+        finally {
+          clearInterval(heartbeat);
+          try {
+            const lease = JSON.parse(storage.getItem(REFRESH_LOCK_KEY) || 'null');
+            if (lease?.owner === owner) storage.removeItem(REFRESH_LOCK_KEY);
+          } catch { /* Storage may be unavailable after the request. */ }
+        }
+      }
+    }
+    await delay(50 + Math.random() * 100);
+  }
+  throw new ApiError('Another tab is still restoring the session. Retry in a moment.', 0, { code: 'REFRESH_LOCK_TIMEOUT' });
+}
+
 async function refreshAccessToken() {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
@@ -110,9 +156,12 @@ async function refreshAccessToken() {
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
       return navigator.locks.request('bephoi-auth-refresh', { mode: 'exclusive' }, run);
     }
-    return run();
+    return withFallbackRefreshLock(run);
   })().catch((error) => {
-    if (isUnauthorized(error)) clearAccessToken();
+    if (isUnauthorized(error)) {
+      clearAccessToken();
+      clearCsrfToken();
+    }
     throw error;
   }).finally(() => { refreshPromise = null; });
   return refreshPromise;
@@ -182,4 +231,4 @@ export async function restoreWithRefresh() {
   }
 }
 
-export function clearCsrfToken() { csrfToken = null; }
+export function clearCsrfToken() { csrfToken = null; csrfExpiresAt = 0; }

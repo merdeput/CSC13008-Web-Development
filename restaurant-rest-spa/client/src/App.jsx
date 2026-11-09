@@ -80,7 +80,8 @@ function useLegacyPageEffects() {
 
 function PublicShell() {
   const [open, setOpen] = React.useState(false);
-  const { status, user } = useAuth();
+  const { status, user, logout } = useAuth();
+  const navigate = useNavigate();
   useLegacyPageEffects();
   const location = useLocation();
   const path = location.pathname;
@@ -121,7 +122,7 @@ function PublicShell() {
         <NavLink to="/menu" className={path.startsWith('/menu') || path.startsWith('/dishes') ? 'is-current' : ''} aria-current={path.startsWith('/menu') || path.startsWith('/dishes') ? 'page' : undefined} onClick={() => setOpen(false)}>Thực đơn</NavLink>
         <NavLink to="/chefs" className={path.startsWith('/chefs') ? 'is-current' : ''} aria-current={path.startsWith('/chefs') ? 'page' : undefined} onClick={() => setOpen(false)}>Người giữ bếp</NavLink>
         <Link className="nav-booking" to="/reservations/new" onClick={() => setOpen(false)}>Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></Link>
-        {status === 'authenticated' ? <Link className="nav-login" to="/admin" onClick={() => setOpen(false)}>{user?.email || 'Quản trị'}</Link> : <><Link className="nav-login" to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link><Link className="nav-register" to="/register" onClick={() => setOpen(false)}>Đăng ký</Link></>}
+        {status === 'authenticated' ? <><Link className="nav-login" to="/admin" onClick={() => setOpen(false)}>{user?.email || 'Quản trị'}</Link><button className="nav-login nav-logout" type="button" onClick={async () => { setOpen(false); const error = await logout(); navigate(error ? '/login?logout=failed' : '/'); }}>Đăng xuất</button></> : <><Link className="nav-login" to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link><Link className="nav-register" to="/register" onClick={() => setOpen(false)}>Đăng ký</Link></>}
       </nav>
     </div></header>
     <main id="main-content"><Outlet /></main>
@@ -130,7 +131,7 @@ function PublicShell() {
       <div><h2>Ghé bếp</h2><p>18 Bạch Đằng<br />Hội An, Quảng Nam</p><p><a href="tel:+842353860188">+84 235 386 0188</a></p></div>
       <div><h2>Giờ đón khách</h2><p>Mỗi ngày<br />{hours.openingTime} – {hours.closingTime}</p><Link to="/reservations/new">Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></Link></div>
       <div><h2>Khám phá</h2><p><Link to="/menu">Thực đơn</Link></p><p><Link to="/chefs">Người giữ bếp</Link></p></div>
-    </div><div className="footer-bottom"><span>© {new Date().getFullYear()} Bếp Hội</span><span>Nấu bằng sự tử tế, mời bằng sự chân thành.</span><Link to="/admin">Quản trị <span aria-hidden="true">↗</span></Link></div></footer>
+    </div><div className="footer-bottom"><span>© {new Date().getFullYear()} Bếp Hội</span><span>Nấu bằng sự tử tế, mời bằng sự chân thành.</span><Link to={status === 'authenticated' ? '/admin' : '/login'}>Quản trị <span aria-hidden="true">↗</span></Link></div></footer>
   </div>;
 }
 
@@ -1346,11 +1347,12 @@ export default function App() {
     <Route path="/verify-email" element={<GuestRoute><VerifyEmailPage /></GuestRoute>} />
     <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
     <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+    <Route path="/reset" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route element={<PublicShell />}>
       <Route index element={<HomePage />} /><Route path="menu" element={<MenuPage />} /><Route path="dishes/:id" element={<DishPage />} /><Route path="chefs" element={<ChefsPage />} /><Route path="reservations/new" element={<ReservationPage />} />
     </Route>
-    <Route path="/admin" element={<ProtectedRoute><AdminShell /></ProtectedRoute>}>
+    <Route path="/admin" element={<ProtectedRoute roles={['viewer', 'admin']}><AdminShell /></ProtectedRoute>}>
       <Route index element={<AdminDashboard />} />
       {Object.keys(RESOURCES).map((resource) => <React.Fragment key={resource}>
         <Route path={resource} element={<AdminList resource={resource} />} />

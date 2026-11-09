@@ -12,6 +12,7 @@ function createPublicRouter(services) {
   });
   router.get('/home', asyncHandler(handlers.home));
   router.get('/menu', asyncHandler(handlers.menu));
+  router.get('/dishes', asyncHandler(handlers.menu));
   router.get('/dishes/:id', asyncHandler(handlers.dish));
   router.get('/chefs', asyncHandler(handlers.chefs));
   router.get('/config', handlers.config);

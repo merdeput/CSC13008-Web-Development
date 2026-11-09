@@ -11,7 +11,7 @@ function errorHandler(error, _req, res, _next) {
     if (code === 'NOT_FOUND' || code === 'CONFLICT') {
       return res.status(200).json({ ok: false, error: { code, message: error.message } });
     }
-    return res.status(error.status).json({ error: error.message });
+    return res.status(error.status).json({ ok: false, error: { code, message: error.message } });
   }
   if (error instanceof ValidationError) {
     return res.status(200).json({
@@ -19,12 +19,12 @@ function errorHandler(error, _req, res, _next) {
       error: { code: 'VALIDATION_FAILED', message: error.message, fields: error.errors || {} }
     });
   }
-  if (error?.type === 'entity.too.large') return res.status(413).json({ error: 'Nội dung gửi lên vượt quá giới hạn cho phép.' });
-  if (error?.type === 'entity.parse.failed') return res.status(400).json({ error: 'Dữ liệu JSON không hợp lệ.' });
+  if (error?.type === 'entity.too.large') return res.status(413).json({ ok: false, error: { code: 'PAYLOAD_TOO_LARGE', message: 'Nội dung gửi lên vượt quá giới hạn cho phép.' } });
+  if (error?.type === 'entity.parse.failed') return res.status(400).json({ ok: false, error: { code: 'INVALID_JSON', message: 'Dữ liệu JSON không hợp lệ.' } });
   if (isPrismaCode(error, 'P2002')) return res.status(200).json({ ok: false, error: { code: 'CONFLICT', message: 'Dữ liệu này đã tồn tại.' } });
   if (isPrismaCode(error, 'P2025')) return res.status(200).json({ ok: false, error: { code: 'NOT_FOUND', message: 'Dữ liệu không khả dụng.' } });
   console.error('API request failed.', error?.name || 'Error', error?.code || '');
-  return res.status(500).json({ error: 'Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.' });
+  return res.status(500).json({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.' } });
 }
 
 module.exports = { notFound, errorHandler };

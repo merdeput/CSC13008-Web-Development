@@ -63,7 +63,7 @@ export function RegisterPage() {
     await authApi.register({ email, password: String(values.get('password') || ''), recaptchaToken });
     navigate('/verify-email', { state: { email } });
   };
-  return <AuthFrame title="Tạo tài khoản" intro="Đăng ký để quản lý nội dung nhà hàng. Xác minh email xong, bạn sẽ đăng nhập riêng.">
+  return <AuthFrame title="Tạo tài khoản" intro="Đăng ký tài khoản Bếp Hội. Xác minh email xong, bạn sẽ đăng nhập riêng.">
     <CaptchaForm {...state} onSubmit={submit} submitLabel="Gửi mã xác minh">
       <label className="auth-field"><span>Email</span><input name="email" type="email" autoComplete="email" maxLength="254" required /></label>
       <label className="auth-field"><span>Mật khẩu</span><input name="password" type="password" autoComplete="new-password" minLength="12" maxLength="128" required /><small className="auth-help">Ít nhất 12 ký tự.</small></label>
@@ -120,8 +120,11 @@ export function LoginPage() {
   const submit = async (form, recaptchaToken) => {
     const values = new FormData(form);
     const user = await login({ email: String(values.get('email') || '').trim(), password: String(values.get('password') || ''), recaptchaToken });
-    const destination = location.state?.from?.pathname || (user ? '/admin' : '/');
-    navigate(destination.startsWith('/') && !destination.startsWith('//') ? destination : '/admin', { replace: true });
+    const requested = location.state?.from?.pathname;
+    const safeRequested = typeof requested === 'string' && requested.startsWith('/') && !requested.startsWith('//');
+    const canOpenRequested = safeRequested;
+    const destination = canOpenRequested ? requested : '/admin';
+    navigate(destination, { replace: true });
   };
   return <AuthFrame title="Đăng nhập" intro="Đăng nhập để tiếp tục quản lý nhà hàng.">
     <CaptchaForm {...state} onSubmit={submit} submitLabel="Đăng nhập">

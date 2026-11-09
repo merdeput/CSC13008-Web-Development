@@ -8,6 +8,8 @@
     "start": "node server/src/server.js",
     "dev:server": "node --watch server/src/server.js",
     "dev:client": "npm --prefix client run dev",
+    "test:server": "node --test server/tests/auth-service.test.js",
+    "test": "node --test",
     "build": "npm --prefix client run build",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",

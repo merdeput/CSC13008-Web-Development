@@ -130,8 +130,8 @@ test('protected route decisions cover loading, unauthenticated, authenticated, a
   assert.equal(routeAccess('loading', null), 'loading');
   assert.equal(routeAccess('unauthenticated', null), 'redirect');
   assert.equal(routeAccess('authenticated', viewer), 'allow');
-  assert.equal(routeAccess('authenticated', viewer, ['admin']), 'forbidden');
-  assert.equal(routeAccess('authenticated', viewer, ['viewer']), 'allow');
+  assert.equal(routeAccess('authenticated', viewer, ['viewer', 'admin']), 'allow');
+  assert.equal(routeAccess('authenticated', { id: 'u-4', role: 'unknown' }, ['viewer', 'admin']), 'forbidden');
 });
 
 test('a protected 401 refreshes once and retries with the new Bearer token', async () => {
