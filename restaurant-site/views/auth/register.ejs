@@ -11,7 +11,7 @@
         <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required value="<%= email %>">
         <label for="register-password">Mật khẩu</label>
         <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
-        <p class="auth-help">Dùng ít nhất 12 ký tự. Mật khẩu được băm trước khi lưu.</p>
+        <p class="auth-help">Mật khẩu cần ít nhất 12 ký tự, tối đa 128 byte, một chữ hoa, một chữ số và một ký tự đặc biệt.</p>
         <div class="g-recaptcha" data-sitekey="<%= captchaSiteKey %>" data-theme="light"></div>
         <button class="button button-dark button-wide" type="submit">Gửi mã xác minh</button>
       </form>

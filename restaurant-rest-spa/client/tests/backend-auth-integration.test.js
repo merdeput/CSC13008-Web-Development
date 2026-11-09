@@ -54,7 +54,7 @@ test('React auth client works against the Express JWT routes', async (t) => {
       async getLoginLockout() { return { locked: false }; },
       async recordLoginFailure() {},
       async clearLoginFailures() {},
-      async authenticate(email, password) { return email === USER.email && password === 'correct horse battery staple' ? USER : null; },
+      async authenticate(email, password) { return email === USER.email && password === 'Correct horse battery staple!4' ? USER : null; },
       async requestPasswordReset(email) { resetRequest = email; return { queued: true }; },
       async completePasswordReset(token, password) { return token === 'single-use-token' && password.length >= 12; }
     },
@@ -131,13 +131,13 @@ test('React auth client works against the Express JWT routes', async (t) => {
     return response;
   };
 
-  await authApi.register({ email: USER.email, password: 'correct horse battery staple', captchaToken: 'valid-captcha' });
+  await authApi.register({ email: USER.email, password: 'Correct horse battery staple!4', captchaToken: 'valid-captcha' });
   assert.equal(registration.email, USER.email);
   assert.match(registration.passwordHash, /^scrypt\$/);
   await authApi.verifyEmail({ email: USER.email, code: '123456' });
   await authApi.resendOtp({ email: USER.email, captchaToken: 'valid-captcha' });
 
-  const user = await authApi.login({ email: USER.email, password: 'correct horse battery staple', captchaToken: 'valid-captcha' });
+  const user = await authApi.login({ email: USER.email, password: 'Correct horse battery staple!4', captchaToken: 'valid-captcha' });
   assert.equal(user.id, USER.id);
   const dashboard = await request('/api/admin/dashboard');
   assert.deepEqual(dashboard.counts, { dishes: 2 });
@@ -149,7 +149,7 @@ test('React auth client works against the Express JWT routes', async (t) => {
 
   await authApi.forgotPassword({ email: USER.email, captchaToken: 'valid-captcha' });
   assert.equal(resetRequest, USER.email);
-  await authApi.resetPassword({ token: 'single-use-token', newPassword: 'a sufficiently long new password' });
+  await authApi.resetPassword({ token: 'single-use-token', newPassword: 'A sufficiently long new password!4' });
   await authApi.logout();
   assert.equal(cookies.size, 0);
 });

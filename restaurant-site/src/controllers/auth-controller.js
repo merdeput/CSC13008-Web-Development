@@ -88,7 +88,7 @@ function createAuthController(services, options = {}) {
       }
       if (!validPassword(password)) {
         console.warn('[auth] registration blocked before email delivery', { stage: 'password_validation' });
-        return renderRegister(res, 400, { email, error: 'Mật khẩu cần có ít nhất 12 ký tự và tối đa 128 byte.' });
+        return renderRegister(res, 400, { email, error: 'Mật khẩu cần có ít nhất 12 ký tự, tối đa 128 byte, một chữ hoa, một chữ số và một ký tự đặc biệt.' });
       }
       if (!registrationAvailable()) {
         console.warn('[auth] registration blocked before email delivery', { stage: 'configuration' });
@@ -326,7 +326,7 @@ function createAuthController(services, options = {}) {
       if (!validPassword(password)) {
         return res.status(400).render('auth/password-reset-confirm', {
           pageTitle: 'Tạo mật khẩu mới — Bếp Hội',
-          error: 'Mật khẩu cần có ít nhất 12 ký tự và tối đa 128 byte.', token, valid: true
+          error: 'Mật khẩu cần có ít nhất 12 ký tự, tối đa 128 byte, một chữ hoa, một chữ số và một ký tự đặc biệt.', token, valid: true
         });
       }
       try {

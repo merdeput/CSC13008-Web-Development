@@ -54,7 +54,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       if (!validEmail(email) || !validPassword(password)) {
         return fail(res, 400, 'VALIDATION_FAILED', 'Check the submitted email and password.', {
           email: validEmail(email) ? undefined : 'Enter a valid email address.',
-          password: validPassword(password) ? undefined : 'Password must be at least 12 characters and no more than 128 bytes.'
+          password: validPassword(password) ? undefined : 'Password must be 12 characters or more, no more than 128 bytes, and include an uppercase letter, a number, and a special character.'
         });
       }
       if (!registrationAvailable()) return fail(res, 503, 'AUTH_UNAVAILABLE', 'Registration is temporarily unavailable.');
@@ -209,7 +209,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
     async completePasswordReset(req, res) {
       const token = typeof req.body?.token === 'string' ? req.body.token : '';
       const password = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
-      if (!validPassword(password)) return fail(res, 400, 'VALIDATION_FAILED', 'Password must be at least 12 characters and no more than 128 bytes.');
+      if (!validPassword(password)) return fail(res, 400, 'VALIDATION_FAILED', 'Password must be 12 characters or more, no more than 128 bytes, and include an uppercase letter, a number, and a special character.');
       try {
         const completed = await services.auth.completePasswordReset(token, password);
         if (!completed) return fail(res, 400, 'RESET_INVALID', 'The reset link is invalid, expired, or unavailable.');

@@ -21,8 +21,17 @@ function validEmail(email) {
   return typeof email === 'string' && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const UPPERCASE_LETTER = /\p{Lu}/u;
+const DECIMAL_DIGIT = /\p{Nd}/u;
+const SPECIAL_CHARACTER = /[^\p{L}\p{M}\p{N}\s]/u;
+
 function validPassword(password) {
-  return typeof password === 'string' && Array.from(password).length >= 12 && Buffer.byteLength(password, 'utf8') <= 128;
+  return typeof password === 'string'
+    && Array.from(password).length >= 12
+    && Buffer.byteLength(password, 'utf8') <= 128
+    && UPPERCASE_LETTER.test(password)
+    && DECIMAL_DIGIT.test(password)
+    && SPECIAL_CHARACTER.test(password);
 }
 
 module.exports = { registrationAvailable, loginAvailable, passwordResetAvailable, validEmail, validPassword };

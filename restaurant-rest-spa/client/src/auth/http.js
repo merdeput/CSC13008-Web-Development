@@ -5,6 +5,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = details.code;
     this.fields = details.fields || {};
+    this.retryAfterMs = details.retryAfterMs || 0;
   }
 }
 
@@ -37,10 +38,35 @@ export function invalidatePrivateCache({ reload = false } = {}) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('private-cache-invalidated', { detail: { reload } }));
 }
 
-function toApiError(payload, status) {
+function responseRetryAfterMs(response, payload) {
+  const error = payload?.error && typeof payload.error === 'object' ? payload.error : {};
+  const bodySeconds = Number(error.retryAfterSeconds);
+  if (Number.isFinite(bodySeconds) && bodySeconds > 0) return Math.ceil(bodySeconds * 1000);
+
+  const bodyDeadline = Date.parse(error.lockedUntil || error.retryAt || '');
+  if (Number.isFinite(bodyDeadline)) {
+    const serverDate = Date.parse(response.headers.get('Date') || '');
+    return Math.max(0, bodyDeadline - (Number.isFinite(serverDate) ? serverDate : Date.now()));
+  }
+
+  const header = response.headers.get('Retry-After');
+  if (!header) return 0;
+  if (/^\d+(?:\.\d+)?$/.test(header.trim())) return Math.ceil(Number(header) * 1000);
+
+  const retryAt = Date.parse(header);
+  if (!Number.isFinite(retryAt)) return 0;
+  const serverDate = Date.parse(response.headers.get('Date') || '');
+  return Math.max(0, retryAt - (Number.isFinite(serverDate) ? serverDate : Date.now()));
+}
+
+function toApiError(payload, response) {
+  const status = response.status;
   const error = payload?.error;
   if (error && typeof error === 'object') {
-    return new ApiError(error.message || 'The request could not be completed.', status, error);
+    return new ApiError(error.message || 'The request could not be completed.', status, {
+      ...error,
+      retryAfterMs: responseRetryAfterMs(response, payload)
+    });
   }
   return new ApiError(typeof error === 'string' ? error : 'The server could not complete the request. Please try again.', status);
 }
@@ -71,7 +97,7 @@ async function send(path, options = {}) {
   let payload;
   try { payload = await response.json(); }
   catch { throw new ApiError('The server returned an unreadable response.', response.status, { code: 'INVALID_RESPONSE' }); }
-  if (!response.ok || payload?.ok !== true) throw toApiError(payload, response.status);
+  if (!response.ok || payload?.ok !== true) throw toApiError(payload, response);
   return payload.data;
 }
 

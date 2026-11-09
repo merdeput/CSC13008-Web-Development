@@ -139,7 +139,7 @@ test('registration, OTP verification, and resend expose generic REST responses',
 
   const registration = await fetch(`${ctx.baseUrl}/api/auth/register`, {
     method: 'POST', headers: postHeaders(csrf.data.csrfToken, csrfCookie),
-    body: JSON.stringify({ email: '  NewUser@Example.Test ', password: 'twelve characters!', captchaToken: 'valid' })
+    body: JSON.stringify({ email: '  NewUser@Example.Test ', password: 'Twelve characters!4', captchaToken: 'valid' })
   });
   assert.equal(registration.status, 202);
   assert.equal((await registration.json()).ok, true);
@@ -160,6 +160,29 @@ test('registration, OTP verification, and resend expose generic REST responses',
   });
   assert.equal(resend.status, 202);
   assert.equal(ctx.state.resent, 'newuser@example.test');
+});
+
+test('REST registration and password reset reject passwords missing required composition', async (t) => {
+  const ctx = await startApp();
+  t.after(ctx.close);
+  const { body: csrf, csrfCookie } = await getCsrf(ctx.baseUrl);
+  const headers = postHeaders(csrf.data.csrfToken, csrfCookie);
+  const weakPassword = 'twelve characters!4';
+
+  const registration = await fetch(`${ctx.baseUrl}/api/auth/register`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ email: 'new@example.test', password: weakPassword, captchaToken: 'valid' })
+  });
+  assert.equal(registration.status, 400);
+  assert.equal((await registration.json()).error.code, 'VALIDATION_FAILED');
+  assert.equal(ctx.state.registration, null);
+
+  const reset = await fetch(`${ctx.baseUrl}/api/auth/password-reset/confirm`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ token: 'valid-reset-token', newPassword: weakPassword })
+  });
+  assert.equal(reset.status, 400);
+  assert.equal((await reset.json()).error.code, 'VALIDATION_FAILED');
 });
 
 test('JWT validates HMAC, type, issuer, audience, claims, and expiry strictly', () => {

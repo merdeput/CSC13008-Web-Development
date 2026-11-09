@@ -25,11 +25,11 @@ test('registration sends JSON and the acquired CSRF and CAPTCHA tokens', async (
     return ok({ message: 'If eligible, check your email.' });
   };
 
-  await authApi.register({ email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha-register' });
+  await authApi.register({ email: 'new@example.test', password: 'Long-enough-password!4', captchaToken: 'captcha-register' });
   assert.deepEqual(calls.map(({ path }) => path), ['/api/auth/csrf', '/api/auth/register']);
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-register');
   assert.equal(calls[1].init.headers.get('Content-Type'), 'application/json');
-  assert.deepEqual(calls[1].body, { email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha-register' });
+  assert.deepEqual(calls[1].body, { email: 'new@example.test', password: 'Long-enough-password!4', captchaToken: 'captcha-register' });
   assert.equal(calls[1].init.credentials, 'include');
   assert.equal(getAccessToken(), null);
 });
@@ -78,11 +78,11 @@ test('password recovery matches the backend reset endpoints and JSON fields', as
   };
 
   await authApi.forgotPassword({ email: 'person@example.test', captchaToken: 'captcha-reset-request' });
-  await authApi.resetPassword({ token: 'single-use-reset-token', newPassword: 'new-long-password' });
+  await authApi.resetPassword({ token: 'single-use-reset-token', newPassword: 'New-long-password!4' });
   assert.equal(calls[1].path, '/api/auth/password-reset');
   assert.deepEqual(calls[1].body, { email: 'person@example.test', captchaToken: 'captcha-reset-request' });
   assert.equal(calls[2].path, '/api/auth/password-reset/confirm');
-  assert.deepEqual(calls[2].body, { token: 'single-use-reset-token', newPassword: 'new-long-password' });
+  assert.deepEqual(calls[2].body, { token: 'single-use-reset-token', newPassword: 'New-long-password!4' });
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-password');
   assert.equal(calls[2].init.headers.get('X-CSRF-Token'), 'csrf-password');
 });
@@ -141,9 +141,24 @@ test('a stale CSRF token is refreshed once after the backend rejects it', async 
     return ok({ message: 'Accepted.' });
   };
 
-  await authApi.register({ email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha' });
+  await authApi.register({ email: 'new@example.test', password: 'Long-enough-password!4', captchaToken: 'captcha' });
   assert.equal(csrfRequests, 2);
   assert.deepEqual(calls.filter(({ path }) => path === '/api/auth/register').map(({ init }) => init.headers.get('X-CSRF-Token')), ['csrf-old', 'csrf-current']);
+});
+
+test('login lockout UI metadata is read only from an explicit Retry-After response header', async () => {
+  globalThis.fetch = async (url) => {
+    if (pathOf(url) === '/api/auth/csrf') return ok({ csrfToken: 'csrf-lockout' });
+    return new Response(JSON.stringify({ ok: false, error: { code: 'LOGIN_LOCKED', message: 'Try again later.' } }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '14' }
+    });
+  };
+
+  await assert.rejects(
+    request('/api/auth/login', { method: 'POST', body: { email: 'person@example.test', password: 'secret' }, retry401: false }),
+    (error) => error.code === 'LOGIN_LOCKED' && error.retryAfterMs === 14_000
+  );
 });
 
 test('protected route decisions cover loading, unauthenticated, authenticated, and role-aware UI states', () => {

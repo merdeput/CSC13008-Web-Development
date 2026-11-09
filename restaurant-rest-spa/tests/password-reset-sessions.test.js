@@ -63,7 +63,7 @@ test('password reset consumes its token and revokes legacy and JWT session recor
   const token = crypto.randomBytes(32).toString('base64url');
   const { db, user, reset, legacySessions, authSessions } = createResetDb(token);
   const auth = createAuthService(db);
-  assert.equal(await auth.completePasswordReset(token, 'A sufficiently long replacement password'), true);
+  assert.equal(await auth.completePasswordReset(token, 'A sufficiently long replacement password!4'), true);
   assert.match(user.passwordHash, /^scrypt\$/);
   assert.ok(reset.usedAt instanceof Date);
   assert.deepEqual(legacySessions, []);

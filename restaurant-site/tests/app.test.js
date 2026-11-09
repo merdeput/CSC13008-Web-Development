@@ -276,6 +276,15 @@ test('registration creates a pending viewer, blocks pending login, and activatio
   const { services, state } = makeServices();
   const app = createTestApp(services);
   const agent = request.agent(app);
+  const weakPasswordToken = await csrfToken(agent, '/register');
+  const weakPassword = await agent.post('/register').type('form').send({
+    _csrf: weakPasswordToken, email: registeredEmail, password: 'twelve characters!4',
+    'g-recaptcha-response': 'test-token'
+  });
+  assert.equal(weakPassword.status, 400);
+  assert.match(weakPassword.text, /một chữ hoa/);
+  assert.equal(state.auth.authUsers.has(registeredEmail), false);
+
   const registerToken = await csrfToken(agent, '/register');
   const registered = await agent.post('/register').type('form').send({
     _csrf: registerToken, email: registeredEmail, password: registeredPassword,
