@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from './api.js';
 import { useAuth } from './context.jsx';
 import RecaptchaWidget from './recaptcha.jsx';
@@ -60,7 +60,7 @@ export function RegisterPage() {
   const submit = async (form, recaptchaToken) => {
     const values = new FormData(form);
     const email = String(values.get('email') || '').trim();
-    await authApi.register({ email, password: String(values.get('password') || ''), recaptchaToken });
+    await authApi.register({ email, password: String(values.get('password') || ''), captchaToken: recaptchaToken });
     navigate('/verify-email', { state: { email } });
   };
   return <AuthFrame title="Tạo tài khoản" intro="Đăng ký để quản lý nội dung nhà hàng. Xác minh email xong, bạn sẽ đăng nhập riêng.">
@@ -92,7 +92,7 @@ export function VerifyEmailPage() {
   };
 
   const resendCode = async (_form, recaptchaToken) => {
-    await authApi.resendOtp({ email: email.trim(), recaptchaToken });
+    await authApi.resendOtp({ email: email.trim(), captchaToken: recaptchaToken });
     resend.setNotice('Nếu yêu cầu còn hiệu lực, mã mới đã được gửi đến email của bạn.');
   };
 
@@ -119,7 +119,7 @@ export function LoginPage() {
   const query = new URLSearchParams(location.search);
   const submit = async (form, recaptchaToken) => {
     const values = new FormData(form);
-    const user = await login({ email: String(values.get('email') || '').trim(), password: String(values.get('password') || ''), recaptchaToken });
+    const user = await login({ email: String(values.get('email') || '').trim(), password: String(values.get('password') || ''), captchaToken: recaptchaToken });
     const destination = location.state?.from?.pathname || (user ? '/admin' : '/');
     navigate(destination.startsWith('/') && !destination.startsWith('//') ? destination : '/admin', { replace: true });
   };
@@ -140,7 +140,7 @@ export function ForgotPasswordPage() {
   const state = useFormState();
   const submit = async (form, recaptchaToken) => {
     const email = String(new FormData(form).get('email') || '').trim();
-    await authApi.forgotPassword({ email, recaptchaToken });
+    await authApi.forgotPassword({ email, captchaToken: recaptchaToken });
     state.setNotice('Nếu email có tài khoản đang hoạt động, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư đó.');
   };
   return <AuthFrame title="Quên mật khẩu" intro="Nhập email để yêu cầu hướng dẫn đặt lại mật khẩu.">
@@ -152,20 +152,23 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const location = useLocation();
+  const token = React.useMemo(() => new URLSearchParams(location.hash.slice(1)).get('token') || '', [location.hash]);
   const navigate = useNavigate();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
   React.useEffect(() => {
+    if (token && location.hash) {
+      window.history.replaceState(window.history.state, '', `${location.pathname}${location.search}`);
+    }
     let meta = document.querySelector('meta[name="referrer"]');
     const created = !meta;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'referrer'; document.head.appendChild(meta); }
     const previous = meta.content;
     meta.content = 'no-referrer';
     return () => { if (created) meta.remove(); else meta.content = previous; };
-  }, []);
+  }, [location.hash, location.pathname, location.search, token]);
   const submit = async (event) => {
     event.preventDefault(); setBusy(true); setError(''); setNotice('');
     if (!event.currentTarget.reportValidity()) { setBusy(false); return; }
@@ -174,7 +177,7 @@ export function ResetPasswordPage() {
     if (!token) { setError('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.'); setBusy(false); return; }
     if (password !== String(values.get('confirmPassword') || '')) { setError('Hai mật khẩu chưa khớp.'); setBusy(false); return; }
     try {
-      await authApi.resetPassword({ token, password });
+      await authApi.resetPassword({ token, newPassword: password });
       setNotice('Mật khẩu đã được cập nhật. Hãy đăng nhập bằng mật khẩu mới.');
       navigate('/login?reset=1', { replace: true });
     } catch (cause) { setError(cause?.message || 'Không thể cập nhật mật khẩu.'); }

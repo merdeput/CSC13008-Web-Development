@@ -30,7 +30,7 @@ function createApp(options = {}) {
   if (!trustedOrigins.length) throw new Error('At least one trusted CLIENT_ORIGIN is required.');
   const services = options.services || createServices(createModels(db), {
     db,
-    authOptions: { passwordResetPath: '/password-reset', passwordResetTokenInFragment: true }
+    authOptions: { passwordResetPath: '/reset-password', passwordResetTokenInFragment: true }
   });
   const tokenSessions = options.tokenSessions || createTokenSessionService(db);
   const csrfMiddleware = createCsrfMiddleware({ secret: csrfSecret, trustedOrigins, secureCookies });

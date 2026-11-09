@@ -45,6 +45,8 @@ The app uses the existing PostgreSQL database and data. The schema includes dish
 
 The additive migration adds a nullable chef relationship to dishes. Existing dishes remain unassigned until linked in the admin form. Migration commands do not seed or reset data.
 
+Authentication migrations are separate. The JWT session migration is additive, but the inspected database has historical migration checksum mismatches. Reconcile the recorded history before running `db:deploy`; do not reset the database to resolve them.
+
 ## API
 
 Successful responses use `{"ok":true,"data":...}`. Validation and not-found responses use `{"ok":false,"error":{"code":"...","message":"..."}}`; validation errors also include a `fields` map.
@@ -65,7 +67,13 @@ Public endpoints include:
 
 The menu UI sends a named mode. Omitting `mode` preserves the earlier combined full-text/fuzzy search for existing API links. All four named modes search the published dish collection before server-side pagination and return `items`, `total`, `page`, `pageSize`, and `pageCount`. Search results in `fulltext` and `fuzzy` order by score descending, then dish ID ascending. Invalid advanced filters and blank full-text/fuzzy queries return `VALIDATION_FAILED`.
 
-Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
+Admin endpoints are under `/api/admin` and cover the dashboard, dishes, categories, chefs, ingredients, and reservations. They require a valid `Authorization: Bearer <accessToken>` header. The backend checks the user's active status and session on each request. Existing broad SSR role behavior is retained; role and resource authorization still need a product policy. Categories support `GET`, `POST`, `PATCH /:id`, and `DELETE /:id`; categories assigned to a dish cannot be deleted. CORS uses `CLIENT_ORIGIN`, defaulting to `http://localhost:5173`.
+
+## Authentication
+
+The access JWT is returned in JSON and held only in client JavaScript memory. The opaque refresh token stays in an HttpOnly cookie. Unsafe requests first obtain `GET /api/auth/csrf`, then send `X-CSRF-Token`; the backend also validates the `Origin`. The client auth endpoints and response shapes are documented in [client/AUTHENTICATION.md](client/AUTHENTICATION.md).
+
+Set `VITE_RECAPTCHA_SITE_KEY` to the same public site key as `RECAPTCHA_SITE_KEY` so Vite can load the browser widget. Keep `RECAPTCHA_SECRET_KEY`, JWT signing keys, CSRF HMAC secret, OTP HMAC secret, and database credentials on the server only. Local development uses the Vite `/api` proxy; deployed browser and API origins must satisfy the backend CORS allow-list and same-site cookie requirements.
 
 The 1,000-dish seed data uses menu-style names, dish descriptions, and curated food photos. One generated dish has a zero price for filter checks. To preview seed changes, run `npm run db:seed:1000-dishes -- --dry-run`. To preview the one-time update for previously generated `Món mẫu` records, run `npm run db:clean:1000-dishes -- --dry-run`. Apply only those name, description, and photo updates with `npm run db:clean:1000-dishes -- --apply`.
 

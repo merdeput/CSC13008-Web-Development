@@ -66,6 +66,8 @@ async function send(path, options = {}) {
     throw new ApiError('Could not connect to the server. Check your connection and try again.', 0, { code: 'NETWORK_ERROR' });
   }
 
+  if (response.status === 204 || response.status === 205) return null;
+
   let payload;
   try { payload = await response.json(); }
   catch { throw new ApiError('The server returned an unreadable response.', response.status, { code: 'INVALID_RESPONSE' }); }
@@ -130,37 +132,50 @@ export async function request(path, options = {}) {
   const initialToken = options.accessToken || (protectedRequest ? getAccessToken() : null);
   const sendOptions = { ...options, method, csrfToken: csrfHeader, accessToken: initialToken };
 
+  let error;
   try {
     return await send(path, sendOptions);
-  } catch (error) {
-    if (!protectedRequest || options.retry401 === false || !isUnauthorized(error)) throw error;
-    let nextToken;
+  } catch (caught) {
+    error = caught;
+  }
+
+  if (needsCsrf && error?.code === 'CSRF_REJECTED') {
     try {
-      nextToken = getAccessToken() !== initialToken && getAccessToken()
-        ? getAccessToken()
-        : await refreshAccessToken();
-    } catch (refreshError) {
+      csrfToken = null;
+      const nextCsrfToken = await getCsrfToken();
+      return await send(path, { ...sendOptions, csrfToken: nextCsrfToken });
+    } catch (csrfError) {
+      error = csrfError;
+    }
+  }
+
+  if (!protectedRequest || options.retry401 === false || !isUnauthorized(error)) throw error;
+  let nextToken;
+  try {
+    nextToken = getAccessToken() !== initialToken && getAccessToken()
+      ? getAccessToken()
+      : await refreshAccessToken();
+  } catch (refreshError) {
+    clearAccessToken();
+    invalidatePrivateCache();
+    if (isUnauthorized(refreshError)) {
+      announceSessionExpired();
+      throw new ApiError('Your session has expired. Please sign in again.', 401, { code: 'SESSION_EXPIRED', cause: refreshError });
+    }
+    const message = 'Could not verify your session because the server is unavailable. Retry when your connection is back.';
+    announceSessionUnavailable(message);
+    throw new ApiError(message, refreshError?.status || 0, { code: 'SESSION_UNAVAILABLE', cause: refreshError });
+  }
+  try {
+    return await send(path, { ...sendOptions, accessToken: nextToken });
+  } catch (retryError) {
+    if (isUnauthorized(retryError)) {
       clearAccessToken();
       invalidatePrivateCache();
-      if (isUnauthorized(refreshError)) {
-        announceSessionExpired();
-        throw new ApiError('Your session has expired. Please sign in again.', 401, { code: 'SESSION_EXPIRED', cause: refreshError });
-      }
-      const message = 'Could not verify your session because the server is unavailable. Retry when your connection is back.';
-      announceSessionUnavailable(message);
-      throw new ApiError(message, refreshError?.status || 0, { code: 'SESSION_UNAVAILABLE', cause: refreshError });
+      announceSessionExpired();
+      throw new ApiError('Your session has expired. Please sign in again.', 401, { code: 'SESSION_EXPIRED' });
     }
-    try {
-      return await send(path, { ...sendOptions, accessToken: nextToken });
-    } catch (retryError) {
-      if (isUnauthorized(retryError)) {
-        clearAccessToken();
-        invalidatePrivateCache();
-        announceSessionExpired();
-        throw new ApiError('Your session has expired. Please sign in again.', 401, { code: 'SESSION_EXPIRED' });
-      }
-      throw retryError;
-    }
+    throw retryError;
   }
 }
 

@@ -52,11 +52,11 @@ async function logout() {
 
 export const authApi = {
   register: (input) => request('/api/auth/register', { method: 'POST', body: input, retry401: false }),
-  verifyEmail: (input) => request('/api/auth/verify-email', { method: 'POST', body: input, retry401: false }),
+  verifyEmail: (input) => request('/api/auth/verify-otp', { method: 'POST', body: input, retry401: false }),
   resendOtp: (input) => request('/api/auth/resend-otp', { method: 'POST', body: input, retry401: false }),
   login,
-  forgotPassword: (input) => request('/api/auth/forgot-password', { method: 'POST', body: input, retry401: false }),
-  resetPassword: (input) => request('/api/auth/reset-password', { method: 'POST', body: input, retry401: false }),
+  forgotPassword: (input) => request('/api/auth/password-reset', { method: 'POST', body: input, retry401: false }),
+  resetPassword: (input) => request('/api/auth/password-reset/confirm', { method: 'POST', body: input, retry401: false }),
   logout,
   restore: restoreWithRefresh
 };

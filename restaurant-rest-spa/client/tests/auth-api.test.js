@@ -25,11 +25,11 @@ test('registration sends JSON and the acquired CSRF and CAPTCHA tokens', async (
     return ok({ message: 'If eligible, check your email.' });
   };
 
-  await authApi.register({ email: 'new@example.test', password: 'long-enough-password', recaptchaToken: 'captcha-register' });
+  await authApi.register({ email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha-register' });
   assert.deepEqual(calls.map(({ path }) => path), ['/api/auth/csrf', '/api/auth/register']);
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-register');
   assert.equal(calls[1].init.headers.get('Content-Type'), 'application/json');
-  assert.deepEqual(calls[1].body, { email: 'new@example.test', password: 'long-enough-password', recaptchaToken: 'captcha-register' });
+  assert.deepEqual(calls[1].body, { email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha-register' });
   assert.equal(calls[1].init.credentials, 'include');
   assert.equal(getAccessToken(), null);
 });
@@ -43,11 +43,11 @@ test('email OTP verification and resend use separate mocked operations; verifica
   };
 
   await authApi.verifyEmail({ email: 'person@example.test', code: '123456' });
-  await authApi.resendOtp({ email: 'person@example.test', recaptchaToken: 'captcha-resend' });
-  assert.equal(calls[1].path, '/api/auth/verify-email');
+  await authApi.resendOtp({ email: 'person@example.test', captchaToken: 'captcha-resend' });
+  assert.equal(calls[1].path, '/api/auth/verify-otp');
   assert.deepEqual(calls[1].body, { email: 'person@example.test', code: '123456' });
   assert.equal(calls[2].path, '/api/auth/resend-otp');
-  assert.deepEqual(calls[2].body, { email: 'person@example.test', recaptchaToken: 'captcha-resend' });
+  assert.deepEqual(calls[2].body, { email: 'person@example.test', captchaToken: 'captcha-resend' });
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-otp');
   assert.equal(calls[2].init.headers.get('X-CSRF-Token'), 'csrf-otp');
   assert.equal(getAccessToken(), null);
@@ -61,15 +61,15 @@ test('login stores only an in-memory access token and returns the user', async (
     return ok({ accessToken: 'jwt-memory-only', user: { id: 'u-1', email: 'person@example.test', role: 'viewer' } });
   };
 
-  const user = await authApi.login({ email: 'person@example.test', password: 'password', recaptchaToken: 'captcha-login' });
+  const user = await authApi.login({ email: 'person@example.test', password: 'password', captchaToken: 'captcha-login' });
   assert.equal(calls[1].path, '/api/auth/login');
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-login');
-  assert.deepEqual(calls[1].body, { email: 'person@example.test', password: 'password', recaptchaToken: 'captcha-login' });
+  assert.deepEqual(calls[1].body, { email: 'person@example.test', password: 'password', captchaToken: 'captcha-login' });
   assert.equal(user.id, 'u-1');
   assert.equal(getAccessToken(), 'jwt-memory-only');
 });
 
-test('password recovery uses generic forgot-password and reset-password JSON operations', async () => {
+test('password recovery matches the backend reset endpoints and JSON fields', async () => {
   const calls = [];
   globalThis.fetch = async (url, init) => {
     calls.push({ path: pathOf(url), init, body: bodyOf(init) });
@@ -77,12 +77,12 @@ test('password recovery uses generic forgot-password and reset-password JSON ope
     return ok({ message: 'Accepted.' });
   };
 
-  await authApi.forgotPassword({ email: 'person@example.test', recaptchaToken: 'captcha-reset-request' });
-  await authApi.resetPassword({ token: 'single-use-reset-token', password: 'new-long-password' });
-  assert.equal(calls[1].path, '/api/auth/forgot-password');
-  assert.deepEqual(calls[1].body, { email: 'person@example.test', recaptchaToken: 'captcha-reset-request' });
-  assert.equal(calls[2].path, '/api/auth/reset-password');
-  assert.deepEqual(calls[2].body, { token: 'single-use-reset-token', password: 'new-long-password' });
+  await authApi.forgotPassword({ email: 'person@example.test', captchaToken: 'captcha-reset-request' });
+  await authApi.resetPassword({ token: 'single-use-reset-token', newPassword: 'new-long-password' });
+  assert.equal(calls[1].path, '/api/auth/password-reset');
+  assert.deepEqual(calls[1].body, { email: 'person@example.test', captchaToken: 'captcha-reset-request' });
+  assert.equal(calls[2].path, '/api/auth/password-reset/confirm');
+  assert.deepEqual(calls[2].body, { token: 'single-use-reset-token', newPassword: 'new-long-password' });
   assert.equal(calls[1].init.headers.get('X-CSRF-Token'), 'csrf-password');
   assert.equal(calls[2].init.headers.get('X-CSRF-Token'), 'csrf-password');
 });
@@ -93,12 +93,12 @@ test('reload restoration obtains CSRF, refreshes with cookies, then calls /me wi
     calls.push({ path: pathOf(url), init, body: bodyOf(init) });
     if (pathOf(url) === '/api/auth/csrf') return ok({ csrfToken: 'csrf-refresh' });
     if (pathOf(url) === '/api/auth/refresh') return ok({ accessToken: 'jwt-after-refresh' });
-    if (pathOf(url) === '/api/auth/me') return ok({ user: { id: 'u-2', email: 'restored@example.test', role: 'viewer' } });
+    if (pathOf(url) === '/api/auth/me') return ok({ id: 'u-2', email: 'restored@example.test', role: 'viewer' });
     throw new Error(`Unexpected request: ${url}`);
   };
 
   const result = await authApi.restore();
-  assert.equal(result.user.email, 'restored@example.test');
+  assert.equal(result.email, 'restored@example.test');
   assert.deepEqual(calls.map(({ path }) => path), ['/api/auth/csrf', '/api/auth/refresh', '/api/auth/me']);
   assert.equal(calls[1].init.method, 'POST');
   assert.equal(calls[1].init.credentials, 'include');
@@ -113,7 +113,7 @@ test('logout includes CSRF and the current bearer token, then clears memory', as
   globalThis.fetch = async (url, init) => {
     calls.push({ path: pathOf(url), init });
     if (pathOf(url) === '/api/auth/csrf') return ok({ csrfToken: 'csrf-logout' });
-    return ok({ message: 'Signed out.' });
+    return new Response(null, { status: 204 });
   };
 
   await authApi.logout();
@@ -123,6 +123,27 @@ test('logout includes CSRF and the current bearer token, then clears memory', as
   assert.equal(logout.init.headers.get('Authorization'), 'Bearer jwt-logout');
   assert.equal(logout.init.credentials, 'include');
   assert.equal(getAccessToken(), null);
+});
+
+test('a stale CSRF token is refreshed once after the backend rejects it', async () => {
+  const calls = [];
+  let csrfRequests = 0;
+  let unsafeRequests = 0;
+  globalThis.fetch = async (url, init) => {
+    const path = pathOf(url);
+    calls.push({ path, init });
+    if (path === '/api/auth/csrf') {
+      csrfRequests += 1;
+      return ok({ csrfToken: csrfRequests === 1 ? 'csrf-old' : 'csrf-current' });
+    }
+    unsafeRequests += 1;
+    if (unsafeRequests === 1) return fail(403, 'CSRF_REJECTED', 'CSRF rejected');
+    return ok({ message: 'Accepted.' });
+  };
+
+  await authApi.register({ email: 'new@example.test', password: 'long-enough-password', captchaToken: 'captcha' });
+  assert.equal(csrfRequests, 2);
+  assert.deepEqual(calls.filter(({ path }) => path === '/api/auth/register').map(({ init }) => init.headers.get('X-CSRF-Token')), ['csrf-old', 'csrf-current']);
 });
 
 test('protected route decisions cover loading, unauthenticated, authenticated, and role-aware UI states', () => {
