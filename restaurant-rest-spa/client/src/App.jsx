@@ -2,6 +2,9 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, dateTime, dateTimeInputs, money, useLoad } from './api.js';
+import { useAuth } from './auth/context.jsx';
+import { GuestRoute, ProtectedRoute } from './auth/route-guards.jsx';
+import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyEmailPage } from './auth/pages.jsx';
 
 const FALLBACK = '/images/food-fallback.svg';
 const STATUS_LABEL = { PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', SEATED: 'Đang dùng bữa', COMPLETED: 'Hoàn tất', CANCELLED: 'Đã hủy', NO_SHOW: 'Không đến' };
@@ -77,6 +80,7 @@ function useLegacyPageEffects() {
 
 function PublicShell() {
   const [open, setOpen] = React.useState(false);
+  const { status, user } = useAuth();
   useLegacyPageEffects();
   const location = useLocation();
   const path = location.pathname;
@@ -117,6 +121,7 @@ function PublicShell() {
         <NavLink to="/menu" className={path.startsWith('/menu') || path.startsWith('/dishes') ? 'is-current' : ''} aria-current={path.startsWith('/menu') || path.startsWith('/dishes') ? 'page' : undefined} onClick={() => setOpen(false)}>Thực đơn</NavLink>
         <NavLink to="/chefs" className={path.startsWith('/chefs') ? 'is-current' : ''} aria-current={path.startsWith('/chefs') ? 'page' : undefined} onClick={() => setOpen(false)}>Người giữ bếp</NavLink>
         <Link className="nav-booking" to="/reservations/new" onClick={() => setOpen(false)}>Gửi yêu cầu đặt bàn <span aria-hidden="true">↗</span></Link>
+        {status === 'authenticated' ? <Link className="nav-login" to="/admin" onClick={() => setOpen(false)}>{user?.email || 'Quản trị'}</Link> : <><Link className="nav-login" to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link><Link className="nav-register" to="/register" onClick={() => setOpen(false)}>Đăng ký</Link></>}
       </nav>
     </div></header>
     <main id="main-content"><Outlet /></main>
@@ -132,9 +137,12 @@ function PublicShell() {
 function AdminShell() {
   useLegacyPageEffects();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   return <div className="admin-shell">
     <a className="skip-link" href="#main-content">Đi đến nội dung</a>
     <header className="admin-topbar"><Link className="admin-brand" to="/admin"><span className="brand-mark" aria-hidden="true">B</span><span>BẾP HỘI <small>QUẢN TRỊ</small></span></Link><Link className="admin-back-link" to="/" target="_blank" rel="noreferrer">Xem website <span aria-hidden="true">↗</span></Link></header>
+    <div className="admin-account"><span>{user?.email}{user?.role ? ` · ${user.role}` : ''}</span><button type="button" onClick={async () => { const error = await logout(); navigate(error ? '/login?logout=failed' : '/'); }}>Đăng xuất</button></div>
     <div className="admin-frame"><aside className="admin-sidebar" aria-label="Điều hướng quản trị"><p className="admin-sidebar-label">NỘI DUNG NHÀ HÀNG</p>
       <NavLink end className={`admin-nav-link ${location.pathname === '/admin' ? 'is-current' : ''}`} to="/admin"><span aria-hidden="true">⌂</span> Tổng quan</NavLink>
       <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/dishes') ? 'is-current' : ''}`} to="/admin/dishes"><span aria-hidden="true">◉</span> Món ăn</NavLink>
@@ -1334,10 +1342,15 @@ export default function App() {
   const location = useLocation();
   const backgroundLocation = location.state?.backgroundLocation;
   return <><Routes location={backgroundLocation || location}>
+    <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+    <Route path="/verify-email" element={<GuestRoute><VerifyEmailPage /></GuestRoute>} />
+    <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+    <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+    <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route element={<PublicShell />}>
       <Route index element={<HomePage />} /><Route path="menu" element={<MenuPage />} /><Route path="dishes/:id" element={<DishPage />} /><Route path="chefs" element={<ChefsPage />} /><Route path="reservations/new" element={<ReservationPage />} />
     </Route>
-    <Route path="/admin" element={<AdminShell />}>
+    <Route path="/admin" element={<ProtectedRoute><AdminShell /></ProtectedRoute>}>
       <Route index element={<AdminDashboard />} />
       {Object.keys(RESOURCES).map((resource) => <React.Fragment key={resource}>
         <Route path={resource} element={<AdminList resource={resource} />} />

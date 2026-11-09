@@ -1,58 +1,42 @@
-import { useCallback, useEffect, useState } from 'react';
-
-export class ApiError extends Error {
-  constructor(message, status, details = {}) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = details.code;
-    this.fields = details.fields || {};
-  }
-}
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ApiError, request } from './auth/http.js';
+export { ApiError };
 
 export async function api(path, options = {}) {
-  let response;
-  try {
-    response = await fetch(path, {
-      method: options.method || 'GET',
-      headers: options.body === undefined ? {} : { 'Content-Type': 'application/json' },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal
-    });
-  } catch (error) {
-    if (error?.name === 'AbortError') throw error;
-    throw new ApiError('Không thể kết nối đến máy chủ. Vui lòng thử lại.', 0);
-  }
-  let payload;
-  try { payload = await response.json(); }
-  catch { throw new ApiError('Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.', response.status); }
-  if (!response.ok || payload?.ok !== true) {
-    const error = payload?.error;
-    if (error && typeof error === 'object') {
-      throw new ApiError(error.message || 'Yêu cầu chưa thể hoàn tất.', response.status, error);
-    }
-    throw new ApiError(typeof error === 'string' ? error : 'Máy chủ chưa thể hoàn tất yêu cầu. Vui lòng thử lại sau.', response.status);
-  }
-  return payload.data;
+  return request(path, options);
 }
 
 export function useLoad(path) {
   const [state, setState] = useState({ data: null, loading: Boolean(path), error: '', errorCode: '', fields: {}, version: 0 });
+  const controllerRef = useRef(null);
   const reload = useCallback(() => setState((old) => ({ ...old, loading: true, error: '', errorCode: '', fields: {}, version: old.version + 1 })), []);
   const mutate = useCallback((updater) => setState((old) => ({
     ...old,
     data: typeof updater === 'function' ? updater(old.data) : updater
   })), []);
   useEffect(() => {
+    if (!path?.startsWith('/api/admin') || typeof window === 'undefined') return undefined;
+    const invalidate = (event) => {
+      controllerRef.current?.abort();
+      setState((old) => ({
+        ...old, data: null, loading: Boolean(event.detail?.reload), error: '', errorCode: '', fields: {},
+        version: old.version + (event.detail?.reload ? 1 : 0)
+      }));
+    };
+    window.addEventListener('private-cache-invalidated', invalidate);
+    return () => window.removeEventListener('private-cache-invalidated', invalidate);
+  }, [path]);
+  useEffect(() => {
     if (!path) { setState({ data: null, loading: false, error: '', errorCode: '', fields: {}, version: 0 }); return undefined; }
     const controller = new AbortController();
+    controllerRef.current = controller;
     setState((old) => ({ ...old, loading: true, error: '', errorCode: '', fields: {} }));
     api(path, { signal: controller.signal })
-      .then((data) => setState((old) => ({ ...old, data, loading: false, error: '', errorCode: '', fields: {} })))
+      .then((data) => { if (!controller.signal.aborted) setState((old) => ({ ...old, data, loading: false, error: '', errorCode: '', fields: {} })); })
       .catch((error) => {
-        if (error.name !== 'AbortError') setState((old) => ({ ...old, loading: false, error: error.message, errorCode: error.code || '', fields: error.fields || {} }));
+        if (!controller.signal.aborted && error.name !== 'AbortError') setState((old) => ({ ...old, loading: false, error: error.message, errorCode: error.code || '', fields: error.fields || {} }));
       });
-    return () => controller.abort();
+    return () => { controller.abort(); if (controllerRef.current === controller) controllerRef.current = null; };
   }, [path, state.version]);
   return { ...state, reload, mutate };
 }
