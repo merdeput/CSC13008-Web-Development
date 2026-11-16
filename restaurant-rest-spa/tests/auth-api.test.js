@@ -66,6 +66,12 @@ function makeTokenSessions() {
       refreshTokens.set(refreshToken, sessionId);
       return { sessionId, expiresAt, refreshToken };
     },
+    async findActiveCookieSession(token) {
+      const sessionId = refreshTokens.get(token);
+      if (!sessionId || refreshTokens.get(`${token}:used`)) return null;
+      const session = sessions.get(sessionId);
+      return session && !session.revoked ? { sessionId, user: USER } : null;
+    },
     async findActiveSession(sessionId) {
       const session = sessions.get(sessionId);
       return session && !session.revoked ? { sessionId, user: USER } : null;
@@ -209,7 +215,7 @@ test('JWT validates HMAC, type, issuer, audience, claims, and expiry strictly', 
   assert.ok(header);
 });
 
-test('login issues a 15-minute bearer token; admin APIs require it and retain the existing viewer policy', async (t) => {
+test('login issues a bearer token; admin APIs require a session cookie', async (t) => {
   const ctx = await startApp();
   t.after(ctx.close);
   const { body: csrf, csrfCookie } = await getCsrf(ctx.baseUrl);
@@ -235,7 +241,7 @@ test('login issues a 15-minute bearer token; admin APIs require it and retain th
 
   const unauthenticated = await fetch(`${ctx.baseUrl}/api/admin/dashboard`);
   assert.equal(unauthenticated.status, 401);
-  const authorized = await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: { Authorization: `Bearer ${loginBody.data.accessToken}` } });
+  const authorized = await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: { Cookie: refreshCookie.split(';')[0] } });
   assert.equal(authorized.status, 200);
   assert.deepEqual((await authorized.json()).data.counts, { dishes: 1 });
 });

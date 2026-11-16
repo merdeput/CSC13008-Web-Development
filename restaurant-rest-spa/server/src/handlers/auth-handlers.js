@@ -140,7 +140,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
         return ok(res, {
           accessToken,
           expiresIn: jwtConfig.accessTtlSeconds,
-          user: { id: user.id, email: user.email, role: user.role }
+          user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId }
         });
       } catch (error) {
         logFailure('login', error);
@@ -174,7 +174,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
 
     async me(req, res) {
       res.set('Cache-Control', 'no-store');
-      return ok(res, { id: req.auth.user.id, email: req.auth.user.email, role: req.auth.user.role });
+      return ok(res, { id: req.auth.user.id, email: req.auth.user.email, role: req.auth.user.role, chefId: req.auth.user.chefId });
     },
 
     async logout(req, res) {
@@ -184,8 +184,7 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       const cookieName = getCookieNames(secureCookies).refresh;
       const rawRefresh = parseCookies(req.headers.cookie).get(cookieName);
       try {
-        let sessionId = claims && claims.sid;
-        if (!sessionId && rawRefresh) sessionId = await tokenSessions.findSessionForRefreshToken(rawRefresh);
+        const sessionId = rawRefresh ? await tokenSessions.findSessionForRefreshToken(rawRefresh) : null;
         if (sessionId) await tokenSessions.revokeSession(sessionId, 'LOGOUT');
       } catch (error) {
         logFailure('logout', error);

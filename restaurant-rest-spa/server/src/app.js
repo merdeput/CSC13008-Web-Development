@@ -15,7 +15,8 @@ const { notFound, errorHandler } = require('./middleware/error-handler');
 const { getJwtConfig } = require('./lib/jwt-config');
 const { createTokenSessionService } = require('./services/token-session-service');
 const { createCsrfMiddleware } = require('./middleware/csrf');
-const { requireAccessToken } = require('./middleware/require-access-token');
+const { requireCookieSession } = require('./middleware/require-cookie-session');
+const { authorize } = require('./middleware/authorize');
 
 function createApp(options = {}) {
   const app = express();
@@ -73,7 +74,10 @@ function createApp(options = {}) {
     verifyCaptcha: options.verifyRecaptcha
   }));
   app.use('/api', createPublicRouter(services));
-  app.use('/api/admin', requireAccessToken({ jwtConfig, tokenSessions }), createAdminRouter(services));
+  app.use('/api/admin', requireCookieSession({ tokenSessions, secureCookies }), (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    return csrfMiddleware.requireTrustedOrigin(req, res, () => csrfMiddleware.requireCsrf(req, res, next));
+  }, authorize, createAdminRouter(services));
   app.use('/api', notFound);
 
   if (fs.existsSync(path.join(clientDist, 'index.html'))) {

@@ -85,6 +85,7 @@ model Chef {
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   dishes      Dish[]
+  users       User[]
 
   @@index([isPublished, sortOrder])
   @@map("Chef")
@@ -114,6 +115,8 @@ model User {
   email                 String                @unique @db.VarChar(254)
   passwordHash          String                @db.VarChar(255)
   role                  String                @default("viewer") @db.VarChar(40)
+  chefId                String?               @db.Uuid
+  chef                  Chef?                 @relation(fields: [chefId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   status                UserStatus            @default(PENDING)
   emailVerifiedAt       DateTime?             @db.Timestamptz(6)
   createdAt             DateTime              @default(now()) @db.Timestamptz(6)

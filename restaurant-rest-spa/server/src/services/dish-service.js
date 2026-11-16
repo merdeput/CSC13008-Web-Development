@@ -158,14 +158,16 @@ function createDishService(model) {
       }
       throw new HttpError(409, 'Không thể lưu món ăn lúc này. Vui lòng thử lại.');
     },
-    async update(id, input) {
-      const data = await checked(input);
+    async update(id, input, user) {
       const current = await model.findById(id);
       if (!current) return null;
+      const editor = user?.role === 'editor';
+      if (editor && (!user.chefId || current.chefId !== user.chefId || current.isPublished)) throw new HttpError(403, 'You do not have permission to update this dish.', { code: 'FORBIDDEN' });
+      const data = await checked(editor ? { ...input, chefId: user.chefId, isPublished: false } : input);
       const slug = data.name === current.name ? current.slug : await uniqueSlug(model, data.name, id);
-      try { return await model.update(id, { ...data, slug }); }
+      try { return await model.update(id, { ...data, slug }, editor ? { chefId: user.chefId, isPublished: false } : undefined); }
       catch (error) {
-        if (isPrismaCode(error, 'P2025')) return null;
+        if (isPrismaCode(error, 'P2025')) { if (editor) throw new HttpError(403, 'You do not have permission to update this dish.', { code: 'FORBIDDEN' }); return null; }
         if (isPrismaCode(error, 'P2003')) throw new HttpError(404, NOT_FOUND_MESSAGE);
         throw error;
       }

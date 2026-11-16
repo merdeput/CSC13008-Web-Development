@@ -13,8 +13,8 @@ function accessTokenFrom(data) { return data?.accessToken || data?.accessJwt || 
 function userFrom(data) {
   if (data?.user && typeof data.user === 'object') return data.user;
   if (data && typeof data === 'object' && (data.id || data.email)) {
-    const { id, email, role, name } = data;
-    return { id, email, role, name };
+    const { id, email, role, name, chefId } = data;
+    return { id, email, role, name, chefId };
   }
   return null;
 }
