@@ -135,6 +135,34 @@ function PublicShell() {
   </div>;
 }
 
+function DevRoleSetter({ user }) {
+  const [options, setOptions] = React.useState(null);
+  const [role, setRole] = React.useState(user?.role || 'viewer');
+  const [chefId, setChefId] = React.useState(user?.chefId || '');
+  const [error, setError] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => {
+    let active = true;
+    api('/api/dev/role').then((data) => { if (active) setOptions(data); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  if (!options) return null;
+  async function submit(event) {
+    event.preventDefault(); setError(''); setBusy(true);
+    try {
+      await api('/api/dev/role', { method: 'POST', body: { role, chefId } });
+      window.location.assign('/admin');
+    } catch (cause) { setError(cause.message); setBusy(false); }
+  }
+  return <form onSubmit={submit} style={{ padding: '12px 20px', background: '#fff2cf', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+    <strong>Temporary development role switcher</strong>
+    <label>Role <select value={role} onChange={(e) => setRole(e.target.value)}><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Admin</option></select></label>
+    {role === 'editor' && <label>Chef <select required value={chefId} onChange={(e) => setChefId(e.target.value)}><option value="">Select chef</option>{options.chefs.map((chef) => <option key={chef.id} value={chef.id}>{chef.name}</option>)}</select></label>}
+    <button type="submit" disabled={busy}>Apply to my account</button>
+    {error && <span role="alert">{error}</span>}
+  </form>;
+}
+
 function AdminShell() {
   useLegacyPageEffects();
   const location = useLocation();
@@ -144,6 +172,7 @@ function AdminShell() {
     <a className="skip-link" href="#main-content">Đi đến nội dung</a>
     <header className="admin-topbar"><Link className="admin-brand" to="/admin"><span className="brand-mark" aria-hidden="true">B</span><span>BẾP HỘI <small>QUẢN TRỊ</small></span></Link><Link className="admin-back-link" to="/" target="_blank" rel="noreferrer">Xem website <span aria-hidden="true">↗</span></Link></header>
     <div className="admin-account"><span>{user?.email}{user?.role ? ` · ${user.role}` : ''}</span><button type="button" onClick={async () => { const error = await logout(); navigate(error ? '/login?logout=failed' : '/'); }}>Đăng xuất</button></div>
+    <DevRoleSetter user={user} />
     <div className="admin-frame"><aside className="admin-sidebar" aria-label="Điều hướng quản trị"><p className="admin-sidebar-label">NỘI DUNG NHÀ HÀNG</p>
       <NavLink end className={`admin-nav-link ${location.pathname === '/admin' ? 'is-current' : ''}`} to="/admin"><span aria-hidden="true">⌂</span> Tổng quan</NavLink>
       <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/dishes') ? 'is-current' : ''}`} to="/admin/dishes"><span aria-hidden="true">◉</span> Món ăn</NavLink>

@@ -17,6 +17,7 @@ const { createTokenSessionService } = require('./services/token-session-service'
 const { createCsrfMiddleware } = require('./middleware/csrf');
 const { requireCookieSession } = require('./middleware/require-cookie-session');
 const { authorize } = require('./middleware/authorize');
+const { createDevRoleRouter } = require('./routes/dev-role-routes');
 
 function createApp(options = {}) {
   const app = express();
@@ -73,6 +74,9 @@ function createApp(options = {}) {
     services, tokenSessions, jwtConfig, csrfSecret, csrfMiddleware, secureCookies,
     verifyCaptcha: options.verifyRecaptcha
   }));
+  if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_ROLE_SETTER === 'true') {
+    app.use('/api/dev/role', createDevRoleRouter({ db, tokenSessions, secureCookies, csrfMiddleware }));
+  }
   app.use('/api', createPublicRouter(services));
   app.use('/api/admin', requireCookieSession({ tokenSessions, secureCookies }), (req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
