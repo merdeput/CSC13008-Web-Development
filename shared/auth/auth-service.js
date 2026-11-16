@@ -390,7 +390,7 @@ function createAuthService(db, options = {}) {
       const user = await db.user.findUnique({ where: { email } });
       const passwordMatches = await verifyPassword(password, user && user.passwordHash);
       if (!user || user.status !== 'ACTIVE' || !user.emailVerifiedAt || !passwordMatches) return null;
-      return { id: user.id, email: user.email, role: user.role, status: user.status };
+      return { id: user.id, email: user.email, role: user.role, chefId: user.chefId, status: user.status };
     },
 
     async getLoginLockout(email, ip) {

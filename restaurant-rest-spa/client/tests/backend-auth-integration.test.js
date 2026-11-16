@@ -73,6 +73,12 @@ test('React auth client works against the Express JWT routes', async (t) => {
       refreshTokens.set(refreshToken, sessionId);
       return { sessionId, refreshToken, expiresAt };
     },
+    async findActiveCookieSession(token) {
+      const sessionId = refreshTokens.get(token);
+      if (!sessionId || refreshTokens.get(`${token}:used`)) return null;
+      const session = sessions.get(sessionId);
+      return session && !session.revoked ? { sessionId, user: USER } : null;
+    },
     async findActiveSession(sessionId) {
       const session = sessions.get(sessionId);
       return session && !session.revoked ? { sessionId, user: USER } : null;

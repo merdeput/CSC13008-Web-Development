@@ -1,0 +1,3 @@
+ALTER TABLE "User" ADD COLUMN "chefId" UUID;
+ALTER TABLE "User" ADD CONSTRAINT "User_chefId_fkey" FOREIGN KEY ("chefId") REFERENCES "Chef"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "User_chefId_idx" ON "User"("chefId");

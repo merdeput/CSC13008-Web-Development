@@ -309,9 +309,9 @@ function createDishModel(db) {
         }, include: dishInclude
       });
     },
-    update(id, data) {
+    update(id, data, conditions) {
       return db.dish.update({
-        where: { id },
+        where: { id, ...conditions },
         data: {
           categoryId: data.categoryId, chefId: data.chefId, name: data.name, slug: data.slug,
           description: data.description, price: new Prisma.Decimal(data.price), imageUrl: data.imageUrl,

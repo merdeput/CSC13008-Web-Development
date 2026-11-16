@@ -32,7 +32,7 @@ function createAdminHandlers(services) {
     dishOptions: sendList(() => services.dishes.formOptions()),
     dishDetail: sendOne((id) => services.dishes.findById(id)),
     dishCreate: createOne((data) => services.dishes.create(data)),
-    dishUpdate: updateOne((id, data) => services.dishes.update(id, data)),
+    dishUpdate: async (req, res) => res.json({ ok: true, data: notFoundIfEmpty(await services.dishes.update(idOrNotFound(req.params.id), req.body || {}, req.auth.user)) }),
     dishDelete: deleteOne((id) => services.dishes.remove(id)),
     categoryList: sendList(() => services.categories.list()),
     categoryCreate: createOne((data) => services.categories.create(data)),

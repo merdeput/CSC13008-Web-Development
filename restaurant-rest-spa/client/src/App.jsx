@@ -616,6 +616,8 @@ function AdminDashboard() {
 }
 
 function AdminList({ resource }) {
+  const { user } = useAuth();
+  const canCreate = user?.role === 'admin' || user?.role === 'editor';
   const config = RESOURCES[resource];
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -765,7 +767,7 @@ function AdminList({ resource }) {
       }
     };
     const categoryHeading = selectedCategories.length === 1 ? selectedCategories[0].name : selectedCategories.length ? `${selectedCategories.length} danh mục đã chọn` : 'Tất cả món ăn';
-    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Món ăn</h1><p>{result?.total ?? 0} món trong danh mục quản trị.</p></div><Link className="admin-primary-button" to="/admin/dishes/new">+ Thêm món ăn</Link></section>
+    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Món ăn</h1><p>{result?.total ?? 0} món trong danh mục quản trị.</p></div>{canCreate && <Link className="admin-primary-button" to="/admin/dishes/new">+ Thêm món ăn</Link>}</section>
       <section className="admin-panel admin-panel--dishes">
         {categoryState.loading ? <Loading label="Đang tải danh mục món…" /> : categoryState.error ? <ErrorState message={categoryState.error} onRetry={categoryState.reload} /> : <div className="admin-dish-browser">
           <aside className="admin-dish-sidebar" aria-label="Quản lý danh mục và bộ lọc món ăn">
@@ -792,7 +794,7 @@ function AdminList({ resource }) {
     </>;
   }
   if (resource === 'chefs') {
-    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Đầu bếp</h1><p>{result?.total ?? 0} hồ sơ trong danh mục quản trị.</p></div><Link className="admin-primary-button" to="/admin/chefs/new">+ Thêm đầu bếp</Link></section>
+    return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / QUẢN TRỊ</p><h1>Đầu bếp</h1><p>{result?.total ?? 0} hồ sơ trong danh mục quản trị.</p></div>{canCreate && <Link className="admin-primary-button" to="/admin/chefs/new">+ Thêm đầu bếp</Link>}</section>
       <section className="admin-panel admin-panel--chefs">
         <header className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>Người giữ bếp</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></header>
         <form className="admin-search" onSubmit={filter} role="search" aria-label="Tìm đầu bếp"><div className="admin-search-field"><label htmlFor="adminSearch">Tìm đầu bếp</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder="Tên, chức danh, sở trường…" /></div><button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
@@ -801,7 +803,7 @@ function AdminList({ resource }) {
       </section>
     </>;
   }
-  return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / {resource === 'reservations' ? 'DỊCH VỤ' : 'QUẢN TRỊ'}</p><h1>{config.label === 'Đặt bàn' ? 'Yêu cầu đặt bàn' : config.label}</h1><p>{resource === 'reservations' ? 'Khách gửi yêu cầu trước; nhà hàng cần liên hệ để xác nhận.' : `${result?.total ?? 0} mục trong danh mục quản trị.`}</p></div>{resource !== 'reservations' && <Link className="admin-primary-button" to={`/admin/${resource}/new`}>+ Thêm {config.label.toLowerCase()}</Link>}</section>
+  return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / {resource === 'reservations' ? 'DỊCH VỤ' : 'QUẢN TRỊ'}</p><h1>{config.label === 'Đặt bàn' ? 'Yêu cầu đặt bàn' : config.label}</h1><p>{resource === 'reservations' ? 'Khách gửi yêu cầu trước; nhà hàng cần liên hệ để xác nhận.' : `${result?.total ?? 0} mục trong danh mục quản trị.`}</p></div>{canCreate && resource !== 'reservations' && <Link className="admin-primary-button" to={`/admin/${resource}/new`}>+ Thêm {config.label.toLowerCase()}</Link>}</section>
     <section className={`admin-panel${resource === 'ingredients' ? ' admin-panel--ingredients' : ''}`}><div className="admin-panel-heading"><div><p className="eyebrow">DANH SÁCH</p><h2>{resource === 'chefs' ? 'Người giữ bếp' : `Tất cả ${config.label.toLowerCase()}`}</h2></div><span className="admin-count">{result?.total ?? 0} mục</span></div>
     <form className="admin-search" onSubmit={filter} role="search" aria-label={`Tìm ${config.label.toLowerCase()}`}><div className="admin-search-field"><label htmlFor="adminSearch">{resource === 'reservations' ? 'Tìm yêu cầu đặt bàn' : `Tìm ${config.label.toLowerCase()}`}</label><input id="adminSearch" type="search" name="q" defaultValue={params.get('q') || ''} placeholder={`Tên, thông tin ${config.label.toLowerCase()}…`} /></div>{resource === 'reservations' && <><div className="admin-filters"><div className="form-field"><label htmlFor="statusFilter">Trạng thái</label><select id="statusFilter" name="status" defaultValue={params.get('status') || ''} aria-invalid={Boolean(filterError('status'))} aria-describedby={filterError('status') ? 'statusFilter-error' : undefined}><option value="">Tất cả trạng thái</option>{Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{filterError('status') && <small id="statusFilter-error" className="field-error">{filterError('status')}</small>}</div><div className="form-field"><label htmlFor="fromFilter">Từ ngày</label><input id="fromFilter" type="date" name="from" defaultValue={params.get('from') || ''} aria-invalid={Boolean(filterError('from'))} aria-describedby={filterError('from') ? 'fromFilter-error' : undefined} />{filterError('from') && <small id="fromFilter-error" className="field-error">{filterError('from')}</small>}</div><div className="form-field"><label htmlFor="toFilter">Đến ngày</label><input id="toFilter" type="date" name="to" defaultValue={params.get('to') || ''} aria-invalid={Boolean(filterError('to'))} aria-describedby={filterError('to') ? 'toFilter-error' : undefined} />{filterError('to') && <small id="toFilter-error" className="field-error">{filterError('to')}</small>}</div></div></>}<button className="admin-primary-button" type="submit" disabled={state.loading}>Tìm kiếm</button></form>
     {notice && <div className="admin-notice" role="status"><span>{notice}</span><button className="admin-notice-dismiss" type="button" aria-label="Đóng thông báo" onClick={() => setNotice('')}>×</button></div>}{state.loading ? <Loading /> : state.error && state.errorCode !== 'VALIDATION_FAILED' ? <ErrorState message={state.error} onRetry={state.reload} /> : state.error ? <p className="api-error" role="alert">{state.error}</p> : rows.length ? (resource === 'ingredients' ? <AdminIngredientCards rows={rows} result={result} sortDirection={currentSortDirection} onSort={() => sortByField('name')} location={location} params={params} setParams={setParams} /> : <><div className="admin-table-wrap" role="region" aria-label={`Bảng ${config.label.toLowerCase()}`} tabIndex="0"><table className={`admin-table admin-table--${resource}`}><thead><tr>
@@ -893,7 +895,9 @@ function AdminChefCards({ rows, result, location, params, setParams, sortBy, sor
 }
 
 function AdminRowActions({ resource, row, returnTo, backgroundLocation }) {
-  return <div className="admin-row-actions"><Link className="table-action" to={`/admin/${resource}/${row.id}/edit`}>Sửa</Link><Link className="table-action admin-row-delete" to={`/admin/${resource}/${row.id}/delete`} state={{ from: returnTo, backgroundLocation }}>Xóa</Link></div>;
+  const { user } = useAuth();
+  const canEdit = user?.role === 'admin' || (user?.role === 'editor' && resource === 'dishes' && user.chefId && row.chefId === user.chefId && !row.isPublished);
+  return <div className="admin-row-actions">{canEdit && <Link className="table-action" to={`/admin/${resource}/${row.id}/edit`}>Edit</Link>}{user?.role === 'admin' && <Link className="table-action admin-row-delete" to={`/admin/${resource}/${row.id}/delete`} state={{ from: returnTo, backgroundLocation }}>Delete</Link>}</div>;
 }
 
 function pathFor(resource) { return `/api/admin/${RESOURCES[resource].endpoint}`; }
@@ -905,6 +909,7 @@ function Pagination({ result, params, setParams }) {
 }
 
 function AdminForm({ resource }) {
+  const { user } = useAuth();
   const config = RESOURCES[resource];
   const { id } = useParams();
   const navigate = useNavigate();
@@ -952,7 +957,10 @@ function AdminForm({ resource }) {
   async function submit(event) {
     event.preventDefault(); setError(''); setFieldErrors({}); setBusy(true);
     try {
-      await api(id ? `${pathFor(resource)}/${id}` : pathFor(resource), { method: id ? 'PATCH' : 'POST', body: form });
+      const body = { ...form };
+      if (user?.role === 'editor' && resource === 'dishes') { delete body.chefId; delete body.isPublished; delete body.status; }
+      if (user?.role === 'editor' && resource === 'chefs') delete body.dishIds;
+      await api(id ? `${pathFor(resource)}/${id}` : pathFor(resource), { method: id ? 'PATCH' : 'POST', body });
       navigate(`/admin/${resource}`);
     } catch (requestError) { setError(requestError.message); setFieldErrors(requestError.fields || {}); }
     finally { setBusy(false); }
@@ -961,34 +969,35 @@ function AdminForm({ resource }) {
   if (id && state.error) return <ErrorState message={state.error} />;
   if (['dishes', 'chefs'].includes(resource) && optionsState.loading) return <Loading label={resource === 'dishes' ? 'Đang tải danh mục và nguyên liệu…' : 'Đang tải danh sách món…'} />;
   if (['dishes', 'chefs'].includes(resource) && optionsState.error) return <ErrorState message={optionsState.error} onRetry={optionsState.reload} />;
+  const canWrite = user?.role === 'admin' || (user?.role === 'editor' && (!id || (resource === 'dishes' && user.chefId && state.data?.chefId === user.chefId && !state.data?.isPublished)));
   const options = optionsState.data || { categories: [], ingredients: [], chefs: [], dishes: [] };
   const categories = categoryOptions ?? options.categories;
   return <><section className="admin-page-heading"><div><p className="eyebrow">NỘI DUNG / BIỂU MẪU</p><h1>{id ? 'Cập nhật' : 'Thêm'} {config.label.toLowerCase()}</h1><p>Thông tin sẽ được kiểm tra trước khi lưu.</p></div><Link className="admin-secondary-button" to={`/admin/${resource}`}>← Danh sách {config.label.toLowerCase()}</Link></section>
     <section className={`admin-panel admin-form-panel${resource === 'dishes' ? ' admin-form-panel--dish' : ''}`}>{error && <div className="form-error-summary" role="alert" aria-live="polite"><strong>Không thể lưu thay đổi:</strong><p>{error}</p></div>}
     <div className={resource === 'dishes' ? 'admin-dish-editor-layout' : undefined}><form className={`admin-form${resource === 'dishes' ? ' admin-dish-main-form' : ''}`} onSubmit={submit}>
-      <div className="admin-form-grid">
+      <fieldset disabled={!canWrite} className="admin-form-grid">
         {resource === 'dishes' && <>
           <AdminField id="name" label="Tên món" required error={fieldErrors.name}><input id="name" required maxLength="120" value={form.name || ''} onChange={(e) => change('name', e.target.value)} /></AdminField>
           <AdminField id="categoryId" label="Danh mục" required error={fieldErrors.categoryId}><select id="categoryId" required value={form.categoryId || ''} onChange={(e) => change('categoryId', e.target.value)}><option value="">Chọn danh mục</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></AdminField>
           <AdminField id="description" label="Mô tả" wide required error={fieldErrors.description}><textarea id="description" required maxLength="2400" rows="4" value={form.description || ''} onChange={(e) => change('description', e.target.value)} /></AdminField>
           <AdminField id="price" label="Giá nguyên VND" required error={fieldErrors.price}><div className="input-suffix"><input id="price" type="number" min="0" max="999999999999" step="1" inputMode="numeric" required value={form.price || ''} onChange={(e) => change('price', e.target.value)} /><span>₫</span></div></AdminField>
           <AdminField id="imageUrl" label="Đường dẫn ảnh" error={fieldErrors.imageUrl}><input id="imageUrl" type="url" maxLength="2048" value={form.imageUrl || ''} onChange={(e) => change('imageUrl', e.target.value)} placeholder="https://…" /></AdminField>
-          <ChefPicker chefs={options.chefs} selectedId={form.chefId || ''} error={fieldErrors.chefId} onSelect={(chefId) => change('chefId', chefId)} />
+          {user?.role === 'admin' && <ChefPicker chefs={options.chefs} selectedId={form.chefId || ''} error={fieldErrors.chefId} onSelect={(chefId) => change('chefId', chefId)} />}
           <IngredientPicker ingredients={options.ingredients} selected={form.ingredientIds} error={fieldErrors.ingredientIds} onToggle={toggleIngredient} />
-          <fieldset className="checkbox-fieldset form-field-wide"><legend>Trạng thái món ăn</legend><CheckField label="Công khai trên website" description="Món chưa công khai không xuất hiện ở trang khách." value={form.isPublished} onChange={(v) => change('isPublished', v)} /><CheckField label="Đang phục vụ" description="Món tạm hết vẫn có thể hiển thị nhãn trên thực đơn." value={form.isAvailable} onChange={(v) => change('isAvailable', v)} /><CheckField label="Món nổi bật" description="Món nổi bật có thể xuất hiện trên trang chủ." value={form.isFeatured} onChange={(v) => change('isFeatured', v)} /></fieldset>
+          <fieldset className="checkbox-fieldset form-field-wide"><legend>Trạng thái món ăn</legend>{user?.role === 'admin' && <CheckField label="Công khai trên website" description="Món chưa công khai không xuất hiện ở trang khách." value={form.isPublished} onChange={(v) => change('isPublished', v)} />}<CheckField label="Đang phục vụ" description="Món tạm hết vẫn có thể hiển thị nhãn trên thực đơn." value={form.isAvailable} onChange={(v) => change('isAvailable', v)} /><CheckField label="Món nổi bật" description="Món nổi bật có thể xuất hiện trên trang chủ." value={form.isFeatured} onChange={(v) => change('isFeatured', v)} /></fieldset>
         </>}
         {resource === 'chefs' && <>
           <AdminField id="name" label="Họ tên" required error={fieldErrors.name}><input id="name" required maxLength="120" value={form.name || ''} onChange={(e) => change('name', e.target.value)} /></AdminField><AdminField id="title" label="Chức danh" required error={fieldErrors.title}><input id="title" required maxLength="140" value={form.title || ''} onChange={(e) => change('title', e.target.value)} /></AdminField>
           <AdminField id="bio" label="Tiểu sử" wide error={fieldErrors.bio}><textarea id="bio" maxLength="2400" rows="4" value={form.bio || ''} onChange={(e) => change('bio', e.target.value)} /></AdminField><AdminField id="specialty" label="Sở trường" error={fieldErrors.specialty}><input id="specialty" maxLength="180" value={form.specialty || ''} onChange={(e) => change('specialty', e.target.value)} /></AdminField><AdminField id="chefImage" label="Đường dẫn ảnh" error={fieldErrors.imageUrl}><input id="chefImage" type="url" maxLength="2048" value={form.imageUrl || ''} onChange={(e) => change('imageUrl', e.target.value)} /></AdminField><AdminField id="sortOrder" label="Thứ tự hiển thị" error={fieldErrors.sortOrder}><input id="sortOrder" type="number" min="0" max="100000" value={form.sortOrder ?? '0'} onChange={(e) => change('sortOrder', e.target.value)} /></AdminField>
-          <DishAssignmentPicker dishes={options.dishes} selected={form.dishIds || []} error={fieldErrors.dishIds} onToggle={(dishId) => change('dishIds', form.dishIds.includes(dishId) ? form.dishIds.filter((item) => item !== dishId) : [...form.dishIds, dishId])} />
+          {user?.role === 'admin' && <DishAssignmentPicker dishes={options.dishes} selected={form.dishIds || []} error={fieldErrors.dishIds} onToggle={(dishId) => change('dishIds', form.dishIds.includes(dishId) ? form.dishIds.filter((item) => item !== dishId) : [...form.dishIds, dishId])} />}
           <fieldset className="checkbox-fieldset form-field-wide"><legend>Trạng thái hồ sơ</legend><CheckField label="Công khai hồ sơ" value={form.isPublished} onChange={(v) => change('isPublished', v)} /></fieldset>
         </>}
         {resource === 'ingredients' && <AdminField id="name" label="Tên nguyên liệu" required error={fieldErrors.name}><input id="name" required maxLength="100" value={form.name || ''} onChange={(e) => change('name', e.target.value)} /></AdminField>}
         {resource === 'reservations' && <>
           <AdminField id="customerName" label="Họ tên khách" required error={fieldErrors.customerName}><input id="customerName" required maxLength="120" value={form.customerName || ''} onChange={(e) => change('customerName', e.target.value)} /></AdminField><AdminField id="phone" label="Điện thoại" required error={fieldErrors.phone}><input id="phone" required maxLength="40" value={form.phone || ''} onChange={(e) => change('phone', e.target.value)} /></AdminField><AdminField id="email" label="Email" error={fieldErrors.email}><input id="email" type="email" maxLength="254" value={form.email || ''} onChange={(e) => change('email', e.target.value)} /></AdminField><AdminField id="date" label="Ngày đến" required error={fieldErrors.date}><input id="date" required type="date" value={form.date || ''} onChange={(e) => change('date', e.target.value)} /></AdminField><AdminField id="time" label="Giờ đến" required error={fieldErrors.time}><input id="time" required type="time" value={form.time || ''} onChange={(e) => change('time', e.target.value)} /></AdminField><AdminField id="guestCount" label="Số khách" required error={fieldErrors.guestCount}><input id="guestCount" required type="number" min="1" max="12" value={form.guestCount || ''} onChange={(e) => change('guestCount', e.target.value)} /></AdminField><AdminField id="status" label="Trạng thái" error={fieldErrors.status}><select id="status" value={form.status || 'PENDING'} onChange={(e) => change('status', e.target.value)}>{Object.entries(STATUS_LABEL).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></AdminField><AdminField id="customerNote" label="Lời nhắn của khách" wide error={fieldErrors.customerNote}><textarea id="customerNote" rows="3" maxLength="1200" value={form.customerNote || ''} onChange={(e) => change('customerNote', e.target.value)} /></AdminField><AdminField id="adminNote" label="Ghi chú nội bộ" wide error={fieldErrors.adminNote}><textarea id="adminNote" rows="3" maxLength="1200" value={form.adminNote || ''} onChange={(e) => change('adminNote', e.target.value)} /></AdminField><p className="form-field-wide field-help">Mã yêu cầu: {form.referenceCode}</p>
         </>}
-      </div>
-      <div className="admin-form-actions"><button className="admin-primary-button" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button><Link className="admin-secondary-button" to={`/admin/${resource}`}>Hủy</Link></div>
+      </fieldset>
+      {canWrite && <div className="admin-form-actions"><button className="admin-primary-button" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</button><Link className="admin-secondary-button" to={`/admin/${resource}`}>Hủy</Link></div>}
     </form>{resource === 'dishes' && <CategoryManager categories={categories} selectedId={form.categoryId} onSelect={(categoryId) => change('categoryId', categoryId)} onCreated={categoryCreated} onUpdated={categoryUpdated} onDeleted={categoryDeleted} />}</div></section>
   </>;
 }
@@ -1125,23 +1134,23 @@ function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdate
             <span className="admin-category-option__mark" aria-hidden="true">{selectedId === category.id ? '✓' : '·'}</span>
             <span>{category.name}</span>
           </button> : <span className="admin-category-option admin-category-option--static"><span className="admin-category-option__mark" aria-hidden="true">·</span><span>{category.name}</span></span>}
-          <div className="admin-category-actions">
+          {user?.role === 'admin' && <div className="admin-category-actions">
             <button className="admin-category-menu-trigger" type="button" aria-label={`Tùy chọn danh mục ${category.name}`} aria-expanded={menuFor === category.id} onClick={() => { setMenuFor(menuFor === category.id ? '' : category.id); setActionError(''); }}>•••</button>
             {menuFor === category.id && <div className="admin-category-menu" role="group" aria-label={`Thao tác với ${category.name}`}>
               <button type="button" onClick={() => startEditing(category)}>Sửa</button>
               <button className="is-danger" type="button" onClick={() => { setMenuFor(''); setActionError(''); setDeleteTarget(category); }}>Xóa</button>
             </div>}
-          </div>
+          </div>}
         </div>}
       </div>) : <p className="admin-category-empty">Chưa có danh mục. Hãy thêm danh mục đầu tiên.</p>}
     </div>
     {notice && <p className="admin-category-notice" role="status">{notice}</p>}
-    {adding ? <form className="admin-category-create" onSubmit={submit}>
+    {user?.role !== 'viewer' && (adding ? <form className="admin-category-create" onSubmit={submit}>
       <label htmlFor="newCategoryName">Tên danh mục mới</label>
       <input id="newCategoryName" type="text" value={name} maxLength="80" required autoFocus onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Món khai vị" />
       {error && <p className="admin-category-error" role="alert">{error}</p>}
       <div className="admin-category-create__actions"><button className="admin-primary-button" type="submit" disabled={busy}>{busy ? 'Đang thêm…' : 'Thêm danh mục'}</button><button className="admin-secondary-button" type="button" disabled={busy} onClick={() => { setAdding(false); setError(''); }}>Hủy</button></div>
-    </form> : <button className="admin-category-add" type="button" onClick={() => { setAdding(true); setEditing(null); setNotice(''); }}>+ Thêm danh mục</button>}
+    </form> : <button className="admin-category-add" type="button" onClick={() => { setAdding(true); setEditing(null); setNotice(''); }}>+ Thêm danh mục</button>)}
     {deleteTarget && createPortal(<div className="admin-delete-overlay" onClick={(event) => { if (event.target === event.currentTarget) closeDeleteDialog(); }}>
       <section className="admin-panel admin-delete-panel admin-category-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="category-delete-title" aria-describedby="category-delete-description" ref={deleteDialogRef} onKeyDown={handleDeleteDialogKeyDown}>
         <button className="admin-delete-close" type="button" aria-label="Đóng cửa sổ xác nhận" disabled={actionBusy} onClick={closeDeleteDialog}>×</button>
@@ -1352,7 +1361,7 @@ export default function App() {
     <Route element={<PublicShell />}>
       <Route index element={<HomePage />} /><Route path="menu" element={<MenuPage />} /><Route path="dishes/:id" element={<DishPage />} /><Route path="chefs" element={<ChefsPage />} /><Route path="reservations/new" element={<ReservationPage />} />
     </Route>
-    <Route path="/admin" element={<ProtectedRoute roles={['viewer', 'admin']}><AdminShell /></ProtectedRoute>}>
+    <Route path="/admin" element={<ProtectedRoute roles={['viewer', 'editor', 'admin']}><AdminShell /></ProtectedRoute>}>
       <Route index element={<AdminDashboard />} />
       {Object.keys(RESOURCES).map((resource) => <React.Fragment key={resource}>
         <Route path={resource} element={<AdminList resource={resource} />} />

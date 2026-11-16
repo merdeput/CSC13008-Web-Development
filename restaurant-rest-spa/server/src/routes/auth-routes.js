@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 const asyncHandler = require('../lib/async-handler');
 const { normalizeEmail } = require('../../../../shared/auth/auth-service');
 const { createAuthHandlers } = require('../handlers/auth-handlers');
-const { requireAccessToken } = require('../middleware/require-access-token');
+const { requireCookieSession } = require('../middleware/require-cookie-session');
 
 function createLimiter({ windowMs, limit: maxRequests, keyGenerator, message = 'Too many requests. Try again later.' }) {
   return rateLimit({
@@ -41,7 +41,7 @@ function createAuthRouter({ services, tokenSessions, jwtConfig, csrfSecret, csrf
   router.post('/resend-otp', ipAuthLimiter, emailHourlyLimiter, emailDailyLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.resendOtp));
   router.post('/login', ipAuthLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.login));
   router.post('/refresh', refreshLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.refresh));
-  router.get('/me', requireAccessToken({ jwtConfig, tokenSessions }), asyncHandler(handlers.me));
+  router.get('/me', requireCookieSession({ tokenSessions, secureCookies }), asyncHandler(handlers.me));
   router.post('/logout', ipAuthLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.logout));
   router.post('/password-reset', ipAuthLimiter, emailHourlyLimiter, emailDailyLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.requestPasswordReset));
   router.post('/password-reset/confirm', ipAuthLimiter, requireTrustedOrigin, requireCsrf, asyncHandler(handlers.completePasswordReset));

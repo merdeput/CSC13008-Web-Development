@@ -31,7 +31,7 @@ The Google reCAPTCHA widget reads `VITE_RECAPTCHA_SITE_KEY`, which must match th
 - Concurrent refreshes share a promise in one tab and use the browser Web Locks API across tabs when available. Cookies are never exposed to JavaScript.
 - Logout clears in-memory authentication and private UI data. `BroadcastChannel` propagates logout and account changes without broadcasting JWTs.
 - Temporary restore network failures keep protected pages covered by the loading state and allow retry.
-- Route guards control presentation only. The backend authenticates `/api/admin`; role and resource authorization remain a separate policy decision. Current behavior preserves the SSR rule that active verified accounts, including `viewer`, can access these routes.
+- Route guards control presentation only. The backend authenticates `/api/admin` using the HttpOnly session cookie and enforces role and dish ownership permissions.
 
 For local development, Vite proxies `/api` to Express, keeping requests same-origin. For deployed cross-origin origins, configure `CLIENT_ORIGIN` and allow credentialed CORS. The backend sets refresh cookies with `SameSite=Lax`; the SPA and API should be same-site for browsers to send them reliably.
 
@@ -39,4 +39,4 @@ For local development, Vite proxies `/api` to Express, keeping requests same-ori
 
 Missing or rejected reCAPTCHA on registration, resend, login, and password-reset requests returns HTTP 400 with CAPTCHA_REQUIRED. Invalid, expired, or already consumed email codes return HTTP 400 with INVALID_OTP; a locked challenge returns HTTP 429 with OTP_LOCKED. Invalid reset tokens return HTTP 400 with INVALID_RESET_TOKEN. The forgot-password request returns HTTP 202 with the same generic message for known and unknown addresses; configured request limits return HTTP 429 with RATE_LIMITED. Login for a pending account returns the generic HTTP 401 LOGIN_INVALID response and issues no access token or refresh cookie.
 
-The API, not route guards, enforces access to every /api/admin route. The server loads the active account and role from the database on each request; the current audited policy permits both viewer and admin roles. Registration ignores any submitted role and creates viewer accounts. Reservation submission remains a public endpoint.
+The API, not route guards, enforces access to every /api/admin route. The server loads the active account and role from the database on each request; viewer, editor and admin permissions are enforced by the API. Registration ignores any submitted role and creates viewer accounts. Reservation submission remains a public endpoint.

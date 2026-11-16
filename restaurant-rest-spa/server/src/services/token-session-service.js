@@ -103,7 +103,7 @@ function createTokenSessionService(db) {
           sessionId: session.id,
           expiresAt: session.expiresAt,
           refreshToken: nextRawToken,
-          user: { id: user.id, email: user.email, role: user.role }
+          user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId }
         };
       });
     },
@@ -121,7 +121,20 @@ function createTokenSessionService(db) {
         else await db.$transaction((tx) => revokeFamily(tx, session.id, 'ACCOUNT_DEACTIVATED', now));
         return null;
       }
-      return { sessionId: session.id, user: { id: user.id, email: user.email, role: user.role } };
+      return { sessionId: session.id, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
+    },
+
+    async findActiveCookieSession(rawToken) {
+      if (typeof rawToken !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(rawToken)) return null;
+      const token = await db.refreshToken.findUnique({
+        where: { tokenHash: hashRefreshToken(rawToken) },
+        include: { session: { include: { user: true } } }
+      });
+      const now = new Date();
+      const session = token?.session;
+      const user = session?.user;
+      if (!token || token.usedAt || token.expiresAt <= now || !session || session.revokedAt || session.expiresAt <= now || !user || user.status !== 'ACTIVE' || !user.emailVerifiedAt) return null;
+      return { sessionId: session.id, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
     },
 
     async findSessionForRefreshToken(rawToken) {
