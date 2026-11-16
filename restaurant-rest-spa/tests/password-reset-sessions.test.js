@@ -15,8 +15,11 @@ function createResetDb(token) {
   const legacySessions = [{ sid: 'ssr-one', userId: user.id }, { sid: 'ssr-two', userId: user.id }];
   const authSessions = [
     { id: crypto.randomUUID(), userId: user.id, revokedAt: null },
-    { id: crypto.randomUUID(), userId: user.id, revokedAt: null }
+    { id: crypto.randomUUID(), userId: user.id, revokedAt: null },
+    { id: crypto.randomUUID(), userId: user.id, revokedAt: null, mfaPending: true }
   ];
+  const mfaFactor = { userId: user.id, secretCiphertext: 'v1.encrypted.seed', enabledAt: new Date('2026-01-01T00:00:00Z') };
+  const recoveryCodes = [{ userId: user.id, codeHash: 'a'.repeat(64), usedAt: null }];
   const tx = {
     passwordReset: {
       async findUnique({ where }) { return where.tokenHash === reset.tokenHash ? reset : null; },
@@ -50,24 +53,44 @@ function createResetDb(token) {
         }
         return { count };
       }
+    },
+    mfaFactor: {
+      async updateMany({ where, data }) {
+        if (where.userId !== mfaFactor.userId) return { count: 0 };
+        Object.assign(mfaFactor, data);
+        return { count: 1 };
+      }
+    },
+    mfaRecoveryCode: {
+      async deleteMany({ where }) {
+        const before = recoveryCodes.length;
+        for (let index = recoveryCodes.length - 1; index >= 0; index -= 1) {
+          if (recoveryCodes[index].userId === where.userId) recoveryCodes.splice(index, 1);
+        }
+        return { count: before - recoveryCodes.length };
+      }
     }
   };
   const db = {
     passwordReset: tx.passwordReset,
     async $transaction(callback) { return callback(tx); }
   };
-  return { db, user, reset, legacySessions, authSessions };
+  return { db, user, reset, legacySessions, authSessions, mfaFactor, recoveryCodes };
 }
 
 test('password reset consumes its token and revokes legacy and JWT session records', async () => {
   const token = crypto.randomBytes(32).toString('base64url');
-  const { db, user, reset, legacySessions, authSessions } = createResetDb(token);
+  const { db, user, reset, legacySessions, authSessions, mfaFactor, recoveryCodes } = createResetDb(token);
+  const factorBeforeReset = { ...mfaFactor };
+  const recoveryCodesBeforeReset = recoveryCodes.map((value) => ({ ...value }));
   const auth = createAuthService(db);
   assert.equal(await auth.completePasswordReset(token, 'A sufficiently long replacement password!4'), true);
   assert.match(user.passwordHash, /^scrypt\$/);
   assert.ok(reset.usedAt instanceof Date);
   assert.deepEqual(legacySessions, []);
   assert.ok(authSessions.every((session) => session.revokedAt instanceof Date && session.revokeReason === 'PASSWORD_RESET'));
+  assert.deepEqual(mfaFactor, factorBeforeReset);
+  assert.deepEqual(recoveryCodes, recoveryCodesBeforeReset);
 });
 
 test('legacy SSR Prisma client revokes SPA sessions through raw SQL when available', async () => {

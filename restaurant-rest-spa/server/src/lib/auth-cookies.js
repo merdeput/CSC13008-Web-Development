@@ -26,6 +26,10 @@ function setRefreshCookie(res, token, expiresAt, secure = process.env.NODE_ENV =
   res.cookie(getCookieNames(secure).refresh, token, cookieOptions(secure, maxAge));
 }
 
+function clearRefreshCookie(res, secure = process.env.NODE_ENV === 'production') {
+  res.clearCookie(getCookieNames(secure).refresh, cookieOptions(secure, 0));
+}
+
 function clearAuthCookies(res, secure = process.env.NODE_ENV === 'production') {
   const names = getCookieNames(secure);
   res.clearCookie(names.refresh, cookieOptions(secure, 0));
@@ -36,4 +40,4 @@ function setCsrfCookie(res, token, secure = process.env.NODE_ENV === 'production
   res.cookie(getCookieNames(secure).csrf, token, cookieOptions(secure, REFRESH_TTL_MS));
 }
 
-module.exports = { REFRESH_TTL_MS, getCookieNames, parseCookies, setRefreshCookie, setCsrfCookie, clearAuthCookies };
+module.exports = { REFRESH_TTL_MS, getCookieNames, parseCookies, setRefreshCookie, setCsrfCookie, clearRefreshCookie, clearAuthCookies };

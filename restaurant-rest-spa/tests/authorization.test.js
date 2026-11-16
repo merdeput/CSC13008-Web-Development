@@ -46,7 +46,7 @@ test('direct admin requests enforce cookie identity, CSRF and denied writes', as
   const users = { viewer: { role: 'viewer' }, editor: { role: 'editor', chefId }, admin: { role: 'admin' }, unknown: { role: 'unknown' } };
   const services = { dishes: { async create(data) { writes++; return data; } }, admin: { async overview() { return {}; } }, reservations: { async upcoming() { return []; } } };
   const tokenSessions = { async findActiveCookieSession(token) { return users[token] ? { user: users[token] } : null; } };
-  const app = createApp({ services, tokenSessions, jwtConfig: { secret: 'x'.repeat(32), issuer: 'test', audience: 'test' }, csrfSecret: 'x'.repeat(32), trustedOrigins: ['http://localhost:5173'], secureCookies: false, disableAuthCleanup: true });
+  const app = createApp({ services, tokenSessions, mfa: {}, jwtConfig: { secret: 'x'.repeat(32), issuer: 'test', audience: 'test' }, csrfSecret: 'x'.repeat(32), trustedOrigins: ['http://localhost:5173'], secureCookies: false, disableAuthCleanup: true });
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   t.after(() => server.close());

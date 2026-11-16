@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const { revokeUserSessions } = require('../../../../shared/auth/auth-service');
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MFA_PENDING_TTL_MS = 5 * 60 * 1000;
 
 function makeRefreshToken() {
   return crypto.randomBytes(32).toString('base64url');
@@ -35,6 +36,36 @@ function createTokenSessionService(db) {
       return { sessionId, expiresAt, refreshToken: rawToken };
     },
 
+    async createPendingSession(userId) {
+      const now = new Date();
+      const sessionId = crypto.randomUUID();
+      const expiresAt = new Date(now.getTime() + MFA_PENDING_TTL_MS);
+      await db.authSession.create({ data: { id: sessionId, userId, createdAt: now, expiresAt, mfaPending: true } });
+      return { sessionId, expiresAt };
+    },
+
+    async completePendingSession(sessionId, expectedUserId) {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + REFRESH_TTL_MS);
+      const rawToken = makeRefreshToken();
+      const tokenId = crypto.randomUUID();
+      return db.$transaction(async (tx) => {
+        const session = await tx.authSession.findUnique({ where: { id: sessionId }, include: { user: true } });
+        const user = session?.user;
+        if (!session || !session.mfaPending || session.revokedAt || session.expiresAt <= now || user?.id !== expectedUserId
+          || !user || user.status !== 'ACTIVE' || !user.emailVerifiedAt) return null;
+        const promoted = await tx.authSession.updateMany({
+          where: { id: sessionId, userId: expectedUserId, mfaPending: true, revokedAt: null, expiresAt: { gt: now } },
+          data: { mfaPending: false, expiresAt, lastUsedAt: now }
+        });
+        if (!promoted.count) return null;
+        await tx.refreshToken.create({
+          data: { id: tokenId, sessionId, tokenHash: hashRefreshToken(rawToken), issuedAt: now, expiresAt }
+        });
+        return { sessionId, expiresAt, refreshToken: rawToken, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
+      });
+    },
+
     async rotate(rawToken) {
       if (typeof rawToken !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(rawToken)) return { status: 'invalid' };
       const now = new Date();
@@ -59,7 +90,7 @@ function createTokenSessionService(db) {
           }
           return { status: 'invalid' };
         }
-        if (session.revokedAt || session.expiresAt <= now || current.expiresAt <= now) {
+        if (session.mfaPending || session.revokedAt || session.expiresAt <= now || current.expiresAt <= now) {
           if (!session.revokedAt && session.expiresAt <= now) await revokeFamily(tx, session.id, 'EXPIRED', now);
           return { status: 'invalid' };
         }
@@ -121,7 +152,7 @@ function createTokenSessionService(db) {
         else await db.$transaction((tx) => revokeFamily(tx, session.id, 'ACCOUNT_DEACTIVATED', now));
         return null;
       }
-      return { sessionId: session.id, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
+      return { sessionId: session.id, mfaPending: session.mfaPending, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
     },
 
     async findActiveCookieSession(rawToken) {
@@ -133,7 +164,7 @@ function createTokenSessionService(db) {
       const now = new Date();
       const session = token?.session;
       const user = session?.user;
-      if (!token || token.usedAt || token.expiresAt <= now || !session || session.revokedAt || session.expiresAt <= now || !user || user.status !== 'ACTIVE' || !user.emailVerifiedAt) return null;
+      if (!token || token.usedAt || token.expiresAt <= now || !session || session.mfaPending || session.revokedAt || session.expiresAt <= now || !user || user.status !== 'ACTIVE' || !user.emailVerifiedAt) return null;
       return { sessionId: session.id, user: { id: user.id, email: user.email, role: user.role, chefId: user.chefId } };
     },
 

@@ -105,6 +105,10 @@ test('React auth client works against the Express JWT routes', async (t) => {
   const app = createApp({
     services,
     tokenSessions,
+    mfa: {
+      async status() { return { enabled: false, pending: false, recoveryCodesRemaining: 0 }; },
+      async verifyLogin() { return { status: 'invalid' }; }
+    },
     jwtConfig: JWT_CONFIG,
     csrfSecret: 'integration-test-csrf-secret-at-least-32-bytes',
     trustedOrigins: [ORIGIN],

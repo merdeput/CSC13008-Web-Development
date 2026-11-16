@@ -15,6 +15,7 @@ process.env.LOGIN_COUNTER_HMAC_SECRET = 'test-login-counter-secret-123456789';
 process.env.RESEND_API_KEY = 'test-resend-key';
 process.env.EMAIL_FROM = 'Bep Hoi <noreply@example.test>';
 process.env.PUBLIC_BASE_URL = 'http://localhost:5173';
+process.env.MFA_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64url');
 
 const ORIGIN = 'http://localhost:5173';
 const JWT_CONFIG = {
@@ -62,7 +63,7 @@ function makeTokenSessions() {
       const sessionId = crypto.randomUUID();
       const refreshToken = crypto.randomBytes(32).toString('base64url');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      sessions.set(sessionId, { userId, revoked: false });
+      sessions.set(sessionId, { userId, revoked: false, mfaPending: false });
       refreshTokens.set(refreshToken, sessionId);
       return { sessionId, expiresAt, refreshToken };
     },
@@ -70,11 +71,26 @@ function makeTokenSessions() {
       const sessionId = refreshTokens.get(token);
       if (!sessionId || refreshTokens.get(`${token}:used`)) return null;
       const session = sessions.get(sessionId);
-      return session && !session.revoked ? { sessionId, user: USER } : null;
+      return session && !session.revoked && !session.mfaPending ? { sessionId, user: USER } : null;
+    },
+    async createPendingSession(userId) {
+      const sessionId = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      sessions.set(sessionId, { userId, revoked: false, mfaPending: true });
+      return { sessionId, expiresAt };
     },
     async findActiveSession(sessionId) {
       const session = sessions.get(sessionId);
-      return session && !session.revoked ? { sessionId, user: USER } : null;
+      return session && !session.revoked ? { sessionId, mfaPending: session.mfaPending, user: USER } : null;
+    },
+    async completePendingSession(sessionId, expectedUserId) {
+      const session = sessions.get(sessionId);
+      if (!session || session.revoked || !session.mfaPending || session.userId !== expectedUserId) return null;
+      session.mfaPending = false;
+      const refreshToken = crypto.randomBytes(32).toString('base64url');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      refreshTokens.set(refreshToken, sessionId);
+      return { sessionId, user: USER, refreshToken, expiresAt };
     },
     async rotate(refreshToken) {
       const sessionId = refreshTokens.get(refreshToken);
@@ -99,12 +115,16 @@ function makeTokenSessions() {
   };
 }
 
-async function startApp({ secureCookies = false, trustedOrigins = [ORIGIN] } = {}) {
+async function startApp({ secureCookies = false, trustedOrigins = [ORIGIN], mfa } = {}) {
   const { services, state } = makeServices();
   const tokenSessions = makeTokenSessions();
   const app = createApp({
     services,
     tokenSessions,
+    mfa: mfa || {
+      async status() { return { enabled: false, pending: false, recoveryCodesRemaining: 0 }; },
+      async verifyLogin({ code }) { return code === '123456' ? { status: 'valid' } : { status: 'invalid' }; }
+    },
     jwtConfig: JWT_CONFIG,
     csrfSecret: 'csrf-unit-test-secret-long-enough-for-hmac',
     trustedOrigins,
@@ -244,6 +264,55 @@ test('login issues a bearer token; admin APIs require a session cookie', async (
   const authorized = await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: { Cookie: refreshCookie.split(';')[0] } });
   assert.equal(authorized.status, 200);
   assert.deepEqual((await authorized.json()).data.counts, { dishes: 1 });
+});
+
+test('MFA login grants only a short-lived pending token until verification succeeds', async (t) => {
+  const ctx = await startApp({ mfa: {
+    async status() { return { enabled: true, pending: false, recoveryCodesRemaining: 10 }; },
+    async verifyLogin({ code }) { return code === '123456' ? { status: 'valid' } : { status: 'invalid' }; }
+  } });
+  t.after(ctx.close);
+  const { body: csrf, csrfCookie } = await getCsrf(ctx.baseUrl);
+  const login = await fetch(`${ctx.baseUrl}/api/auth/login`, {
+    method: 'POST', headers: postHeaders(csrf.data.csrfToken, csrfCookie),
+    body: JSON.stringify({ email: USER.email, password: 'Correct horse battery staple', captchaToken: 'valid' })
+  });
+  assert.equal(login.status, 200);
+  const pending = (await login.json()).data;
+  assert.equal(pending.mfaRequired, true);
+  assert.equal(verifyAccessToken(pending.pendingToken, JWT_CONFIG).stage, 'mfa_pending');
+  assert.equal(verifyAccessToken(pending.pendingToken, JWT_CONFIG).exp - verifyAccessToken(pending.pendingToken, JWT_CONFIG).iat, 300);
+  assert.equal(login.headers.getSetCookie().some((value) => value.startsWith(`${getCookieNames(false).refresh}=`)), false);
+
+  const oldSession = await ctx.tokenSessions.createSession(USER.id);
+  const switched = await fetch(`${ctx.baseUrl}/api/auth/login`, {
+    method: 'POST', headers: { ...postHeaders(csrf.data.csrfToken, `${csrfCookie}; ${getCookieNames(false).refresh}=${oldSession.refreshToken}`) },
+    body: JSON.stringify({ email: USER.email, password: 'Correct horse battery staple', captchaToken: 'valid' })
+  });
+  assert.ok(switched.headers.getSetCookie().some((value) => value.startsWith(`${getCookieNames(false).refresh}=`) && /Max-Age=0/i.test(value)));
+
+  const pendingHeaders = { Authorization: `Bearer ${pending.pendingToken}` };
+  assert.equal((await fetch(`${ctx.baseUrl}/api/auth/me`, { headers: pendingHeaders })).status, 401);
+  assert.equal((await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: pendingHeaders })).status, 401);
+
+  const invalid = await fetch(`${ctx.baseUrl}/api/auth/mfa/verify-login`, {
+    method: 'POST', headers: { ...postHeaders(csrf.data.csrfToken, csrfCookie), ...pendingHeaders },
+    body: JSON.stringify({ code: '000000' })
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, 'INVALID_MFA_CODE');
+
+  const verified = await fetch(`${ctx.baseUrl}/api/auth/mfa/verify-login`, {
+    method: 'POST', headers: { ...postHeaders(csrf.data.csrfToken, csrfCookie), ...pendingHeaders },
+    body: JSON.stringify({ code: '123456' })
+  });
+  assert.equal(verified.status, 200);
+  const completed = (await verified.json()).data;
+  assert.equal(completed.user.id, USER.id);
+  assert.ok(verified.headers.getSetCookie().some((value) => value.startsWith(`${getCookieNames(false).refresh}=`)));
+  const refreshCookie = verified.headers.getSetCookie().find((value) => value.startsWith(`${getCookieNames(false).refresh}=`)).split(';')[0];
+  assert.equal((await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: { Cookie: refreshCookie } })).status, 200);
+  assert.equal((await fetch(`${ctx.baseUrl}/api/admin/dashboard`, { headers: pendingHeaders })).status, 401);
 });
 
 test('refresh rotation, logout, secure cookie attributes, CSRF, and CORS are enforced', async (t) => {

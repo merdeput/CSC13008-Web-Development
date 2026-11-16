@@ -5,6 +5,7 @@ import { api, dateTime, dateTimeInputs, money, useLoad } from './api.js';
 import { useAuth } from './auth/context.jsx';
 import { GuestRoute, ProtectedRoute } from './auth/route-guards.jsx';
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyEmailPage } from './auth/pages.jsx';
+import MfaSettingsPage from './auth/mfa-settings.jsx';
 
 const FALLBACK = '/images/food-fallback.svg';
 const STATUS_LABEL = { PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', SEATED: 'Đang dùng bữa', COMPLETED: 'Hoàn tất', CANCELLED: 'Đã hủy', NO_SHOW: 'Không đến' };
@@ -150,6 +151,7 @@ function AdminShell() {
       <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/ingredients') ? 'is-current' : ''}`} to="/admin/ingredients"><span aria-hidden="true">✳</span> Nguyên liệu</NavLink>
       <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/reservations') ? 'is-current' : ''}`} to="/admin/reservations"><span aria-hidden="true">▦</span> Đặt bàn</NavLink>
       <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/chefs') ? 'is-current' : ''}`} to="/admin/chefs"><span aria-hidden="true">♨</span> Đầu bếp</NavLink>
+      <NavLink className={`admin-nav-link ${location.pathname.startsWith('/admin/security') ? 'is-current' : ''}`} to="/admin/security"><span aria-hidden="true">⌑</span> Bảo mật</NavLink>
     </aside><main id="main-content" className="admin-main"><Outlet /></main></div>
   </div>;
 }
@@ -1363,6 +1365,7 @@ export default function App() {
     </Route>
     <Route path="/admin" element={<ProtectedRoute roles={['viewer', 'editor', 'admin']}><AdminShell /></ProtectedRoute>}>
       <Route index element={<AdminDashboard />} />
+      <Route path="security" element={<MfaSettingsPage />} />
       {Object.keys(RESOURCES).map((resource) => <React.Fragment key={resource}>
         <Route path={resource} element={<AdminList resource={resource} />} />
         {resource !== 'reservations' && <Route path={`${resource}/new`} element={<AdminForm resource={resource} />} />}

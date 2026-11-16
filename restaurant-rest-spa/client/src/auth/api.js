@@ -21,6 +21,13 @@ function userFrom(data) {
 
 async function login(credentials) {
   const data = await request('/api/auth/login', { method: 'POST', body: credentials, retry401: false });
+  if (data?.mfaRequired === true) {
+    if (typeof data.pendingToken !== 'string' || !data.pendingToken) throw new ApiError('The MFA login response did not include a verification token.', 502, { code: 'MFA_TOKEN_MISSING' });
+    clearAccessToken();
+    clearCsrfToken();
+    invalidatePrivateCache();
+    return { mfaRequired: true, pendingToken: data.pendingToken, expiresIn: data.expiresIn };
+  }
   const token = accessTokenFrom(data);
   if (!token) throw new ApiError('The login response did not include an access token.', 502, { code: 'ACCESS_TOKEN_MISSING' });
   setAccessToken(token);
@@ -33,6 +40,19 @@ async function login(credentials) {
     clearAccessToken();
     throw error;
   }
+  invalidatePrivateCache({ reload: true });
+  return user;
+}
+
+async function verifyMfaLogin({ pendingToken, code }) {
+  const data = await request('/api/auth/mfa/verify-login', {
+    method: 'POST', body: { code }, protected: false, accessToken: pendingToken, retry401: false
+  });
+  const token = accessTokenFrom(data);
+  const user = userFrom(data);
+  if (!token || !user) throw new ApiError('The MFA verification response was incomplete.', 502, { code: 'MFA_SESSION_MISSING' });
+  setAccessToken(token);
+  clearCsrfToken();
   invalidatePrivateCache({ reload: true });
   return user;
 }
@@ -55,6 +75,7 @@ export const authApi = {
   verifyEmail: (input) => request('/api/auth/verify-otp', { method: 'POST', body: input, retry401: false }),
   resendOtp: (input) => request('/api/auth/resend-otp', { method: 'POST', body: input, retry401: false }),
   login,
+  verifyMfaLogin,
   forgotPassword: (input) => request('/api/auth/password-reset', { method: 'POST', body: input, retry401: false }),
   resetPassword: (input) => request('/api/auth/password-reset/confirm', { method: 'POST', body: input, retry401: false }),
   logout,
