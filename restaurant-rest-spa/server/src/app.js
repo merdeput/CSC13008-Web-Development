@@ -14,6 +14,7 @@ const { createAuthRouter } = require('./routes/auth-routes');
 const { notFound, errorHandler } = require('./middleware/error-handler');
 const { getJwtConfig } = require('./lib/jwt-config');
 const { createTokenSessionService } = require('./services/token-session-service');
+const { createMfaService } = require('./services/mfa-service');
 const { createCsrfMiddleware } = require('./middleware/csrf');
 const { requireAccessToken } = require('./middleware/require-access-token');
 
@@ -33,6 +34,7 @@ function createApp(options = {}) {
     authOptions: { passwordResetPath: '/reset-password', passwordResetTokenInFragment: true }
   });
   const tokenSessions = options.tokenSessions || createTokenSessionService(db);
+  const mfa = options.mfa || createMfaService(db, { encryptionKey: options.mfaEncryptionKey });
   const csrfMiddleware = createCsrfMiddleware({ secret: csrfSecret, trustedOrigins, secureCookies });
   let authCleanupTimer;
   if (tokenSessions && typeof tokenSessions.pruneExpired === 'function' && options.disableAuthCleanup !== true) {
@@ -69,7 +71,7 @@ function createApp(options = {}) {
   app.use(express.json({ limit: '16kb' }));
   app.get('/api/health', (_req, res) => res.json({ ok: true, data: { status: 'available' } }));
   app.use('/api/auth', createAuthRouter({
-    services, tokenSessions, jwtConfig, csrfSecret, csrfMiddleware, secureCookies,
+    services, tokenSessions, mfa, jwtConfig, csrfSecret, csrfMiddleware, secureCookies,
     verifyCaptcha: options.verifyRecaptcha
   }));
   app.use('/api', createPublicRouter(services));

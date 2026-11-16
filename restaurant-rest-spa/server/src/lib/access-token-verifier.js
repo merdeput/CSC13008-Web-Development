@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CLAIMS = new Set(['sub', 'iss', 'aud', 'iat', 'exp', 'jti', 'sid']);
+const CLAIMS = new Set(['sub', 'iss', 'aud', 'iat', 'exp', 'jti', 'sid', 'stage']);
 
 function decodeJsonSegment(segment) {
   if (!/^[A-Za-z0-9_-]+$/.test(segment)) return null;
@@ -35,7 +35,11 @@ function verifyAccessToken(token, config, now = Date.now()) {
   if (claims.iss !== config.issuer || claims.aud !== config.audience) return null;
   if (!Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp)) return null;
   if (claims.iat > nowSeconds + 30 || claims.exp <= nowSeconds || claims.exp <= claims.iat) return null;
-  if (claims.exp - claims.iat !== 15 * 60) return null;
+  if (claims.stage === 'mfa_pending') {
+    if (claims.exp - claims.iat !== 5 * 60) return null;
+  } else {
+    if (Object.hasOwn(claims, 'stage') || claims.exp - claims.iat !== 15 * 60) return null;
+  }
 
   return claims;
 }

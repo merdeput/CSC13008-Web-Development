@@ -480,12 +480,16 @@ function resendErrorMessage(error) {
 }
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, completeMfaLogin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const state = useFormState();
   const query = new URLSearchParams(location.search);
   const [password, setPassword] = React.useState('');
+  const [mfaChallenge, setMfaChallenge] = React.useState(null);
+  const [mfaCode, setMfaCode] = React.useState('');
+  const [mfaBusy, setMfaBusy] = React.useState(false);
+  const [mfaError, setMfaError] = React.useState('');
   const [lockout, setLockout] = React.useState(null);
   const lockoutVersion = React.useRef(0);
   const [remainingMs, setRemainingMs] = React.useState(0);
@@ -509,9 +513,45 @@ export function LoginPage() {
 
   const submit = async (form, captchaToken) => {
     const values = new FormData(form);
-    const user = await login({ email: String(values.get('email') || '').trim(), password: String(values.get('password') || ''), captchaToken });
+    return login({ email: String(values.get('email') || '').trim(), password: String(values.get('password') || ''), captchaToken });
+  };
+  const finishLogin = (user) => {
+    if (user?.mfaRequired) {
+      setMfaChallenge(user);
+      setMfaCode('');
+      setMfaError('');
+      state.setNotice('Mật khẩu đã được xác minh. Hãy nhập mã từ ứng dụng xác thực hoặc mã khôi phục.');
+      return;
+    }
     const destination = location.state?.from?.pathname || (user ? '/admin' : '/');
     navigate(destination.startsWith('/') && !destination.startsWith('//') ? destination : '/admin', { replace: true });
+  };
+  const submitMfa = async (event) => {
+    event.preventDefault();
+    if (mfaBusy || !mfaChallenge) return;
+    const code = mfaCode.trim();
+    if (!/^\d{6}$/.test(code) && !/^[A-Fa-f0-9\s-]{32,40}$/.test(code)) {
+      setMfaError('Nhập mã sáu chữ số hoặc một trong các mã khôi phục.');
+      return;
+    }
+    setMfaBusy(true);
+    setMfaError('');
+    try {
+      const user = await completeMfaLogin({ pendingToken: mfaChallenge.pendingToken, code });
+      const destination = location.state?.from?.pathname || '/admin';
+      navigate(destination.startsWith('/') && !destination.startsWith('//') ? destination : '/admin', { replace: true });
+      return user;
+    } catch (error) {
+      const messages = {
+        MFA_LOCKED: 'Bạn đã thử quá nhiều lần. Hãy chờ rồi thử lại.',
+        MFA_CHALLENGE_EXPIRED: 'Phiên xác minh đã hết hạn. Hãy đăng nhập lại.',
+        INVALID_MFA_CODE: 'Mã không đúng, đã hết hạn hoặc đã được sử dụng.',
+        UNAUTHENTICATED: 'Phiên xác minh đã hết hạn. Hãy đăng nhập lại.'
+      };
+      setMfaError(messages[error?.code] || 'Không thể xác minh mã. Vui lòng thử lại.');
+    } finally {
+      setMfaBusy(false);
+    }
   };
   const handleFailure = (error) => {
     if (error?.code !== 'LOGIN_LOCKED') return;
@@ -524,8 +564,16 @@ export function LoginPage() {
   const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
 
   return <AuthFrame variant="login" title="Đăng nhập" intro="Đăng nhập để tiếp tục.">
-    <CaptchaForm
-      {...state} onSubmit={submit} onFailure={handleFailure} errorMessage={loginErrorMessage}
+    {mfaChallenge && <form className="auth-form" onSubmit={submitMfa}>
+      <p className="auth-intro">Mật khẩu đã được xác minh. Quyền truy cập chỉ được cấp sau khi mã xác thực hợp lệ.</p>
+      <div className="auth-field"><label htmlFor="login-mfa-code">Mã ứng dụng xác thực hoặc mã khôi phục</label><input id="login-mfa-code" name="code" type="text" inputMode="text" autoComplete="one-time-code" autoFocus required maxLength="40" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} aria-describedby="login-mfa-help" /></div>
+      <small id="login-mfa-help" className="auth-help">Mã xác thực đổi sau mỗi 30 giây và chỉ dùng được một lần. Nếu mã không hợp lệ, hãy bật ngày giờ tự động trên thiết bị có ứng dụng xác thực rồi thử mã mới. Bạn cũng có thể dùng mã khôi phục chưa sử dụng.</small>
+      <Message error={mfaError} />
+      <SubmitButton busy={mfaBusy}>Xác minh và đăng nhập</SubmitButton>
+      <button className="auth-inline-button" type="button" disabled={mfaBusy} onClick={() => { setMfaChallenge(null); setMfaCode(''); setMfaError(''); state.setNotice(''); }}>Dùng tài khoản khác</button>
+    </form>}
+    {!mfaChallenge && <CaptchaForm
+      {...state} onSubmit={submit} onSuccess={finishLogin} onFailure={handleFailure} errorMessage={loginErrorMessage}
       submitLabel="Đăng nhập" loadingLabel="Đang đăng nhập…" disabled={remaining > 0}
     >
       <EmailField id="login-email" autoComplete="username" error={state.fieldErrors.email} />
@@ -534,7 +582,7 @@ export function LoginPage() {
         value={password} onChange={(event) => setPassword(event.target.value)} error={state.fieldErrors.password}
       />
       <div className="auth-inline-link"><Link to="/forgot-password">Quên mật khẩu?</Link></div>
-    </CaptchaForm>
+    </CaptchaForm>}
     {remaining > 0 && <p className="auth-lockout">Có quá nhiều lần đăng nhập chưa thành công. Vui lòng thử lại sau <time aria-live="off">{formatCountdown(remainingMs)}</time>.</p>}
     {query.get('verified') === '1' && <p className="auth-notice" role="status">Email đã được xác minh. Bạn có thể đăng nhập.</p>}
     {query.get('reset') === '1' && <p className="auth-notice" role="status">Mật khẩu đã được cập nhật. Hãy đăng nhập bằng mật khẩu mới.</p>}

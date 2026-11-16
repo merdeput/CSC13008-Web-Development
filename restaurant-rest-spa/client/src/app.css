@@ -840,3 +840,22 @@
   .admin-delete-overlay { align-items: flex-end; padding: .45rem; }
   .admin-delete-panel { width: 100%; max-height: 92vh; box-shadow: 0 -3px 0 var(--admin-clay), 0 4px 20px rgba(20, 24, 18, .22); }
 }
+
+.mfa-settings { display: grid; gap: 1rem; }
+.mfa-panel { display: grid; gap: .8rem; max-width: 920px; }
+.mfa-panel > p { max-width: 70ch; color: var(--admin-muted); }
+.mfa-panel .admin-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0; }
+.mfa-count { color: var(--admin-muted); font-size: .75rem; }
+.mfa-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
+.mfa-form { display: grid; gap: .7rem; max-width: 540px; }
+.mfa-form h3 { margin: .5rem 0 0; color: var(--admin-ink); font-size: .9rem; }
+.mfa-enrollment { display: grid; justify-items: start; gap: .65rem; padding-top: .35rem; }
+.mfa-qr { width: 240px; max-width: 100%; padding: .5rem; border: 1px solid var(--admin-line); background: white; image-rendering: pixelated; }
+.mfa-secret { display: block; max-width: 100%; padding: .7rem; overflow-wrap: anywhere; border: 1px solid var(--admin-line); background: #f6f8f3; font-size: .85rem; letter-spacing: .08em; }
+.mfa-danger-form { margin-top: .35rem; padding-top: 1rem; border-top: 1px solid var(--admin-line); }
+.mfa-recovery-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1.3rem; margin: 0; padding: 1rem 1rem 1rem 2.4rem; border: 1px solid var(--admin-line); background: #f8f9f5; }
+.mfa-recovery-list code { font-size: .8rem; letter-spacing: .06em; }
+.mfa-notice { padding: .7rem .85rem; border-left: 3px solid var(--admin-moss); color: var(--admin-ink); background: #eef3e9; }
+.auth-inline-button { justify-self: start; padding: .35rem 0; border: 0; color: var(--admin-moss); background: transparent; font: inherit; font-size: .82rem; text-decoration: underline; cursor: pointer; }
+.auth-inline-button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 560px) { .mfa-recovery-list { grid-template-columns: minmax(0, 1fr); } }

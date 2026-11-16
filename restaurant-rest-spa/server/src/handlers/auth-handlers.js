@@ -23,7 +23,7 @@ function logFailure(event, error) {
   console.error(`[auth] ${event} failed`, { name: error && error.name, code: error && error.code });
 }
 
-function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, verifyCaptcha = verifyRecaptcha, secureCookies }) {
+function createAuthHandlers({ services, tokenSessions, mfa, jwtConfig, csrfSecret, verifyCaptcha = verifyRecaptcha, secureCookies }) {
   function issueCsrf(res) {
     const token = createCsrfToken(csrfSecret);
     setCsrfCookie(res, token, secureCookies);
@@ -39,6 +39,20 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       logFailure(`${event} CAPTCHA verification`, error);
       return { ok: false, unavailable: true };
     }
+  }
+
+  function mfaFailure(res, result) {
+    if (result.status === 'locked') {
+      const retryAfterSeconds = Math.max(1, Math.ceil((new Date(result.lockedUntil).getTime() - Date.now()) / 1000));
+      res.set('Retry-After', String(retryAfterSeconds));
+      res.set('Cache-Control', 'no-store');
+      return res.status(429).json({ ok: false, error: { code: 'MFA_LOCKED', message: 'Too many invalid verification attempts. Try again later.', retryAfterSeconds } });
+    }
+    if (result.status === 'reauth_required') return fail(res, 401, 'REAUTH_REQUIRED', 'Enter your current password and a valid authenticator or recovery code.');
+    if (result.status === 'not_enabled') return fail(res, 409, 'MFA_NOT_ENABLED', 'Multi-factor authentication is not enabled for this account.');
+    if (result.status === 'expired') return fail(res, 400, 'MFA_SETUP_EXPIRED', 'The setup has expired. Start again to create a new authenticator secret.');
+    if (result.status === 'unavailable') return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication is temporarily unavailable.');
+    return fail(res, 400, 'INVALID_MFA_CODE', 'The verification code is invalid, expired, or already used.');
   }
 
   return {
@@ -133,6 +147,13 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
         }
 
         await services.auth.clearLoginFailures(email, req.ip);
+        const mfaStatus = await mfa.status(user.id);
+        if (mfaStatus.enabled) {
+          const pendingSession = await tokenSessions.createPendingSession(user.id);
+          const pendingToken = signAccessToken({ userId: user.id, sessionId: pendingSession.sessionId, stage: 'mfa_pending' }, jwtConfig);
+          res.set('Cache-Control', 'no-store');
+          return ok(res, { mfaRequired: true, pendingToken, expiresIn: 300 });
+        }
         const session = await tokenSessions.createSession(user.id);
         const accessToken = signAccessToken({ userId: user.id, sessionId: session.sessionId }, jwtConfig);
         setRefreshCookie(res, session.refreshToken, session.expiresAt, secureCookies);
@@ -145,6 +166,96 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
       } catch (error) {
         logFailure('login', error);
         return fail(res, 503, 'AUTH_UNAVAILABLE', 'Login is temporarily unavailable.');
+      }
+    },
+
+    async verifyMfaLogin(req, res) {
+      const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+      if (!/^\d{6}$/.test(code) && !/^[A-Fa-f0-9\s-]{32,40}$/.test(code)) {
+        return fail(res, 400, 'INVALID_MFA_CODE', 'Enter a six-digit authenticator code or a recovery code.');
+      }
+      try {
+        const result = await mfa.verifyLogin({ userId: req.auth.user.id, code });
+        if (result.status !== 'valid') return mfaFailure(res, result);
+        const session = await tokenSessions.completePendingSession(req.auth.sessionId, req.auth.user.id);
+        if (!session) return fail(res, 401, 'MFA_CHALLENGE_EXPIRED', 'The verification session has expired. Sign in again.');
+        const accessToken = signAccessToken({ userId: session.user.id, sessionId: session.sessionId }, jwtConfig);
+        setRefreshCookie(res, session.refreshToken, session.expiresAt, secureCookies);
+        res.set('Cache-Control', 'no-store');
+        return ok(res, {
+          accessToken,
+          expiresIn: jwtConfig.accessTtlSeconds,
+          user: { id: session.user.id, email: session.user.email, role: session.user.role }
+        });
+      } catch (error) {
+        logFailure('MFA login verification', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication is temporarily unavailable.');
+      }
+    },
+
+    async mfaStatus(req, res) {
+      try {
+        const status = await mfa.status(req.auth.user.id);
+        res.set('Cache-Control', 'no-store');
+        return ok(res, status);
+      } catch (error) {
+        logFailure('MFA status', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication status is temporarily unavailable.');
+      }
+    },
+
+    async beginMfaSetup(req, res) {
+      try {
+        const result = await mfa.beginSetup({ userId: req.auth.user.id, password: req.body?.password, code: req.body?.code });
+        if (result.status !== 'started') return mfaFailure(res, result);
+        res.set('Cache-Control', 'no-store');
+        res.set('Pragma', 'no-cache');
+        return ok(res, {
+          secret: result.secret,
+          otpauthUri: result.otpauthUri,
+          qrCodeDataUrl: result.qrCodeDataUrl,
+          expiresAt: result.expiresAt
+        });
+      } catch (error) {
+        logFailure('MFA setup start', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication setup is temporarily unavailable.');
+      }
+    },
+
+    async confirmMfaSetup(req, res) {
+      const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+      try {
+        const result = await mfa.confirmSetup({ userId: req.auth.user.id, code });
+        if (result.status !== 'enabled') return mfaFailure(res, result);
+        res.set('Cache-Control', 'no-store');
+        return ok(res, { enabled: true, recoveryCodes: result.recoveryCodes });
+      } catch (error) {
+        logFailure('MFA setup confirmation', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication setup is temporarily unavailable.');
+      }
+    },
+
+    async disableMfa(req, res) {
+      try {
+        const result = await mfa.disable({ userId: req.auth.user.id, password: req.body?.password, code: req.body?.code });
+        if (result.status !== 'disabled') return mfaFailure(res, result);
+        res.set('Cache-Control', 'no-store');
+        return ok(res, { enabled: false });
+      } catch (error) {
+        logFailure('MFA disable', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Multi-factor authentication could not be disabled.');
+      }
+    },
+
+    async refreshMfaRecoveryCodes(req, res) {
+      try {
+        const result = await mfa.refreshRecoveryCodes({ userId: req.auth.user.id, password: req.body?.password, code: req.body?.code });
+        if (result.status !== 'replaced') return mfaFailure(res, result);
+        res.set('Cache-Control', 'no-store');
+        return ok(res, { recoveryCodes: result.recoveryCodes });
+      } catch (error) {
+        logFailure('MFA recovery-code refresh', error);
+        return fail(res, 503, 'AUTH_UNAVAILABLE', 'Recovery codes could not be replaced.');
       }
     },
 

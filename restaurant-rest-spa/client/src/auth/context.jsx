@@ -87,6 +87,22 @@ export function AuthProvider({ children }) {
     setError('');
     try {
       const nextUser = await authApi.login(credentials);
+      if (nextUser?.mfaRequired) return nextUser;
+      setUser(nextUser);
+      setStatus('authenticated');
+      channelRef.current?.postMessage({ type: 'account-changed' });
+      return nextUser;
+    } catch (cause) {
+      setUser(null);
+      setStatus('unauthenticated');
+      throw cause;
+    }
+  }, []);
+
+  const completeMfaLogin = React.useCallback(async (challenge) => {
+    setError('');
+    try {
+      const nextUser = await authApi.verifyMfaLogin(challenge);
       setUser(nextUser);
       setStatus('authenticated');
       channelRef.current?.postMessage({ type: 'account-changed' });
@@ -112,8 +128,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = React.useMemo(() => ({
-    status, user, error, login, logout, retryRestore: restore
-  }), [status, user, error, login, logout, restore]);
+    status, user, error, login, completeMfaLogin, logout, retryRestore: restore
+  }), [status, user, error, login, completeMfaLogin, logout, restore]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

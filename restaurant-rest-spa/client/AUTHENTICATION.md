@@ -12,7 +12,13 @@ All API calls use JSON and `credentials: 'include'`. Success responses use `{ "o
 | Register | `POST /api/auth/register` | `{ email, password, captchaToken }` |
 | Verify email | `POST /api/auth/verify-otp` | `{ email, code }`; verification requires a later login. |
 | Resend OTP | `POST /api/auth/resend-otp` | `{ email, captchaToken }` |
-| Login | `POST /api/auth/login` | `{ email, password, captchaToken }`; returns `{ accessToken, expiresIn, user }`. |
+| Login | `POST /api/auth/login` | `{ email, password, captchaToken }`; returns `{ accessToken, expiresIn, user }` when MFA is off, or `{ mfaRequired, pendingToken, expiresIn }` when MFA is on. |
+| Complete MFA login | `POST /api/auth/mfa/verify-login` | Bearer pending token plus `{ code }`; accepts a TOTP or one-use recovery code and only then issues a full access token and refresh cookie. |
+| MFA status | `GET /api/auth/mfa/status` | Full bearer token; returns whether MFA is enabled and the number of unused recovery codes. |
+| Start or replace MFA | `POST /api/auth/mfa/setup` | Full bearer token plus `{ password, code? }`; returns a temporary QR image and manual secret. Replacing an enabled factor also requires its current TOTP or recovery code. |
+| Confirm MFA setup | `POST /api/auth/mfa/confirm-setup` | Full bearer token plus `{ code }`; activates the factor and returns recovery codes once. |
+| Disable MFA | `POST /api/auth/mfa/disable` | Full bearer token plus `{ password, code }`; requires re-authentication. |
+| Replace recovery codes | `POST /api/auth/mfa/recovery-codes` | Full bearer token plus `{ password, code }`; invalidates all earlier codes and returns the new set once. |
 | Refresh | `POST /api/auth/refresh` | Refresh cookie and `X-CSRF-Token`; returns a new access token and CSRF token. |
 | Current user | `GET /api/auth/me` | Bearer access token; returns the user object directly in `data`. |
 | Logout | `POST /api/auth/logout` | CSRF header and cookies, with an optional Bearer token; returns `204`. |
@@ -39,4 +45,6 @@ For local development, Vite proxies `/api` to Express, keeping requests same-ori
 
 Missing or rejected reCAPTCHA on registration, resend, login, and password-reset requests returns HTTP 400 with CAPTCHA_REQUIRED. Invalid, expired, or already consumed email codes return HTTP 400 with INVALID_OTP; a locked challenge returns HTTP 429 with OTP_LOCKED. Invalid reset tokens return HTTP 400 with INVALID_RESET_TOKEN. The forgot-password request returns HTTP 202 with the same generic message for known and unknown addresses; configured request limits return HTTP 429 with RATE_LIMITED. Login for a pending account returns the generic HTTP 401 LOGIN_INVALID response and issues no access token or refresh cookie.
 
-The API, not route guards, enforces access to every /api/admin route. The server loads the active account and role from the database on each request; the current audited policy permits both viewer and admin roles. Registration ignores any submitted role and creates viewer accounts. Reservation submission remains a public endpoint.
+The API, not route guards, enforces access to every /api/admin route. An MFA pending token is accepted only by the login verification endpoint and is never accepted by `/api/auth/me`, refresh, or admin APIs. TOTP seeds are encrypted at rest with the server-only `MFA_ENCRYPTION_KEY`; recovery codes are stored as hashes. Codes are single-use, rate limited per account and IP, and a successful password reset does not disable MFA. The server loads the active account and role from the database on each request; the current audited policy permits both viewer and admin roles. Registration ignores any submitted role and creates viewer accounts. Reservation submission remains a public endpoint.
+
+TOTP uses the server operating system clock and the authenticator device clock. Configure automatic time synchronization on the server (NTP) and the authenticator device. The verifier accepts the current 30-second step and one neighboring step on either side; accepted steps cannot be reused. If the device clock is far out of sync, correct it and use a new code or an unused recovery code. The application cannot synchronize the clock of a separate authenticator device.
