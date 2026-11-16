@@ -77,7 +77,7 @@ function createTokenSessionService(db) {
 
         const consumed = await tx.refreshToken.updateMany({
           where: { id: current.id, usedAt: null, expiresAt: { gt: now } },
-          data: { usedAt: now, replacedById: nextTokenId }
+          data: { usedAt: now }
         });
         if (!consumed.count) {
           const latest = await tx.refreshToken.findUnique({ where: { id: current.id } });

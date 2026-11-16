@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { PrismaClient } = require('@prisma/client');
 const { createTokenSessionService, hashRefreshToken } = require('../server/src/services/token-session-service');
 
 function matches(record, where) {
@@ -18,7 +19,7 @@ function matches(record, where) {
   });
 }
 
-function createMemoryDb() {
+function createMemoryDb({ validateRefreshUpdate = null, validateRefreshCreate = null } = {}) {
   const state = { users: new Map(), sessions: new Map(), tokens: new Map(), legacySessions: [] };
   let transactionTail = Promise.resolve();
   const tx = {};
@@ -52,6 +53,7 @@ function createMemoryDb() {
   };
   tx.refreshToken = {
     async create({ data }) {
+      if (validateRefreshCreate) await validateRefreshCreate({ data });
       const token = { usedAt: null, parentId: null, ...data };
       state.tokens.set(token.id, token);
       return token;
@@ -64,6 +66,7 @@ function createMemoryDb() {
       return { ...token, session: session ? { ...session, user: state.users.get(session.userId) || null } : null };
     },
     async updateMany({ where, data }) {
+      if (validateRefreshUpdate) await validateRefreshUpdate({ where, data });
       const token = [...state.tokens.values()].find((item) => matches(item, where));
       if (!token) return { count: 0 };
       Object.assign(token, data);
@@ -105,6 +108,63 @@ test('login session stores only a SHA-256 refresh hash and the absolute deadline
   assert.equal(Object.values(storedToken).includes(session.refreshToken), false);
   assert.equal(session.refreshToken.length, 43);
   assert.equal((await service.findActiveSession(session.sessionId)).user.id, user.id);
+});
+
+test('refresh rotation uses valid Prisma fields and links each successor through parentId', async (t) => {
+  const queries = [];
+  const adapter = {
+    provider: 'postgres',
+    adapterName: 'refresh-validation-test',
+    async connect() {
+      return {
+        provider: 'postgres',
+        adapterName: 'refresh-validation-test',
+        async executeRaw(query) { queries.push(query.sql); return 1; },
+        async queryRaw(query) {
+          queries.push(query.sql);
+          // The fixture exercises Prisma input validation and SQL generation without a database.
+          const id = '537d4e6d-14d7-49d3-8de4-57a6fd737b99';
+          return {
+            columnNames: ['id', 'sessionId', 'tokenHash', 'parentId', 'issuedAt', 'expiresAt', 'usedAt'],
+            columnTypes: [15, 15, 7, 15, 10, 10, 10],
+            rows: [[id, id, '0'.repeat(64), null, '2026-01-01T00:00:00.000Z', '2026-01-08T00:00:00.000Z', null]]
+          };
+        },
+        async dispose() {}
+      };
+    }
+  };
+  const prisma = new PrismaClient({ adapter });
+  t.after(() => prisma.$disconnect());
+  const { db, state } = createMemoryDb({
+    validateRefreshUpdate: (args) => prisma.refreshToken.updateMany(args),
+    validateRefreshCreate: (args) => prisma.refreshToken.create(args)
+  });
+  const user = addActiveUser(state);
+  const service = createTokenSessionService(db);
+  const initial = await service.createSession(user.id);
+  const original = [...state.tokens.values()][0];
+
+  const first = await service.rotate(initial.refreshToken);
+  assert.equal(first.status, 'rotated');
+  assert.ok(original.usedAt instanceof Date);
+  const successor = [...state.tokens.values()].find((token) => token.tokenHash === hashRefreshToken(first.refreshToken));
+  assert.ok(successor);
+  assert.equal(successor.parentId, original.id);
+  assert.equal(successor.usedAt, null);
+  assert.notEqual(first.refreshToken, initial.refreshToken);
+
+  const second = await service.rotate(first.refreshToken);
+  assert.equal(second.status, 'rotated');
+  assert.ok(successor.usedAt instanceof Date);
+  const next = [...state.tokens.values()].find((token) => token.tokenHash === hashRefreshToken(second.refreshToken));
+  assert.ok(next);
+  assert.equal(next.parentId, successor.id);
+  assert.equal(next.usedAt, null);
+  assert.equal(queries.filter((sql) => sql.startsWith('INSERT')).length, 3);
+  assert.equal(queries.filter((sql) => sql.startsWith('UPDATE')).length, 2);
+  assert.ok(queries.every((sql) => sql.includes('"RefreshToken"')));
+  assert.equal((await service.findActiveSession(initial.sessionId)).user.id, user.id);
 });
 
 test('refresh rotates atomically; concurrent use succeeds once and revokes the family on replay', async () => {

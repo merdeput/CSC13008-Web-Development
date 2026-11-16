@@ -340,3 +340,55 @@ test('production CSP allows the reCAPTCHA script, frame, and connection origins'
   assert.match(policy, /frame-src[^;]*recaptcha\.google\.com\/recaptcha/);
   assert.match(policy, /connect-src[^;]*www\.google\.com\/recaptcha/);
 });
+
+test('temporary refresh failure preserves cookies and permits retry', async (t) => {
+  const ctx = await startApp();
+  t.after(ctx.close);
+  const names = getCookieNames(false);
+  const { body: csrf, csrfCookie } = await getCsrf(ctx.baseUrl);
+  const login = await fetch(ctx.baseUrl + '/api/auth/login', {
+    method: 'POST', headers: postHeaders(csrf.data.csrfToken, csrfCookie),
+    body: JSON.stringify({ email: USER.email, password: 'Correct horse battery staple', captchaToken: 'valid' })
+  });
+  assert.equal(login.status, 200);
+  const refreshCookie = login.headers.getSetCookie().find((value) => value.startsWith(names.refresh + '=')).split(';')[0];
+  const refreshHeaders = { ...postHeaders(csrf.data.csrfToken, csrfCookie), Cookie: csrfCookie + '; ' + refreshCookie };
+  const originalRotate = ctx.tokenSessions.rotate;
+  ctx.tokenSessions.rotate = async () => { throw new Error('simulated database outage'); };
+
+  const unavailable = await fetch(ctx.baseUrl + '/api/auth/refresh', { method: 'POST', headers: refreshHeaders });
+  assert.equal(unavailable.status, 503);
+  assert.equal((await unavailable.json()).error.code, 'AUTH_UNAVAILABLE');
+  assert.equal(unavailable.headers.getSetCookie().some((value) => value.startsWith(names.refresh + '=')), false);
+  assert.equal(unavailable.headers.getSetCookie().some((value) => value.startsWith(names.csrf + '=')), false);
+
+  ctx.tokenSessions.rotate = originalRotate;
+  const retried = await fetch(ctx.baseUrl + '/api/auth/refresh', { method: 'POST', headers: refreshHeaders });
+  assert.equal(retried.status, 200);
+  assert.ok((await retried.json()).data.accessToken);
+  assert.ok(retried.headers.getSetCookie().some((value) => value.startsWith(names.refresh + '=')));
+});
+
+test('refresh clears stale cookies if response creation fails after rotation', async (t) => {
+  const ctx = await startApp();
+  t.after(ctx.close);
+  const names = getCookieNames(false);
+  const { body: csrf, csrfCookie } = await getCsrf(ctx.baseUrl);
+  const login = await fetch(ctx.baseUrl + '/api/auth/login', {
+    method: 'POST', headers: postHeaders(csrf.data.csrfToken, csrfCookie),
+    body: JSON.stringify({ email: USER.email, password: 'Correct horse battery staple', captchaToken: 'valid' })
+  });
+  assert.equal(login.status, 200);
+  const refreshCookie = login.headers.getSetCookie().find((value) => value.startsWith(names.refresh + '=')).split(';')[0];
+  const originalRotate = ctx.tokenSessions.rotate;
+  ctx.tokenSessions.rotate = async (token) => ({ ...await originalRotate(token), user: null });
+
+  const unavailable = await fetch(ctx.baseUrl + '/api/auth/refresh', {
+    method: 'POST',
+    headers: { ...postHeaders(csrf.data.csrfToken, csrfCookie), Cookie: csrfCookie + '; ' + refreshCookie }
+  });
+  assert.equal(unavailable.status, 503);
+  assert.equal((await unavailable.json()).error.code, 'AUTH_UNAVAILABLE');
+  assert.ok(unavailable.headers.getSetCookie().some((value) => value.startsWith(names.refresh + '=') && /Max-Age=0/i.test(value)));
+  assert.ok(unavailable.headers.getSetCookie().some((value) => value.startsWith(names.csrf + '=') && /Max-Age=0/i.test(value)));
+});

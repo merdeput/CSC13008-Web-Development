@@ -151,12 +151,14 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
     async refresh(req, res) {
       const cookieName = getCookieNames(secureCookies).refresh;
       const rawToken = parseCookies(req.headers.cookie).get(cookieName);
+      let rotationCompleted = false;
       try {
         const result = await tokenSessions.rotate(rawToken);
         if (result.status !== 'rotated') {
           clearAuthCookies(res, secureCookies);
           return fail(res, 401, result.status === 'reuse' ? 'REFRESH_REUSE' : 'REFRESH_INVALID', 'The refresh session is invalid. Sign in again.');
         }
+        rotationCompleted = true;
         const accessToken = signAccessToken({ userId: result.user.id, sessionId: result.sessionId }, jwtConfig);
         setRefreshCookie(res, result.refreshToken, result.expiresAt, secureCookies);
         const csrfToken = issueCsrf(res);
@@ -164,7 +166,8 @@ function createAuthHandlers({ services, tokenSessions, jwtConfig, csrfSecret, ve
         return ok(res, { accessToken, expiresIn: jwtConfig.accessTtlSeconds, csrfToken });
       } catch (error) {
         logFailure('refresh', error);
-        clearAuthCookies(res, secureCookies);
+        // After a completed rotation, the original cookie cannot be retried.
+        if (rotationCompleted) clearAuthCookies(res, secureCookies);
         return fail(res, 503, 'AUTH_UNAVAILABLE', 'Session refresh is temporarily unavailable.');
       }
     },
