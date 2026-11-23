@@ -206,3 +206,18 @@ test('logout revokes the JWT session immediately', async () => {
   assert.equal(await service.findActiveSession(created.sessionId), null);
   assert.equal(state.sessions.get(created.sessionId).revokeReason, 'LOGOUT');
 });
+
+test('MFA session promotion respects the seven-day database constraint', async () => {
+  const { db, state } = createMemoryDb();
+  const user = addActiveUser(state);
+  const service = createTokenSessionService(db);
+  const pending = await service.createPendingSession(user.id);
+  const stored = state.sessions.get(pending.sessionId);
+  stored.createdAt = new Date(stored.createdAt.getTime() - 10000);
+  const completed = await service.completePendingSession(pending.sessionId, user.id);
+  assert.ok(completed);
+  assert.equal(completed.expiresAt.getTime(), stored.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  assert.equal(stored.mfaPending, false);
+  assert.equal([...state.tokens.values()][0].expiresAt.getTime(), completed.expiresAt.getTime());
+  assert.equal(await service.completePendingSession(pending.sessionId, user.id), null);
+});

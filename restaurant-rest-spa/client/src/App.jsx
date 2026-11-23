@@ -155,11 +155,11 @@ function DevRoleSetter({ user }) {
       window.location.assign('/admin');
     } catch (cause) { setError(cause.message); setBusy(false); }
   }
-  return <form onSubmit={submit} style={{ padding: '12px 20px', background: '#fff2cf', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+  return <form className="dev-role-setter" onSubmit={submit}>
     <strong>Temporary development role switcher</strong>
-    <label>Role <select value={role} onChange={(e) => setRole(e.target.value)}><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Admin</option></select></label>
-    {role === 'editor' && <label>Chef <select required value={chefId} onChange={(e) => setChefId(e.target.value)}><option value="">Select chef</option>{options.chefs.map((chef) => <option key={chef.id} value={chef.id}>{chef.name}</option>)}</select></label>}
-    <button type="submit" disabled={busy}>Apply to my account</button>
+    <label className="dev-role-setter__field">Role <select value={role} onChange={(e) => setRole(e.target.value)}><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Admin</option></select></label>
+    {role === 'editor' && <label className="dev-role-setter__field">Chef <select required value={chefId} onChange={(e) => setChefId(e.target.value)}><option value="">Select chef</option>{options.chefs.map((chef) => <option key={chef.id} value={chef.id}>{chef.name}</option>)}</select></label>}
+    <button className="admin-primary-button" type="submit" disabled={busy}>{busy ? 'Applying…' : 'Apply to my account'}</button>
     {error && <span role="alert">{error}</span>}
   </form>;
 }
@@ -1034,6 +1034,7 @@ function AdminForm({ resource }) {
 }
 
 function CategoryManager({ categories, selectedId, onSelect, onCreated, onUpdated, onDeleted, allowAll = false, selectable = true, title = 'Danh mục món', createdMessage = 'và chọn cho món này.' }) {
+  const { user } = useAuth();
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState('');
   const [busy, setBusy] = React.useState(false);

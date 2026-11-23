@@ -132,9 +132,9 @@ export default function MfaSettingsPage() {
           <p>Bật ngày giờ tự động trên thiết bị có ứng dụng xác thực. Quét mã này hoặc nhập khóa thủ công bên dưới, rồi xác minh bằng mã mới.</p>
           <img className="mfa-qr" src={setup.qrCodeDataUrl} alt="Mã QR cài đặt ứng dụng xác thực" />
           <label htmlFor="mfa-manual-secret">Khóa thủ công</label>
-          <code id="mfa-manual-secret" className="mfa-secret">{setup.secret}</code>
+          <code id="mfa-manual-secret" className="mfa-secret">{setup.secret.match(/.{1,4}/gu).join(' ')}</code>
           <form className="mfa-form" onSubmit={confirmSetup}>
-            <CodeField code={verifyCode} setCode={setVerifyCode} label="Mã từ ứng dụng xác thực" />
+            <TotpCodeField code={verifyCode} setCode={setVerifyCode} label="Mã từ ứng dụng xác thực" />
             <button className="admin-primary-button" type="submit" disabled={busy || !/^\d{6}$/.test(verifyCode)}>{busy ? 'Đang xác minh…' : 'Xác minh và bật'}</button>
             <button className="admin-secondary-button" type="button" disabled={busy} onClick={() => { setSetup(null); setVerifyCode(''); setNotice(''); }}>Hủy cài đặt</button>
           </form>
@@ -145,13 +145,21 @@ export default function MfaSettingsPage() {
           <button className="admin-danger-button" type="submit" disabled={busy || !disablePassword || !disableCode}>{busy ? 'Đang tắt…' : 'Tắt MFA'}</button>
         </form>}
       </section>
-      {status.enabled && <section className="admin-panel mfa-panel">
-        <div className="admin-panel-heading"><div><p className="eyebrow">KHÔI PHỤC TÀI KHOẢN</p><h2>Mã khôi phục</h2></div></div>
-        <p>Mỗi mã khôi phục chỉ dùng được một lần. Khi tạo bộ mới, toàn bộ mã cũ sẽ mất hiệu lực.</p>
-        <form className="mfa-form" onSubmit={(event) => { event.preventDefault(); void replaceRecoveryCodes(); }}>
-          <ReauthFields enabled password={recoveryPassword} setPassword={setRecoveryPassword} code={recoveryCode} setCode={setRecoveryCode} />
-          <button className="admin-secondary-button" type="submit" disabled={busy || !recoveryPassword || !recoveryCode}>{busy ? 'Đang tạo…' : 'Tạo bộ mã khôi phục mới'}</button>
-        </form>
+      {status.enabled && <section className="admin-panel mfa-panel mfa-recovery-generator">
+        <details className="mfa-disclosure">
+          <summary className="mfa-disclosure__summary">
+            <span className="mfa-disclosure__title">Tạo bộ mã khôi phục mới</span>
+            <span className="mfa-disclosure__indicator" aria-hidden="true" />
+          </summary>
+          <div className="mfa-disclosure__content">
+            <div className="admin-panel-heading"><div><p className="eyebrow">KHÔI PHỤC TÀI KHOẢN</p><h2>Mã khôi phục</h2></div></div>
+            <p>Mỗi mã khôi phục chỉ dùng được một lần. Khi tạo bộ mới, toàn bộ mã cũ sẽ mất hiệu lực.</p>
+            <form className="mfa-form" onSubmit={(event) => { event.preventDefault(); void replaceRecoveryCodes(); }}>
+              <ReauthFields enabled password={recoveryPassword} setPassword={setRecoveryPassword} code={recoveryCode} setCode={setRecoveryCode} />
+              <button className="admin-secondary-button" type="submit" disabled={busy || !recoveryPassword || !recoveryCode}>{busy ? 'Đang tạo…' : 'Tạo bộ mã khôi phục mới'}</button>
+            </form>
+          </div>
+        </details>
       </section>}
       {recoveryCodes && <section className="admin-panel mfa-panel mfa-recovery-panel" aria-labelledby="mfa-recovery-title">
         <div className="admin-panel-heading"><div><p className="eyebrow">LƯU NGAY</p><h2 id="mfa-recovery-title">Mã khôi phục của bạn</h2></div></div>
@@ -189,4 +197,59 @@ function ReauthFields({ enabled, password, setPassword, code, setCode }) {
 function CodeField({ code, setCode, label }) {
   const id = React.useId();
   return <div className="form-field"><label htmlFor={id}>{label}</label><input id={id} type="text" inputMode="text" autoComplete="one-time-code" maxLength="40" value={code} onChange={(event) => setCode(event.target.value)} required /></div>;
+}
+
+function TotpCodeField({ code, setCode, label }) {
+  const inputRefs = React.useRef([]);
+  const digits = code.padEnd(6, ' ').slice(0, 6);
+
+  function updateDigit(index, value) {
+    const digit = value.replace(/\D/gu, '').slice(-1);
+    const next = digits.split('');
+    next[index] = digit || ' ';
+    setCode(next.join('').trimEnd());
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+  }
+
+  function pasteDigits(event, index) {
+    const pasted = event.clipboardData.getData('text').replace(/\D/gu, '');
+    if (!pasted) return;
+    event.preventDefault();
+    const next = digits.split('');
+    const values = pasted.slice(0, 6 - index);
+    [...values].forEach((digit, offset) => { next[index + offset] = digit; });
+    setCode(next.join('').trimEnd());
+    inputRefs.current[Math.min(index + values.length, 5)]?.focus();
+  }
+
+  return <div className="form-field mfa-code-field">
+    <span className="mfa-code-label">{label}</span>
+    <div className="mfa-code-inputs" role="group" aria-label={label}>
+      {Array.from({ length: 6 }, (_, index) => <input
+        key={index}
+        ref={(element) => { inputRefs.current[index] = element; }}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        autoComplete={index === 0 ? 'one-time-code' : 'off'}
+        aria-label={`Digit ${index + 1} of 6`}
+        maxLength={1}
+        value={digits[index].trim()}
+        onChange={(event) => updateDigit(index, event.target.value)}
+        onPaste={(event) => pasteDigits(event, index)}
+        onKeyDown={(event) => {
+          if (event.key === 'Backspace' && !digits[index] && index > 0) {
+            event.preventDefault();
+            const next = digits.split('');
+            next[index - 1] = ' ';
+            setCode(next.join('').trimEnd());
+            inputRefs.current[index - 1]?.focus();
+          }
+          if (event.key === 'ArrowLeft' && index > 0) inputRefs.current[index - 1]?.focus();
+          if (event.key === 'ArrowRight' && index < 5) inputRefs.current[index + 1]?.focus();
+        }}
+        required={index === 0}
+      />)}
+    </div>
+  </div>;
 }

@@ -46,7 +46,6 @@ function createTokenSessionService(db) {
 
     async completePendingSession(sessionId, expectedUserId) {
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + REFRESH_TTL_MS);
       const rawToken = makeRefreshToken();
       const tokenId = crypto.randomUUID();
       return db.$transaction(async (tx) => {
@@ -54,6 +53,9 @@ function createTokenSessionService(db) {
         const user = session?.user;
         if (!session || !session.mfaPending || session.revokedAt || session.expiresAt <= now || user?.id !== expectedUserId
           || !user || user.status !== 'ACTIVE' || !user.emailVerifiedAt) return null;
+        // The session lifetime constraint is measured from its original creation,
+        // including the time spent waiting for MFA.
+        const expiresAt = new Date(session.createdAt.getTime() + REFRESH_TTL_MS);
         const promoted = await tx.authSession.updateMany({
           where: { id: sessionId, userId: expectedUserId, mfaPending: true, revokedAt: null, expiresAt: { gt: now } },
           data: { mfaPending: false, expiresAt, lastUsedAt: now }
