@@ -1,0 +1,29 @@
+{
+  "name": "wildlife-photo-gallery",
+  "private": true,
+  "type": "module",
+  "workspaces": ["client", "server", "shared"],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,green \"npm:dev --workspace @wildlife-gallery/server\" \"npm:dev --workspace @wildlife-gallery/client\"",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "test": "vitest run",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "typescript-eslint": "^8.48.1",
+    "vite": "^8.3.8",
+    "prisma": "7.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  },
+  "dependencies": {
+    "@prisma/client": "7.10.1",
+    "dotenv": "^17.2.3"
+  }
+}

@@ -1,0 +1,22 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+seaweedfs/s3.json
+seaweedfs/admin.env
+.john-wild-credentials.txt
+
+# Dependencies and generated build output
+node_modules/
+**/node_modules/
+client/dist/
+server/dist/
+shared/dist/
+client/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Local databases, backups, and one-off data scripts
+backups/
+.seed-wildlife.mjs
+
+Block11-Group14.zip
